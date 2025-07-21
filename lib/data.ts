@@ -1,0 +1,258 @@
+export interface Accommodation {
+  id: number
+  title: string
+  address: string
+  rating: number
+  reviewCount: number
+  price: number
+  isOpen: boolean
+  image: string
+  area: "Universitas" | "Brandwag" | "Willows"
+  amenities: string[]
+  description: string
+  distance: string
+  verified: boolean
+  featured: boolean
+  availableRooms: number
+  totalRooms: number
+}
+
+export interface ReviewReply {
+  id: number
+  reviewId: number
+  author: string
+  university: "UFS-Student" | "CUT-Student"
+  comment: string
+  createdAt: string
+  likes: number
+  liked: boolean
+}
+
+export interface Review {
+  id: number
+  author: string
+  university: "UFS-Student" | "CUT-Student"
+  rating: number
+  comment: string
+  likes: number
+  liked: boolean
+  createdAt?: string
+  replies?: ReviewReply[]
+}
+
+export const accommodations: Accommodation[] = [
+  {
+    id: 1,
+    title: "Sunny Side Residence",
+    address: "123 University Road, Universitas",
+    rating: 4,
+    reviewCount: 28,
+    price: 3500,
+    isOpen: true,
+    image: "/placeholder.svg?height=300&width=400",
+    area: "Universitas",
+    amenities: ["WiFi", "Laundry", "Security", "Parking", "Study Room"],
+    description: "Modern student residence with excellent facilities and 24/7 security.",
+    distance: "0.5km from UFS",
+    verified: true,
+    featured: true,
+    availableRooms: 3,
+    totalRooms: 20,
+  },
+  {
+    id: 2,
+    title: "Campus View Apartments",
+    address: "456 Student Street, Brandwag",
+    rating: 5,
+    reviewCount: 42,
+    price: 4200,
+    isOpen: true,
+    image: "/placeholder.svg?height=300&width=400",
+    area: "Brandwag",
+    amenities: ["WiFi", "Gym", "Pool", "Security", "Parking", "Kitchen"],
+    description: "Luxury apartments with stunning campus views and premium amenities.",
+    distance: "1.2km from UFS",
+    verified: true,
+    featured: true,
+    availableRooms: 1,
+    totalRooms: 15,
+  },
+  {
+    id: 3,
+    title: "Green Gardens Lodge",
+    address: "789 Park Avenue, Willows",
+    rating: 3,
+    reviewCount: 15,
+    price: 2800,
+    isOpen: false,
+    image: "/placeholder.svg?height=300&width=400",
+    area: "Willows",
+    amenities: ["WiFi", "Garden", "Parking"],
+    description: "Budget-friendly accommodation in a peaceful garden setting.",
+    distance: "2.1km from UFS",
+    verified: false,
+    featured: false,
+    availableRooms: 0,
+    totalRooms: 12,
+  },
+  {
+    id: 4,
+    title: "Modern Student Hub",
+    address: "321 College Lane, Universitas",
+    rating: 4,
+    reviewCount: 35,
+    price: 3800,
+    isOpen: true,
+    image: "/placeholder.svg?height=300&width=400",
+    area: "Universitas",
+    amenities: ["WiFi", "Study Room", "Security", "Laundry", "Common Area"],
+    description: "Contemporary student housing with collaborative spaces and modern facilities.",
+    distance: "0.8km from UFS",
+    verified: true,
+    featured: false,
+    availableRooms: 5,
+    totalRooms: 25,
+  },
+  {
+    id: 5,
+    title: "Cozy Corner Residence",
+    address: "654 Academic Drive, Brandwag",
+    rating: 5,
+    reviewCount: 22,
+    price: 4500,
+    isOpen: true,
+    image: "/placeholder.svg?height=300&width=400",
+    area: "Brandwag",
+    amenities: ["WiFi", "Kitchen", "Security", "Parking", "Study Room", "Gym"],
+    description: "Premium residence offering the perfect balance of comfort and convenience.",
+    distance: "1.5km from UFS",
+    verified: true,
+    featured: true,
+    availableRooms: 2,
+    totalRooms: 18,
+  },
+]
+
+export const reviews: Review[] = [
+  {
+    id: 1,
+    author: "Sarah M.",
+    university: "UFS-Student",
+    rating: 5,
+    comment: "Amazing place to stay! Very clean and close to campus.",
+    likes: 12,
+    liked: false,
+    createdAt: "2024-12-15T10:30:00Z",
+    replies: [
+      {
+        id: 1,
+        reviewId: 1,
+        author: "John D.",
+        university: "CUT-Student",
+        comment: "I totally agree! The location is perfect for students.",
+        createdAt: "2024-12-15T14:20:00Z",
+        likes: 3,
+        liked: false,
+      },
+    ],
+  },
+  {
+    id: 2,
+    author: "John D.",
+    university: "CUT-Student",
+    rating: 4,
+    comment: "Good value for money. WiFi could be better.",
+    likes: 8,
+    liked: true,
+    createdAt: "2024-12-14T16:45:00Z",
+    replies: [],
+  },
+  {
+    id: 3,
+    author: "Lisa K.",
+    university: "UFS-Student",
+    rating: 5,
+    comment: "Love the location and the staff is very helpful.",
+    likes: 15,
+    liked: false,
+    createdAt: "2024-12-13T09:15:00Z",
+    replies: [],
+  },
+  {
+    id: 4,
+    author: "Mike R.",
+    university: "CUT-Student",
+    rating: 3,
+    comment: "Decent place but can get noisy at night.",
+    likes: 5,
+    liked: false,
+    createdAt: "2024-12-12T20:30:00Z",
+    replies: [],
+  },
+  {
+    id: 5,
+    author: "Emma T.",
+    university: "UFS-Student",
+    rating: 4,
+    comment: "Great facilities and very secure.",
+    likes: 10,
+    liked: true,
+    createdAt: "2024-12-11T11:00:00Z",
+    replies: [],
+  },
+  {
+    id: 6,
+    author: "David L.",
+    university: "CUT-Student",
+    rating: 5,
+    comment: "Perfect for students! Highly recommend.",
+    likes: 18,
+    liked: false,
+    createdAt: "2024-12-10T15:30:00Z",
+    replies: [],
+  },
+  {
+    id: 7,
+    author: "Amy S.",
+    university: "UFS-Student",
+    rating: 4,
+    comment: "Nice rooms and good internet connection.",
+    likes: 7,
+    liked: false,
+    createdAt: "2024-12-09T13:45:00Z",
+    replies: [],
+  },
+  {
+    id: 8,
+    author: "Chris P.",
+    university: "CUT-Student",
+    rating: 3,
+    comment: "Average place, nothing special but okay.",
+    likes: 3,
+    liked: false,
+    createdAt: "2024-12-08T17:20:00Z",
+    replies: [],
+  },
+  {
+    id: 9,
+    author: "Rachel B.",
+    university: "UFS-Student",
+    rating: 5,
+    comment: "Excellent accommodation with great amenities.",
+    likes: 14,
+    liked: true,
+    createdAt: "2024-12-07T12:10:00Z",
+    replies: [],
+  },
+  {
+    id: 10,
+    author: "Tom W.",
+    university: "CUT-Student",
+    rating: 4,
+    comment: "Good location and friendly management.",
+    likes: 9,
+    liked: false,
+    createdAt: "2024-12-06T14:55:00Z",
+    replies: [],
+  },
+]
