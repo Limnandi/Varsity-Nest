@@ -86,6 +86,8 @@ export async function getSession(): Promise<SessionPayload | null> {
   return session
 }
 
+export const getCurrentUser = getSessionUser
+
 export async function getSessionUser(): Promise<User | null> {
   const session = await getSession()
   if (!session?.userId) return null

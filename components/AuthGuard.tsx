@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { LoadingSpinner } from "./LoadingSpinner"
+import LoadingSpinner from "./LoadingSpinner"
 
 interface AuthGuardProps {
   children: React.ReactNode

@@ -10,7 +10,7 @@ interface ProductionModeSwitchProps {
   isProduction: boolean
 }
 
-export function ProductionModeSwitch({ isProduction }: ProductionModeSwitchProps) {
+export default function ProductionModeSwitch({ isProduction }: ProductionModeSwitchProps) {
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
 

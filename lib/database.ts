@@ -1,9 +1,12 @@
 import { drizzle } from "drizzle-orm/neon-http"
-import { neon } from "@neondatabase/serverless"
+import { neon, neonConfig } from "@neondatabase/serverless"
 import * as schema from "./schema"
 
 let _sql: any;
 let _db: any;
+
+// Configure Neon to use WebSocket
+neonConfig.webSocketConstructor = WebSocket;
 
 function getDatabaseUrl(): string {
   if (!process.env.DATABASE_URL) {
@@ -18,6 +21,9 @@ export function getSQL() {
   }
   return _sql
 }
+
+// Export sql client for direct use when needed
+export const sql = getSQL();
 
 export function getDB() {
   if (!_db) {
@@ -47,9 +53,22 @@ export async function query(textOrStrings: string | TemplateStringsArray, params
     console.log("🔍 Executing query:", queryText.substring(0, 100) + "...")
     console.log("📊 Query params:", queryParams)
 
-    const result = await (typeof textOrStrings === 'string'
-      ? getSQL()`${queryText}`
-      : getSQL()(textOrStrings as TemplateStringsArray, ...queryParams))
+    // Handle parameterized queries for Neon
+    const sql = getSQL();
+    let result;
+    
+    if (typeof textOrStrings === 'string') {
+      if (queryParams && queryParams.length > 0) {
+        // Use Neon's query method for parameterized queries
+        result = await sql.query(queryText, queryParams);
+      } else {
+        // Use tagged template for simple queries
+        result = await sql`${queryText}`;
+      }
+    } else {
+      // Handle template string queries
+      result = await sql(textOrStrings as TemplateStringsArray, ...queryParams);
+    }
 
     console.log("✅ Query executed successfully")
     console.log("📈 Rows affected:", Array.isArray(result) ? result.length : "N/A")

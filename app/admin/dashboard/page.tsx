@@ -1,4 +1,5 @@
 import { getSession } from "@/lib/session"
+import { getSessionUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Building, BedDouble } from "lucide-react"
@@ -41,7 +42,16 @@ async function getProductionStats() {
 
 export default async function AdminDashboard() {
   const session = await getSession()
-  if (!session || session.user?.role !== "admin") {
+  const sessionUser = await getSessionUser()
+  console.log("Session in dashboard:", { session, sessionUser })
+  
+  if (!session || !sessionUser) {
+    console.log("No valid session found, redirecting to unauthorized")
+    redirect("/unauthorized")
+  }
+  
+  if (sessionUser.role !== "admin") {
+    console.log(`User role ${sessionUser.role} is not admin, redirecting`)
     redirect("/unauthorized")
   }
 
