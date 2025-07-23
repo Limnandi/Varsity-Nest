@@ -1,10 +1,12 @@
 import { getSession } from "@/lib/session"
+
+export const dynamic = 'force-dynamic'
 import { getSessionUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Building, BedDouble } from "lucide-react"
 import { getPlatformSettings } from "@/lib/actions/admin.actions"
-import { ProductionModeSwitch } from "@/components/ProductionModeSwitch"
+import ProductionModeSwitch from "@/components/ProductionModeSwitch"
 import { sql } from "@/lib/database"
 
 const mockStats = {

@@ -2,11 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useActionState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X } from "lucide-react"
-import { registerProvider } from "./actions"
+import { registerProvider, type ProviderRegistrationState } from "./actions"
 
 export default function ProviderRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -14,7 +13,26 @@ export default function ProviderRegistrationPage() {
   const [isAccredited, setIsAccredited] = useState<"yes" | "no" | "">("")
   const [accreditedBy, setAccreditedBy] = useState<string[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
-  const [state, formAction, isPending] = useActionState(registerProvider, undefined)
+  const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
+  const [isPending, startTransition] = useTransition()
+
+  const handleSubmit = async (formData: FormData) => {
+    const password = formData.get('password') as string
+    const confirmPassword = formData.get('confirmPassword') as string
+    
+    if (password !== confirmPassword) {
+      setState({ error: 'Passwords do not match' })
+      return
+    }
+
+    startTransition(async () => {
+      const result = await registerProvider(
+        { success: false } as ProviderRegistrationState,
+        formData
+      )
+      setState(result)
+    })
+  }
 
   const handleAccreditationChange = (university: string, checked: boolean) => {
     if (checked) {
@@ -27,9 +45,19 @@ export default function ProviderRegistrationPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const validFiles = files.filter((file) => {
-      const isValidType = file.type === "application/pdf" || file.type.startsWith("image/")
+      const isValidType = file.type === "application/pdf" ||
+                         file.type.startsWith("image/")
       const isValidSize = file.size <= 5 * 1024 * 1024 // 5MB
-      return isValidType && isValidSize
+      
+      if (!isValidType) {
+        setState({ error: 'Only PDF and image files are allowed' })
+        return false
+      }
+      if (!isValidSize) {
+        setState({ error: 'File size must be less than 5MB' })
+        return false
+      }
+      return true
     })
 
     if (uploadedFiles.length + validFiles.length > 3) {
@@ -68,7 +96,7 @@ export default function ProviderRegistrationPage() {
             </div>
           )}
 
-          <form action={formAction} className="space-y-6">
+          <form action={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>

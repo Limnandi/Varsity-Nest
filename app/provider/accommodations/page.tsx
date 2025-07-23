@@ -1,19 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser, type ServiceProvider } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
+import type { User } from "@/lib/definitions"
 import { accommodations } from "@/lib/data"
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
 import Link from "next/link"
 import { Building } from "lucide-react" // Import Building component
 
 export default function ProviderAccommodations() {
-  const user = getCurrentUser() as ServiceProvider
-  const [userAccommodations, setUserAccommodations] = useState(
-    accommodations.filter((acc) => user?.accommodations.includes(acc.id.toString())),
-  )
+  const [user, setUser] = useState<User | null>(null)
+  const [userAccommodations, setUserAccommodations] = useState<typeof accommodations>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadUser() {
+      const currentUser = await getCurrentUser()
+      setUser(currentUser)
+      setUserAccommodations(
+        accommodations.filter((acc) => currentUser?.id.toString() === acc.id.toString().charAt(0))
+      )
+      setIsLoading(false)
+    }
+    loadUser()
+  }, [])
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this accommodation?")) {

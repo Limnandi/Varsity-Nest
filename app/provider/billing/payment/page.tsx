@@ -4,14 +4,29 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser, type ServiceProvider } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
+import type { User } from "@/lib/definitions"
 import { PaymentService, type PaymentMethod } from "@/lib/payments"
 import { CreditCard, Plus, Check, AlertCircle, ArrowLeft, Shield } from "lucide-react"
 import Link from "next/link"
 
 export default function PaymentPage() {
   const router = useRouter()
-  const user = getCurrentUser() as ServiceProvider
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoadingUser, setIsLoadingUser] = useState(true)
+
+  useEffect(() => {
+    async function loadUser() {
+      const currentUser = await getCurrentUser()
+      setUser(currentUser)
+      setIsLoadingUser(false)
+    }
+    loadUser()
+  }, [])
+  const [billingInfo, setBillingInfo] = useState({
+    monthlyFee: 450,
+    nextPayment: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  })
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedMethod, setSelectedMethod] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
@@ -30,6 +45,7 @@ export default function PaymentPage() {
 
   const loadPaymentMethods = async () => {
     try {
+      if (!user) return
       const methods = await PaymentService.getPaymentMethods(user.id)
       setPaymentMethods(methods)
       setSelectedMethod(methods.find((m) => m.isDefault)?.id || methods[0]?.id || "")
@@ -47,7 +63,7 @@ export default function PaymentPage() {
     try {
       // Create payment intent
       const paymentIntent = await PaymentService.createPaymentIntent(
-        user.billingInfo.monthlyFee * 100, // Convert to cents
+        billingInfo.monthlyFee * 100, // Convert to cents
       )
 
       // Confirm payment
@@ -249,7 +265,7 @@ export default function PaymentPage() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between">
                     <span>Monthly Subscription</span>
-                    <span>R{user.billingInfo.monthlyFee}</span>
+                    <span>R{billingInfo.monthlyFee}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Processing Fee</span>
@@ -258,14 +274,14 @@ export default function PaymentPage() {
                   <div className="border-t pt-3">
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total</span>
-                      <span className="text-green-600">R{user.billingInfo.monthlyFee}</span>
+                      <span className="text-green-600">R{billingInfo.monthlyFee}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3 mb-6 text-sm text-gray-600">
                   <p>• Payment will be processed immediately</p>
-                  <p>• Your next billing date: {user.billingInfo.nextPayment}</p>
+                  <p>• Your next billing date: {new Date(billingInfo.nextPayment).toLocaleDateString()}</p>
                   <p>• You can cancel anytime with 30 days notice</p>
                 </div>
 
@@ -280,7 +296,7 @@ export default function PaymentPage() {
                       Processing...
                     </div>
                   ) : (
-                    `Pay R${user.billingInfo.monthlyFee}`
+                    `Pay R${billingInfo.monthlyFee}`
                   )}
                 </button>
 

@@ -291,3 +291,46 @@ export async function deleteUser(userId: string): Promise<boolean> {
   }
 }
 
+export async function getAdminSettings() {
+  try {
+    const result = await query("SELECT * FROM admin_settings LIMIT 1")
+    return result.rows[0] || null
+  } catch (error) {
+    console.error("Error getting admin settings:", error)
+    return null
+  }
+}
+
+export async function updateAdminSettings(settings: {
+  maintenanceMode: boolean
+  registrationEnabled: boolean
+  paymentsEnabled: boolean
+}) {
+  try {
+    await query(
+      `INSERT INTO admin_settings (maintenance_mode, registration_enabled, payments_enabled)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO UPDATE SET
+         maintenance_mode = EXCLUDED.maintenance_mode,
+         registration_enabled = EXCLUDED.registration_enabled,
+         payments_enabled = EXCLUDED.payments_enabled`,
+      [settings.maintenanceMode, settings.registrationEnabled, settings.paymentsEnabled]
+    )
+    return true
+  } catch (error) {
+    console.error("Error updating admin settings:", error)
+    return false
+  }
+}
+
+export async function verifyToken(token: string): Promise<{ valid: boolean; payload?: any }> {
+  try {
+    const { payload } = await jwtVerify(token, encodedKey, {
+      algorithms: ["HS256"],
+    })
+    return { valid: true, payload }
+  } catch (error) {
+    return { valid: false }
+  }
+}
+

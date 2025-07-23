@@ -1,7 +1,13 @@
 import { Resend } from "resend"
-import { storeOTP } from "./redis"
+import { redis } from "./redis"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+export async function storeOTP(email: string, otp: string, type: "registration" | "password_reset" = "registration") {
+  const key = `otp:${type}:${email}`
+  await redis.setex(key, 300, otp) // 5 minutes expiry
+  await redis.setex(`${key}:attempts`, 300, "0") // Track attempts
+}
 
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -14,8 +20,6 @@ export async function sendOTP(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const otp = generateOTP()
-
-    // Store OTP in Redis
     await storeOTP(email, otp, type)
 
     const subject =
@@ -92,7 +96,6 @@ export async function verifyOTP(
   type: "registration" | "password_reset" = "registration",
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { redis } = await import("./redis.js")
     const storedOTP = await redis.get(`otp:${type}:${email}`)
 
     if (!storedOTP) {
@@ -120,4 +123,23 @@ export async function verifyOTP(
     console.error("OTP verification error:", error)
     return { success: false, error: "Verification failed" }
   }
+}
+
+export async function incrementOTPAttempts(
+  email: string,
+  type: "registration" | "password_reset" = "registration",
+): Promise<number> {
+  const key = `otp:${type}:${email}:attempts`
+  const attempts = await redis.incr(key)
+  await redis.expire(key, 300) // Reset expiry
+  return attempts
+}
+
+export async function getOTPAttempts(
+  email: string,
+  type: "registration" | "password_reset" = "registration",
+): Promise<number> {
+  const key = `otp:${type}:${email}:attempts`
+  const attempts = await redis.get(key)
+  return attempts ? Number.parseInt(attempts as string) : 0
 }

@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getAllStudents } from "@/lib/auth"
 import { getSession } from "@/lib/session"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()

@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useActionState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
 import { registerStudent } from "./actions"
@@ -9,7 +8,15 @@ import { registerStudent } from "./actions"
 export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [state, formAction, isPending] = useActionState(registerStudent, undefined)
+  const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
+  const [isPending, startTransition] = useTransition()
+
+  const handleSubmit = async (formData: FormData) => {
+    startTransition(async () => {
+      const result = await registerStudent(null, formData)
+      setState(result)
+    })
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-blue-800 to-blue-900 px-4 py-8">
@@ -35,7 +42,7 @@ export default function StudentRegistrationPage() {
             </div>
           )}
 
-          <form action={formAction} className="space-y-6">
+          <form action={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
               <div className="relative">

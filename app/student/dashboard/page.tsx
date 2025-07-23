@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { Toaster, toast } from "sonner"
 import { getSessionUser } from "@/lib/auth"
 import type { User } from "@/lib/definitions"
-import { LoadingSpinner } from "@/components/LoadingSpinner"
+import LoadingSpinner from "@/components/LoadingSpinner"
 
 export default function StudentDashboard() {
   const searchParams = useSearchParams()
