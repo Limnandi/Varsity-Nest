@@ -41,7 +41,13 @@ export async function registerProvider(
     }
 
     // Create user
-    await createUser(email, password, companyName, "provider")
+    await createUser({
+      email,
+      password,
+      firstName: companyName,
+      lastName: "",
+      role: "provider"
+    })
 
     return {
       success: true,

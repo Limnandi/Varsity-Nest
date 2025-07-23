@@ -3,24 +3,48 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser, updateAdminSettings, getAdminSettings, type AdminUser } from "@/lib/auth"
+import { getCurrentUser, updateAdminSettings, getAdminSettings } from "@/lib/auth"
+import type { User } from "@/lib/definitions"
+
+interface AdminUser extends User {
+  adminSettings: {
+    showProvisionallyAccredited: boolean
+    showNonAccredited: boolean
+  }
+}
 import { Settings, Eye, Save, ToggleLeft, ToggleRight } from "lucide-react"
 
 export default function AdminSettings() {
   const [user, setUser] = useState<AdminUser | null>(null)
   const [settings, setSettings] = useState({
+    maintenanceMode: false,
+    registrationEnabled: true,
+    paymentsEnabled: true,
     showProvisionallyAccredited: true,
-    showNonAccredited: true,
+    showNonAccredited: true
   })
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
 
   useEffect(() => {
-    const currentUser = getCurrentUser() as AdminUser
-    setUser(currentUser)
+    const loadData = async () => {
+      const currentUser = await getCurrentUser()
+      if (currentUser?.role === 'admin') {
+        setUser(currentUser as AdminUser)
+      }
 
-    const adminSettings = getAdminSettings()
-    setSettings(adminSettings)
+      const dbSettings = await getAdminSettings()
+      if (dbSettings) {
+        setSettings({
+          maintenanceMode: dbSettings.maintenance_mode ?? false,
+          registrationEnabled: dbSettings.registration_enabled ?? true,
+          paymentsEnabled: dbSettings.payments_enabled ?? true,
+          showProvisionallyAccredited: dbSettings.show_provisionally_accredited ?? true,
+          showNonAccredited: dbSettings.show_non_accredited ?? true
+        })
+      }
+    }
+    loadData()
   }, [])
 
   const handleToggle = (setting: keyof typeof settings) => {
@@ -35,16 +59,17 @@ export default function AdminSettings() {
     setSaveMessage("")
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const success = await updateAdminSettings({
+        maintenanceMode: settings.maintenanceMode,
+        registrationEnabled: settings.registrationEnabled,
+        paymentsEnabled: settings.paymentsEnabled
+      })
 
-      const updatedUser = updateAdminSettings(settings)
-      if (updatedUser) {
-        setUser(updatedUser as AdminUser)
-        setSaveMessage("Settings saved successfully!")
-
-        // Clear message after 3 seconds
+      if (success) {
+        setSaveMessage("Core platform settings saved successfully!")
         setTimeout(() => setSaveMessage(""), 3000)
+      } else {
+        setSaveMessage("Failed to save settings. Please try again.")
       }
     } catch (error) {
       setSaveMessage("Failed to save settings. Please try again.")

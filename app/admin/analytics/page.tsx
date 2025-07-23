@@ -139,7 +139,12 @@ export default function AdminAnalytics() {
     value,
     status,
     icon: Icon,
-  }: { title: string; value: string; status: string; icon: any }) => {
+  }: {
+    title: string
+    value: string
+    status: "good" | "average" | "poor" | "online" | "degraded" | "offline"
+    icon: any
+  }) => {
     const statusColors = {
       good: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
       average: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",

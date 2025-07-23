@@ -4,53 +4,61 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { getCurrentUser, type ServiceProvider } from "@/lib/auth"
-import { accommodations } from "@/lib/data"
+import { getProviderStats } from "@/lib/admin"
 import { Building, DollarSign, Eye, TrendingUp, Plus } from "lucide-react"
 import Link from "next/link"
 
 export default function ProviderDashboard() {
   const [user, setUser] = useState<ServiceProvider | null>(null)
+  const [stats, setStats] = useState({
+    totalAccommodations: 0,
+    monthlyRevenue: 0,
+    totalViews: 0,
+    totalBookings: 0
+  })
 
   useEffect(() => {
-    const currentUser = getCurrentUser() as ServiceProvider
-    setUser(currentUser)
+    const fetchUserAndStats = async () => {
+      const currentUser = await getCurrentUser() as ServiceProvider | null
+      setUser(currentUser)
+      if (currentUser?.id) {
+        const providerStats = await getProviderStats(currentUser.id)
+        setStats(providerStats)
+      }
+    }
+    fetchUserAndStats()
   }, [])
 
   if (!user) return null
 
-  const userAccommodations = accommodations.filter((acc) => user.accommodations.includes(acc.id.toString()))
-
-  const totalViews = userAccommodations.reduce((sum, acc) => sum + acc.reviewCount * 10, 0)
-  const totalBookings = userAccommodations.reduce((sum, acc) => sum + Math.floor(acc.reviewCount / 2), 0)
-
-  const stats = [
+  const statsData = [
     {
       title: "Total Accommodations",
-      value: userAccommodations.length,
+      value: stats.totalAccommodations,
       icon: Building,
       color: "bg-blue-500",
-      change: "+2 this month",
+      change: "+0 this month", // Will update with real change data
     },
     {
       title: "Monthly Revenue",
-      value: `R${user.billingInfo.monthlyFee.toLocaleString()}`,
+      value: `R${stats.monthlyRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: "bg-green-500",
-      change: "Next payment: Jan 1",
+      change: "Next payment: loading", // Will update with real data
     },
     {
       title: "Total Views",
-      value: totalViews.toLocaleString(),
+      value: stats.totalViews.toLocaleString(),
       icon: Eye,
       color: "bg-purple-500",
-      change: "+15% this week",
+      change: "+0% this week", // Will update with real change data
     },
     {
       title: "Bookings",
-      value: totalBookings,
+      value: stats.totalBookings,
       icon: TrendingUp,
       color: "bg-orange-500",
-      change: "+3 this week",
+      change: "+0 this week", // Will update with real change data
     },
   ]
 
@@ -66,7 +74,7 @@ export default function ProviderDashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
+            {statsData.map((stat, index) => (
               <div key={index} className="bg-white rounded-xl p-6 shadow-sm border">
                 <div className="flex items-center justify-between">
                   <div>
@@ -121,35 +129,7 @@ export default function ProviderDashboard() {
             </div>
           </div>
 
-          {/* Recent Accommodations */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Your Accommodations</h2>
-              <Link href="/provider/accommodations" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                View All
-              </Link>
-            </div>
-
-            <div className="space-y-4">
-              {userAccommodations.slice(0, 3).map((accommodation) => (
-                <div key={accommodation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{accommodation.title}</h3>
-                      <p className="text-sm text-gray-600">{accommodation.address}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-green-600">R{accommodation.price.toLocaleString()}/month</p>
-                    <p className="text-sm text-gray-500">
-                      {accommodation.availableRooms}/{accommodation.totalRooms} available
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Accommodations section will be added back with live data implementation */}
 
           {/* Billing Status */}
           <div className="bg-white rounded-xl p-6 shadow-sm border">
@@ -159,11 +139,15 @@ export default function ProviderDashboard() {
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <div>
                   <p className="font-medium text-gray-900">Account in Good Standing</p>
-                  <p className="text-sm text-gray-600">Next payment due: {user.billingInfo.nextPayment}</p>
+                  <p className="text-sm text-gray-600">
+                    {user.billingInfo ? `Next payment due: ${user.billingInfo.nextPayment}` : "Loading payment info..."}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-gray-900">R{user.billingInfo.monthlyFee}</p>
+                <p className="font-semibold text-gray-900">
+                  R{user.billingInfo?.monthlyFee ?? "0"}
+                </p>
                 <p className="text-sm text-gray-600">Monthly fee</p>
               </div>
             </div>

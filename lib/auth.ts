@@ -6,6 +6,14 @@ import { cookies } from "next/headers"
 import { query } from "./database"
 import type { User } from "./definitions"
 
+export interface ServiceProvider extends User {
+  accommodations: string[]
+  billingInfo: {
+    monthlyFee: number
+    nextPayment: string
+  }
+}
+
 interface SessionPayload extends JWTPayload {
   id: string
   email: string
