@@ -1,10 +1,18 @@
 "use server"
 
 import bcrypt from "bcryptjs"
-import { SignJWT, jwtVerify } from "jose"
+import { SignJWT, jwtVerify, type JWTPayload } from "jose"
 import { cookies } from "next/headers"
 import { query } from "./database"
-import type { User, SessionPayload } from "./definitions"
+import type { User } from "./definitions"
+
+interface SessionPayload extends JWTPayload {
+  id: string
+  email: string
+  name: string
+  role: "admin" | "provider" | "student"
+  expiresAt: Date
+}
 import { encodedKey } from "./auth-constants"
 
 export async function hashPassword(password: string): Promise<string> {
@@ -63,9 +71,15 @@ export async function authenticateUser(email: string, password: string): Promise
   }
 }
 
-export async function createSession(userId: string, role: "admin" | "provider" | "student") {
+export async function createSession(user: User) {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-  const session = await encrypt({ userId, role, expiresAt })
+  const session = await encrypt({
+    id: user.id,
+    email: user.email,
+    name: `${user.firstName} ${user.lastName}`,
+    role: user.role,
+    expiresAt
+  })
 
   const cookieStore = await cookies()
   cookieStore.set("session", session, {
@@ -86,7 +100,7 @@ export async function getSession(): Promise<SessionPayload | null> {
 
 export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession()
-  if (!session?.userId) return null
+  if (!session?.id) return null
 
   try {
     const result = await query(
@@ -94,7 +108,7 @@ export async function getCurrentUser(): Promise<User | null> {
        FROM users u
        LEFT JOIN students s ON u.id = s.user_id
        WHERE u.id = $1`,
-      [session.userId],
+      [session.id],
     )
 
     if (!result.rows || result.rows.length === 0) return null
@@ -131,7 +145,7 @@ export async function login(
   try {
     const user = await authenticateUser(email, password)
     if (user) {
-      await createSession(user.id, user.role)
+      await createSession(user)
       return { success: true, user }
     }
     return { success: false, error: "Invalid credentials" }
