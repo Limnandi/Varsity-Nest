@@ -5,9 +5,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { query } from "./database"
 import type { User, SessionPayload } from "./definitions"
-
-const secretKey = process.env.NEXTAUTH_SECRET
-const encodedKey = new TextEncoder().encode(secretKey)
+import { encodedKey } from "./auth-constants"
 
 export async function hashPassword(password: string): Promise<string> {
   return await bcrypt.hash(password, 12)
@@ -86,9 +84,7 @@ export async function getSession(): Promise<SessionPayload | null> {
   return session
 }
 
-export const getCurrentUser = getSessionUser
-
-export async function getSessionUser(): Promise<User | null> {
+export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession()
   if (!session?.userId) return null
 
@@ -131,12 +127,18 @@ export async function login(
   email: string,
   password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-  const user = await authenticateUser(email, password)
-  if (user) {
-    await createSession(user.id, user.role)
-    return { success: true, user }
+  "use server"
+  try {
+    const user = await authenticateUser(email, password)
+    if (user) {
+      await createSession(user.id, user.role)
+      return { success: true, user }
+    }
+    return { success: false, error: "Invalid credentials" }
+  } catch (error) {
+    console.error("Login error:", error)
+    return { success: false, error: "Login failed" }
   }
-  return { success: false, error: "Invalid credentials" }
 }
 
 async function encrypt(payload: SessionPayload) {
@@ -323,14 +325,15 @@ export async function updateAdminSettings(settings: {
   }
 }
 
-export async function verifyToken(token: string): Promise<{ valid: boolean; payload?: any }> {
+export async function verifyToken(token: string): Promise<any | null> {
+  "use server"
   try {
     const { payload } = await jwtVerify(token, encodedKey, {
       algorithms: ["HS256"],
     })
-    return { valid: true, payload }
+    return payload
   } catch (error) {
-    return { valid: false }
+    return null
   }
 }
 

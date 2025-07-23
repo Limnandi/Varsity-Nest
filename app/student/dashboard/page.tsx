@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Toaster, toast } from "sonner"
-import { getSessionUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import type { User } from "@/lib/definitions"
 import LoadingSpinner from "@/components/LoadingSpinner"
 
@@ -16,7 +16,7 @@ export default function StudentDashboard() {
     const isNewUser = searchParams.get("new_user") === "true"
 
     async function fetchUser() {
-      const sessionUser = await getSessionUser()
+      const sessionUser = await getCurrentUser()
       setUser(sessionUser)
       setIsLoading(false)
       if (isNewUser && sessionUser) {

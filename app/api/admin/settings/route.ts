@@ -6,16 +6,16 @@ import { Sentry } from "@/lib/sentry"
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    const user = verifyToken(token || "")
+    const payload = await verifyToken(token || "")
 
-    if (!user || user.role !== "admin") {
+    if (!payload || payload.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const result = await query("SELECT key, value FROM admin_settings")
     const settings: any = {}
 
-    result.rows.forEach((row) => {
+    result.rows.forEach((row: {key: string, value: any}) => {
       settings[row.key] = row.value
     })
 
@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    const user = verifyToken(token || "")
+    const payload = await verifyToken(token || "")
 
-    if (!user || user.role !== "admin") {
+    if (!payload || payload.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

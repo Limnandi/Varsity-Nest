@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/session"
 
 export const dynamic = 'force-dynamic'
-import { getSessionUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Building, BedDouble } from "lucide-react"
@@ -44,7 +44,7 @@ async function getProductionStats() {
 
 export default async function AdminDashboard() {
   const session = await getSession()
-  const sessionUser = await getSessionUser()
+  const sessionUser = await getCurrentUser()
   console.log("Session in dashboard:", { session, sessionUser })
   
   if (!session || !sessionUser) {
