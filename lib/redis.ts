@@ -1,12 +1,15 @@
 import { Redis } from "@upstash/redis"
 
-if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
+
+if (!redisUrl || !redisToken) {
   console.warn("Upstash Redis environment variables not set. OTP and other Redis features will not work.")
 }
 
 export const redis = new Redis({
-  url: process.env.KV_REST_API_URL!,
-  token: process.env.KV_REST_API_TOKEN!,
+  url: redisUrl!,
+  token: redisToken!,
 })
 
 // OTP Management

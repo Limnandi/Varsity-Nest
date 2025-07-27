@@ -42,19 +42,73 @@ export async function registerProvider(
       }
     }
 
-    // Create user
-    const user = await createUser({
-      email,
-      password,
-      firstName: companyName,
-      lastName: "",
-      role: "provider"
+    // Extract and validate form fields
+    const name = formData.get("name")?.toString().trim()
+    const contactPhone = formData.get("contactPhone")?.toString().trim() || ""
+    const address = formData.get("address")?.toString().trim() || ""
+    const isAccredited = formData.get("isAccredited") === "yes"
+
+    console.log("Form data received:", {
+      name,
+      contactPhone,
+      address,
+      isAccredited
     })
 
-    if (!user) {
+    // Parse name into first/last names
+    if (!name) {
       return {
         success: false,
-        error: "Failed to create user account",
+        error: "Name is required"
+      }
+    }
+
+    const nameParts = name.split(/\s+/)
+    const firstName = nameParts.slice(0, -1).join(" ")
+    const lastName = nameParts[nameParts.length - 1]
+
+    // Check if email already exists
+    const existingUser = await query(
+      `SELECT id FROM users WHERE email = $1`,
+      [email]
+    )
+    if (existingUser.rows.length > 0) {
+      return {
+        success: false,
+        error: "Email address is already registered",
+      }
+    }
+
+    // Create user with validated fields
+    let user
+    try {
+      user = await createUser({
+        email,
+        password,
+        firstName: firstName as string,
+        lastName: lastName as string,
+        role: "provider"
+      })
+
+      if (!user) {
+        return {
+          success: false,
+          error: "Failed to create user account",
+        }
+      }
+    } catch (error: any) {
+      console.error("User creation error:", error)
+      let errorMessage = "Registration failed"
+      if (error.code === "23505") { // Unique constraint violation
+        if (error.constraint === "users_email_key") {
+          errorMessage = "Email address is already registered"
+        } else {
+          errorMessage = "Account already exists with these details"
+        }
+      }
+      return {
+        success: false,
+        error: errorMessage,
       }
     }
 
@@ -63,40 +117,57 @@ export async function registerProvider(
       userId: user.id,
       businessName: companyName,
       isVerified: false,
-      accreditationStatus: formData.get("isAccredited") === "yes" ? "accredited" : "pending"
+      contactPerson: name,
+      contactEmail: email,
+      contactPhone,
+      address
     }
 
-    // Store uploaded files
-    const { uploadImage } = await import("@/lib/cloudinary")
-    const files = formData.getAll("files") as File[]
-    const storedFiles = await Promise.all(
-      files.map(async (file) => {
-        // Upload to Cloudinary
-        const result = await uploadImage(file) as { secure_url: string }
+    // Only upload accreditation documents if provider is accredited
+    let businessRegistration = null
+    if (isAccredited) {
+      const { uploadImage } = await import("@/lib/cloudinary")
+      const files = formData.getAll("files") as File[]
+      if (files.length === 0) {
         return {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: result.secure_url // Use the URL from Cloudinary upload
+          success: false,
+          error: "Accreditation documents are required for accredited providers"
         }
-      })
-    )
+      }
+      businessRegistration = await Promise.all(
+        files.map(async (file) => {
+          const result = await uploadImage(file) as { secure_url: string }
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            url: result.secure_url
+          }
+        })
+      )
+    }
 
-    // Save provider data with file references
+    // Save provider data
     await query(
       `INSERT INTO providers (
         user_id,
         business_name,
+        contact_person,
+        contact_email,
+        contact_phone,
+        address,
         is_verified,
-        accreditation_status,
-        documents
-      ) VALUES ($1, $2, $3, $4, $5)`,
+        business_registration
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         user.id,
         companyName,
+        providerData.contactPerson,
+        providerData.contactEmail,
+        providerData.contactPhone,
+        providerData.address,
         false,
-        formData.get("isAccredited") === "yes" ? "accredited" : "pending",
-        JSON.stringify(storedFiles)
+        businessRegistration ? JSON.stringify(businessRegistration) : null
       ]
     )
 
