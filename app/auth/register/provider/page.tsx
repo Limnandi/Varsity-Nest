@@ -60,8 +60,12 @@ export default function ProviderRegistrationPage() {
       return true
     })
 
-    if (uploadedFiles.length + validFiles.length > 3) {
-      alert("You can only upload up to 3 files")
+    if (uploadedFiles.length + validFiles.length > 2) {
+      alert("You can only upload 1-2 files")
+      return
+    }
+    if (uploadedFiles.length + validFiles.length < 1) {
+      alert("You must upload at least 1 file")
       return
     }
 

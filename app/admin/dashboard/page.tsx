@@ -2,7 +2,13 @@
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { useState, useEffect } from "react"
-import { getDashboardStats, getTopAccommodations } from "@/lib/admin"
+import {
+  getDashboardStats,
+  getTopAccommodations,
+  approveProvider,
+  rejectProvider,
+  viewProviderDocuments
+} from "@/lib/admin"
 import { Building, Users, DollarSign, TrendingUp, Eye, Plus, AlertTriangle } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -80,10 +86,59 @@ export default function AdminDashboard() {
     { id: 4, type: "review", message: "New review posted for Sunny Side Residence", time: "8 hours ago" },
   ]
 
-  const pendingApprovals = [
-    { id: 1, type: "accommodation", title: "Green Valley Lodge", provider: "ABC Properties", status: "pending" },
-    { id: 2, type: "provider", title: "XYZ Student Housing", provider: "New Registration", status: "pending" },
-  ]
+  const [pendingApprovals, setPendingApprovals] = useState([
+    { id: "1", type: "accommodation", title: "Green Valley Lodge", provider: "ABC Properties", status: "pending" },
+    { id: "2", type: "provider", title: "XYZ Student Housing", provider: "New Registration", status: "pending" },
+  ])
+  const [isLoading, setIsLoading] = useState(false)
+  const [actionMessage, setActionMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
+
+  const handleViewDocuments = async (id: string) => {
+    setIsLoading(true)
+    try {
+      const documents = await viewProviderDocuments(id)
+      // In a real app, this would open a modal with the documents
+      alert(`Documents for provider ${id}:\n${JSON.stringify(documents, null, 2)}`)
+    } catch (error) {
+      setActionMessage({type: 'error', message: 'Failed to load documents'})
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleApprove = async (id: string) => {
+    setIsLoading(true)
+    try {
+      const result = await approveProvider(id)
+      if (result.success) {
+        setPendingApprovals(pendingApprovals.filter(item => item.id !== id))
+        setActionMessage({type: 'success', message: 'Provider approved successfully'})
+      } else {
+        setActionMessage({type: 'error', message: result.error || 'Approval failed'})
+      }
+    } catch (error) {
+      setActionMessage({type: 'error', message: 'Approval failed'})
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleReject = async (id: string) => {
+    setIsLoading(true)
+    try {
+      const result = await rejectProvider(id)
+      if (result.success) {
+        setPendingApprovals(pendingApprovals.filter(item => item.id !== id))
+        setActionMessage({type: 'success', message: 'Provider rejected'})
+      } else {
+        setActionMessage({type: 'error', message: result.error || 'Rejection failed'})
+      }
+    } catch (error) {
+      setActionMessage({type: 'error', message: 'Rejection failed'})
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <AuthGuard requiredRole="admin">
@@ -168,21 +223,36 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Pending Approvals */}
+            {/* Pending Provider Approvals */}
             <div className="bg-white rounded-xl p-6 shadow-sm border">
-              <h2 className="text-lg font-semibold mb-4">Pending Approvals</h2>
+              <h2 className="text-lg font-semibold mb-4">Pending Provider Approvals</h2>
               <div className="space-y-4">
                 {pendingApprovals.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">{item.title}</p>
                       <p className="text-sm text-gray-600">{item.provider}</p>
+                      <div className="mt-2">
+                        <button
+                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          onClick={() => handleViewDocuments(item.id)}
+                          disabled={isLoading}
+                        >
+                          View Documents
+                        </button>
+                      </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                      <button
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                        onClick={() => approveProvider(item.id)}
+                      >
                         Approve
                       </button>
-                      <button className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                      <button
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                        onClick={() => rejectProvider(item.id)}
+                      >
                         Reject
                       </button>
                     </div>
