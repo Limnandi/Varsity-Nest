@@ -67,17 +67,17 @@ export async function registerProvider(
     }
 
     // Store uploaded files
+    const { uploadImage } = await import("@/lib/cloudinary")
     const files = formData.getAll("files") as File[]
     const storedFiles = await Promise.all(
       files.map(async (file) => {
-        // In production, upload to cloud storage like S3 or Cloudinary
-        // For demo, just store file metadata
+        // Upload to Cloudinary
+        const result = await uploadImage(file) as { secure_url: string }
         return {
           name: file.name,
           type: file.type,
           size: file.size,
-          // In real app, this would be the storage URL
-          url: `user-uploads/${user.id}/${file.name}`
+          url: result.secure_url // Use the URL from Cloudinary upload
         }
       })
     )
