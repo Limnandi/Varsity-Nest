@@ -4,6 +4,7 @@ import { createUser, createSession, getUserByEmail } from "@/lib/auth"
 import { verifyRecaptcha } from "@/lib/recaptcha"
 import { redirect } from "next/navigation"
 import { z } from "zod"
+import { sendOTP } from "@/lib/otp"
 
 const StudentRegisterSchema = z
   .object({
@@ -43,7 +44,7 @@ export async function registerStudent(prevState: any, formData: FormData) {
       return { success: false, message: "An account with this email already exists." }
     }
 
-    const newUser = await createUser({
+    await createUser({
       email,
       password,
       firstName,
@@ -51,12 +52,8 @@ export async function registerStudent(prevState: any, formData: FormData) {
       role: "student",
     })
 
-    if (!newUser) {
-      return { success: false, message: "Failed to create account. Please try again." }
-    }
-
-    // Automatically log the user in
-    await createSession(newUser.id, "student")
+    // Send OTP for verification
+    const otpResult = await sendOTP(email, "registration", "student")
   } catch (error) {
     console.error("Student registration error:", error)
     return { success: false, message: "An unexpected error occurred." }

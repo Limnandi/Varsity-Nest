@@ -3,6 +3,7 @@
 import { createUser } from "@/lib/auth"
 import { sendOTP } from "@/lib/otp"
 import { query } from "@/lib/database"
+import { redirect } from "next/navigation"
 
 export interface ProviderRegistrationState {
   success: boolean
@@ -13,7 +14,7 @@ export interface ProviderRegistrationState {
 export async function registerProvider(
   prevState: ProviderRegistrationState,
   formData: FormData,
-): Promise<ProviderRegistrationState> {
+): Promise<ProviderRegistrationState | undefined> {
   try {
     const email = formData.get("email") as string
     const password = formData.get("password") as string
@@ -180,10 +181,8 @@ export async function registerProvider(
       }
     }
 
-    return {
-      success: true,
-      message: "Registration successful! Please check your email for verification code.",
-    }
+    // Redirect to OTP verification page
+    redirect(`/verify-otp?email=${encodeURIComponent(email)}&userType=provider`)
   } catch (error: any) {
     console.error("Provider registration error:", error)
     return {
