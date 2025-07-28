@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { getCurrentUser, type ServiceProvider } from "@/lib/auth"
-import { getProviderStats } from "@/lib/admin"
 import { Building, DollarSign, Eye, TrendingUp, Plus } from "lucide-react"
 import Link from "next/link"
 
@@ -22,8 +21,18 @@ export default function ProviderDashboard() {
       const currentUser = await getCurrentUser() as ServiceProvider | null
       setUser(currentUser)
       if (currentUser?.id) {
-        const providerStats = await getProviderStats(currentUser.id)
-        setStats(providerStats)
+        try {
+          const response = await fetch('/api/provider/stats', {
+            headers: {
+              'x-user-id': currentUser.id
+            }
+          })
+          if (!response.ok) throw new Error('Failed to fetch stats')
+          const providerStats = await response.json()
+          setStats(providerStats)
+        } catch (error) {
+          console.error('Failed to fetch provider stats:', error)
+        }
       }
     }
     fetchUserAndStats()

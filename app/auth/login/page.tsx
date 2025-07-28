@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useFormState } from "react-dom"
+import { useActionState } from "react"
 import { loginUser } from "./actions"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [state, formAction] = useFormState(loginUser, {
+  const [state, formAction] = useActionState(loginUser, {
     success: false,
     error: "",
   })

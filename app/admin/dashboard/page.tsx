@@ -1,14 +1,8 @@
 "use client"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
+import { DocumentViewer } from "@/components/DocumentViewer"
 import { useState, useEffect } from "react"
-import {
-  getDashboardStats,
-  getTopAccommodations,
-  approveProvider,
-  rejectProvider,
-  viewProviderDocuments
-} from "@/lib/admin"
 import { Building, Users, DollarSign, TrendingUp, Eye, Plus, AlertTriangle } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -17,11 +11,19 @@ export default function AdminDashboard() {
     totalProviders: number
     totalRevenue: number
     totalViews: number
+    accommodationsChange: number
+    providersChange: number
+    revenueChange: number
+    viewsChange: number
   }>({
     totalAccommodations: 0,
     totalProviders: 0,
     totalRevenue: 0,
-    totalViews: 0
+    totalViews: 0,
+    accommodationsChange: 0,
+    providersChange: 0,
+    revenueChange: 0,
+    viewsChange: 0
   })
   const [topAccommodations, setTopAccommodations] = useState<Array<{
     id: number
@@ -33,12 +35,26 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [dashboardStats, accommodations] = await Promise.all([
-        getDashboardStats(),
-        getTopAccommodations()
-      ])
-      setStats(dashboardStats)
-      setTopAccommodations(accommodations)
+      try {
+        const [statsRes, activityRes, approvalsRes] = await Promise.all([
+          fetch('/api/admin/providers'),
+          fetch('/api/admin/providers?type=activity'),
+          fetch('/api/admin/providers?type=approvals')
+        ])
+        
+        if (!statsRes.ok || !activityRes.ok || !approvalsRes.ok) throw new Error('Failed to fetch data')
+        
+        const { stats, accommodations } = await statsRes.json()
+        const { activities } = await activityRes.json()
+        const { approvals } = await approvalsRes.json()
+        
+        setStats(stats)
+        setTopAccommodations(accommodations)
+        setRecentActivity(activities)
+        setPendingApprovals(approvals)
+      } catch (error) {
+        console.error('Dashboard data fetch error:', error)
+      }
     }
     fetchData()
   }, [])
@@ -46,59 +62,75 @@ export default function AdminDashboard() {
   const statsData = [
     {
       title: "Total Accommodations",
-      value: stats.totalAccommodations,
+      value: stats?.totalAccommodations || 0,
       icon: Building,
       color: "bg-blue-500",
-      change: "+0% from last month", // Will update with real change data
+      change: `${stats?.accommodationsChange >= 0 ? '+' : ''}${stats?.accommodationsChange || 0}% from last month`,
     },
     {
       title: "Active Providers",
       value: stats.totalProviders,
       icon: Users,
       color: "bg-green-500",
-      change: "+0 new this month", // Will update with real change data
+      change: `${stats.providersChange >= 0 ? '+' : ''}${stats.providersChange}% this month`,
     },
     {
       title: "Monthly Revenue",
       value: `R${stats.totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: "bg-purple-500",
-      change: "+0% from last month", // Will update with real change data
+      change: `${stats.revenueChange >= 0 ? '+' : ''}${stats.revenueChange}% from last month`,
     },
     {
       title: "Total Views",
       value: stats.totalViews.toLocaleString(),
       icon: Eye,
       color: "bg-orange-500",
-      change: "+0% this week", // Will update with real change data
+      change: `${stats.viewsChange >= 0 ? '+' : ''}${stats.viewsChange}% this week`,
     },
   ]
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: "new_accommodation",
-      message: 'New accommodation "Campus View Apartments" added',
-      time: "2 hours ago",
-    },
-    { id: 2, type: "new_provider", message: 'New provider "Smith Properties" registered', time: "4 hours ago" },
-    { id: 3, type: "payment", message: "Payment received from John Doe Properties", time: "6 hours ago" },
-    { id: 4, type: "review", message: "New review posted for Sunny Side Residence", time: "8 hours ago" },
-  ]
 
-  const [pendingApprovals, setPendingApprovals] = useState([
-    { id: "1", type: "accommodation", title: "Green Valley Lodge", provider: "ABC Properties", status: "pending" },
-    { id: "2", type: "provider", title: "XYZ Student Housing", provider: "New Registration", status: "pending" },
-  ])
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: number;
+    type: string;
+    message: string;
+    time: string;
+  }>>([])
+
+  const [pendingApprovals, setPendingApprovals] = useState<Array<{
+    id: string
+    type: string
+    title: string
+    provider: string
+    status: string
+  }>>([])
   const [isLoading, setIsLoading] = useState(false)
   const [actionMessage, setActionMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
+  const [documentModalOpen, setDocumentModalOpen] = useState(false)
+  const [currentDocuments, setCurrentDocuments] = useState<Array<{
+    url: string
+    name: string
+    type: string
+  }>>([])
 
   const handleViewDocuments = async (id: string) => {
     setIsLoading(true)
     try {
-      const documents = await viewProviderDocuments(id)
-      // In a real app, this would open a modal with the documents
-      alert(`Documents for provider ${id}:\n${JSON.stringify(documents, null, 2)}`)
+      const response = await fetch('/api/admin/providers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'view-documents',
+          providerId: id
+        })
+      })
+      if (!response.ok) throw new Error('Failed to load documents')
+      const { documents } = await response.json()
+      setCurrentDocuments(documents)
+      setDocumentModalOpen(true)
     } catch (error) {
       setActionMessage({type: 'error', message: 'Failed to load documents'})
     } finally {
@@ -106,16 +138,23 @@ export default function AdminDashboard() {
     }
   }
 
+
   const handleApprove = async (id: string) => {
     setIsLoading(true)
     try {
-      const result = await approveProvider(id)
-      if (result.success) {
-        setPendingApprovals(pendingApprovals.filter(item => item.id !== id))
-        setActionMessage({type: 'success', message: 'Provider approved successfully'})
-      } else {
-        setActionMessage({type: 'error', message: result.error || 'Approval failed'})
-      }
+      const response = await fetch('/api/admin/providers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'approve',
+          providerId: id
+        })
+      })
+      if (!response.ok) throw new Error('Approval failed')
+      setPendingApprovals(pendingApprovals.filter(item => item.id !== id))
+      setActionMessage({type: 'success', message: 'Provider approved successfully'})
     } catch (error) {
       setActionMessage({type: 'error', message: 'Approval failed'})
     } finally {
@@ -126,13 +165,19 @@ export default function AdminDashboard() {
   const handleReject = async (id: string) => {
     setIsLoading(true)
     try {
-      const result = await rejectProvider(id)
-      if (result.success) {
-        setPendingApprovals(pendingApprovals.filter(item => item.id !== id))
-        setActionMessage({type: 'success', message: 'Provider rejected'})
-      } else {
-        setActionMessage({type: 'error', message: result.error || 'Rejection failed'})
-      }
+      const response = await fetch('/api/admin/providers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'reject',
+          providerId: id
+        })
+      })
+      if (!response.ok) throw new Error('Rejection failed')
+      setPendingApprovals(pendingApprovals.filter(item => item.id !== id))
+      setActionMessage({type: 'success', message: 'Provider rejected'})
     } catch (error) {
       setActionMessage({type: 'error', message: 'Rejection failed'})
     } finally {
@@ -141,8 +186,14 @@ export default function AdminDashboard() {
   }
 
   return (
-    <AuthGuard requiredRole="admin">
-      <DashboardLayout userRole="admin">
+    <>
+      <DocumentViewer
+        documents={currentDocuments}
+        isOpen={documentModalOpen}
+        onClose={() => setDocumentModalOpen(false)}
+      />
+      <AuthGuard requiredRole="admin">
+        <DashboardLayout userRole="admin">
         <div className="space-y-6">
           {/* Welcome Section */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
@@ -211,7 +262,7 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
               <div className="space-y-4">
-                {recentActivity.map((activity) => (
+                {recentActivity?.map((activity) => activity && (
                   <div key={activity.id} className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                     <div className="flex-1">
@@ -227,7 +278,7 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <h2 className="text-lg font-semibold mb-4">Pending Provider Approvals</h2>
               <div className="space-y-4">
-                {pendingApprovals.map((item) => (
+                {pendingApprovals?.map((item) => item && (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">{item.title}</p>
@@ -245,13 +296,15 @@ export default function AdminDashboard() {
                     <div className="flex space-x-2">
                       <button
                         className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                        onClick={() => approveProvider(item.id)}
+                        onClick={() => handleApprove(item.id)}
+                        disabled={isLoading}
                       >
                         Approve
                       </button>
                       <button
                         className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                        onClick={() => rejectProvider(item.id)}
+                        onClick={() => handleReject(item.id)}
+                        disabled={isLoading}
                       >
                         Reject
                       </button>
@@ -266,7 +319,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-xl p-6 shadow-sm border">
             <h2 className="text-lg font-semibold mb-4">Top Performing Accommodations</h2>
             <div className="space-y-4">
-              {topAccommodations.map((accommodation) => (
+              {topAccommodations?.map((accommodation) => accommodation && (
                 <div key={accommodation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
@@ -284,7 +337,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-      </DashboardLayout>
-    </AuthGuard>
+        </DashboardLayout>
+      </AuthGuard>
+    </>
   )
 }

@@ -2,11 +2,21 @@ import { drizzle } from "drizzle-orm/neon-http"
 import { neon, neonConfig } from "@neondatabase/serverless"
 import * as schema from "./schema"
 
+// Throw error if used in client-side code
+if (typeof window !== 'undefined') {
+  throw new Error(
+    'Database operations cannot be performed in client-side code. ' +
+    'This module should only be imported in server components, API routes, or server actions.'
+  )
+}
+
 let _sql: any;
 let _db: any;
 
 // Configure Neon to use WebSocket
-neonConfig.webSocketConstructor = WebSocket;
+if (typeof WebSocket !== 'undefined') {
+  neonConfig.webSocketConstructor = WebSocket;
+}
 
 function getDatabaseUrl(): string {
   if (!process.env.DATABASE_URL) {
@@ -58,13 +68,8 @@ export async function query(textOrStrings: string | TemplateStringsArray, params
     let result;
     
     if (typeof textOrStrings === 'string') {
-      if (queryParams && queryParams.length > 0) {
-        // Use Neon's query method for parameterized queries
-        result = await sql.query(queryText, queryParams);
-      } else {
-        // Use tagged template for simple queries
-        result = await sql`${queryText}`;
-      }
+      // Always use sql.query() for string queries
+      result = await sql.query(queryText, queryParams || []);
     } else {
       // Handle template string queries
       result = await sql(textOrStrings as TemplateStringsArray, ...queryParams);

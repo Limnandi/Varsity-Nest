@@ -1,3 +1,11 @@
+// Throw error if used in client-side code
+if (typeof window !== 'undefined') {
+  throw new Error(
+    'Admin operations cannot be performed in client-side code. ' +
+    'This module should only be imported in server components, API routes, or server actions.'
+  )
+}
+
 import { query } from "./database"
 
 export async function approveProvider(providerId: string) {
@@ -47,12 +55,34 @@ export async function viewProviderDocuments(providerId: string) {
 
 export async function getDashboardStats() {
   try {
-    // Implementation would fetch real stats from database
+    const [currentStats, previousStats] = await Promise.all([
+      query(`SELECT
+        COUNT(*) as totalAccommodations,
+        COUNT(DISTINCT provider_id) as totalProviders,
+        SUM(price) as totalRevenue,
+        SUM(view_count) as totalViews
+      FROM accommodations`),
+      query(`SELECT
+        COUNT(*) as totalAccommodations,
+        COUNT(DISTINCT provider_id) as totalProviders,
+        SUM(price) as totalRevenue,
+        SUM(view_count) as totalViews
+      FROM accommodations
+      WHERE created_at >= NOW() - INTERVAL '30 days'`)
+    ])
+
+    const current = currentStats.rows[0]
+    const previous = previousStats.rows[0]
+
     return {
-      totalAccommodations: 42,
-      totalProviders: 15,
-      totalRevenue: 12500,
-      totalViews: 3842
+      totalAccommodations: current.totalAccommodations,
+      totalProviders: current.totalProviders,
+      totalRevenue: current.totalRevenue,
+      totalViews: current.totalViews,
+      accommodationsChange: calculateChange(current.totalAccommodations, previous.totalAccommodations),
+      providersChange: calculateChange(current.totalProviders, previous.totalProviders),
+      revenueChange: calculateChange(current.totalRevenue, previous.totalRevenue),
+      viewsChange: calculateChange(current.totalViews, previous.totalViews)
     }
   } catch (error) {
     console.error("Failed to get dashboard stats:", error)
@@ -60,9 +90,18 @@ export async function getDashboardStats() {
       totalAccommodations: 0,
       totalProviders: 0,
       totalRevenue: 0,
-      totalViews: 0
+      totalViews: 0,
+      accommodationsChange: 0,
+      providersChange: 0,
+      revenueChange: 0,
+      viewsChange: 0
     }
   }
+}
+
+function calculateChange(current: number, previous: number): number {
+  if (previous === 0) return 0
+  return Math.round(((current - previous) / previous) * 100)
 }
 
 export async function getTopAccommodations() {
@@ -73,4 +112,71 @@ export async function getTopAccommodations() {
     console.error("Failed to get top accommodations:", error)
     return []
   }
+}
+
+interface Activity {
+  id: number
+  type: string
+  message: string
+  time: string
+}
+
+interface PendingApproval {
+  id: string
+  type: 'provider' | 'accommodation'
+  title: string
+  provider: string
+  status: 'pending'
+}
+
+export async function getRecentActivity(): Promise<Activity[]> {
+  try {
+    const result = await query(
+      `SELECT id, activity_type as type, message, created_at as time
+       FROM admin_activities
+       ORDER BY created_at DESC
+       LIMIT 5`
+    )
+    return (result.rows as Activity[]).map(row => ({
+      ...row,
+      time: formatTimeAgo(row.time)
+    }))
+  } catch (error) {
+    console.error("Failed to get recent activity:", error)
+    return []
+  }
+}
+
+export async function getPendingApprovals() {
+  try {
+    const result = await query(
+      `SELECT
+        p.id,
+        CASE
+          WHEN p.registration_status = 'pending' THEN 'provider'
+          WHEN a.verification_status = 'pending' THEN 'accommodation'
+        END as type,
+        COALESCE(a.title, p.business_name) as title,
+        COALESCE(p.business_name, 'New Registration') as provider,
+        'pending' as status
+       FROM providers p
+       LEFT JOIN accommodations a ON a.provider_id = p.id
+       WHERE p.registration_status = 'pending' OR a.verification_status = 'pending'`
+    )
+    return result.rows
+  } catch (error) {
+    console.error("Failed to get pending approvals:", error)
+    return []
+  }
+}
+
+function formatTimeAgo(dateString: string) {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+  return `${Math.floor(diffInSeconds / 86400)} days ago`
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
+import { DocumentViewer } from "@/components/DocumentViewer"
 import { Building, Eye, Check, X, AlertTriangle, Download } from "lucide-react"
 
 interface PendingProvider {
@@ -19,6 +20,12 @@ export default function ProvidersPage() {
   const [pendingProviders, setPendingProviders] = useState<PendingProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProvider, setSelectedProvider] = useState<PendingProvider | null>(null)
+  const [documentModalOpen, setDocumentModalOpen] = useState(false)
+  const [currentDocuments, setCurrentDocuments] = useState<Array<{
+    url: string
+    name: string
+    type: string
+  }>>([])
 
   useEffect(() => {
     fetchPendingProviders()
@@ -86,10 +93,26 @@ export default function ProvidersPage() {
     }
   }
 
+  const handleViewDocuments = (documents: string[]) => {
+    setCurrentDocuments(documents.map(doc => ({
+      url: doc,
+      name: doc.split('/').pop() || 'Document',
+      type: doc.endsWith('.pdf') ? 'application/pdf' :
+            doc.match(/\.(jpg|jpeg|png|gif)$/) ? 'image/' + doc.split('.').pop() :
+            'application/octet-stream'
+    })))
+    setDocumentModalOpen(true)
+  }
+
   if (loading) {
     return (
       <AuthGuard requiredRole="admin">
         <DashboardLayout userRole="admin">
+          <DocumentViewer
+            documents={currentDocuments}
+            isOpen={documentModalOpen}
+            onClose={() => setDocumentModalOpen(false)}
+          />
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -155,9 +178,10 @@ export default function ProvidersPage() {
                                     <button
                                       key={index}
                                       className="flex items-center space-x-1 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm transition-colors"
+                                      onClick={() => handleViewDocuments([doc])}
                                     >
-                                      <Download className="w-4 h-4" />
-                                      <span>{doc}</span>
+                                      <Eye className="w-4 h-4" />
+                                      <span>View {doc.split('.').pop()?.toUpperCase()}</span>
                                     </button>
                                   ))}
                                 </div>
@@ -266,9 +290,10 @@ export default function ProvidersPage() {
                           <button
                             key={index}
                             className="flex items-center space-x-2 w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            onClick={() => handleViewDocuments([doc])}
                           >
-                            <Download className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-900">{doc}</span>
+                            <Eye className="w-5 h-5 text-blue-600" />
+                            <span className="text-gray-900">View {doc.split('.').pop()?.toUpperCase()}</span>
                           </button>
                         ))}
                       </div>
