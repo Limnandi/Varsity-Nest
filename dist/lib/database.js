@@ -1,8 +1,4 @@
 "use strict";
-var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cooked, raw) {
-    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
-    return cooked;
-};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -82,6 +78,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.sql = void 0;
 exports.getSQL = getSQL;
 exports.getDB = getDB;
 exports.query = query;
@@ -91,8 +88,17 @@ exports.getTableRowCount = getTableRowCount;
 var neon_http_1 = require("drizzle-orm/neon-http");
 var serverless_1 = require("@neondatabase/serverless");
 var schema = __importStar(require("./schema"));
+// Throw error if used in client-side code
+if (typeof window !== 'undefined') {
+    throw new Error('Database operations cannot be performed in client-side code. ' +
+        'This module should only be imported in server components, API routes, or server actions.');
+}
 var _sql;
 var _db;
+// Configure Neon to use WebSocket
+if (typeof WebSocket !== 'undefined') {
+    serverless_1.neonConfig.webSocketConstructor = WebSocket;
+}
 function getDatabaseUrl() {
     if (!process.env.DATABASE_URL) {
         throw new Error("DATABASE_URL environment variable is not set");
@@ -105,6 +111,8 @@ function getSQL() {
     }
     return _sql;
 }
+// Export sql client for direct use when needed
+exports.sql = getSQL();
 function getDB() {
     if (!_db) {
         _db = (0, neon_http_1.drizzle)(getSQL(), { schema: schema });
@@ -117,11 +125,11 @@ function query(textOrStrings, paramsOrValues) {
         restValues[_i - 2] = arguments[_i];
     }
     return __awaiter(this, void 0, void 0, function () {
-        var queryText, queryParams, result, error_1, failedQuery;
+        var queryText, queryParams, sql_1, result, error_1, failedQuery;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 2, , 3]);
+                    _a.trys.push([0, 5, , 6]);
                     queryText = void 0;
                     queryParams = void 0;
                     if (typeof textOrStrings === 'string') {
@@ -134,17 +142,27 @@ function query(textOrStrings, paramsOrValues) {
                     }
                     console.log("🔍 Executing query:", queryText.substring(0, 100) + "...");
                     console.log("📊 Query params:", queryParams);
-                    return [4 /*yield*/, (typeof textOrStrings === 'string'
-                            ? getSQL()(templateObject_1 || (templateObject_1 = __makeTemplateObject(["", ""], ["", ""])), queryText) : getSQL().apply(void 0, __spreadArray([textOrStrings], queryParams, false)))];
+                    sql_1 = getSQL();
+                    result = void 0;
+                    if (!(typeof textOrStrings === 'string')) return [3 /*break*/, 2];
+                    return [4 /*yield*/, sql_1.query(queryText, queryParams || [])];
                 case 1:
+                    // Always use sql.query() for string queries
                     result = _a.sent();
+                    return [3 /*break*/, 4];
+                case 2: return [4 /*yield*/, sql_1.apply(void 0, __spreadArray([textOrStrings], queryParams, false))];
+                case 3:
+                    // Handle template string queries
+                    result = _a.sent();
+                    _a.label = 4;
+                case 4:
                     console.log("✅ Query executed successfully");
                     console.log("📈 Rows affected:", Array.isArray(result) ? result.length : "N/A");
                     return [2 /*return*/, {
                             rows: Array.isArray(result) ? result : [result],
                             rowCount: Array.isArray(result) ? result.length : 1,
                         }];
-                case 2:
+                case 5:
                     error_1 = _a.sent();
                     console.error("❌ Database query error:", error_1);
                     if (typeof textOrStrings === 'string') {
@@ -157,7 +175,7 @@ function query(textOrStrings, paramsOrValues) {
                         console.error("📊 Failed params:", paramsOrValues);
                     }
                     throw error_1;
-                case 3: return [2 /*return*/];
+                case 6: return [2 /*return*/];
             }
         });
     });
@@ -226,4 +244,3 @@ function getTableRowCount(tableName) {
         });
     });
 }
-var templateObject_1;

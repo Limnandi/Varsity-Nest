@@ -42,27 +42,50 @@ exports.requireAuth = requireAuth;
 exports.logout = logout;
 var headers_1 = require("next/headers");
 var navigation_1 = require("next/navigation");
+var jose_1 = require("jose");
+var auth_constants_1 = require("./auth-constants");
 function getSession() {
     return __awaiter(this, void 0, void 0, function () {
-        var cookieStore, sessionCookie, session, error_1;
+        var cookieStore, sessionCookie, payload, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 2, , 3]);
+                    _a.trys.push([0, 3, , 4]);
                     return [4 /*yield*/, (0, headers_1.cookies)()];
                 case 1:
                     cookieStore = _a.sent();
-                    sessionCookie = cookieStore.get("varsitynest_session");
+                    sessionCookie = cookieStore.get("session");
                     if (!sessionCookie) {
                         return [2 /*return*/, null];
                     }
-                    session = JSON.parse(sessionCookie.value);
-                    return [2 /*return*/, session];
+                    return [4 /*yield*/, (0, jose_1.jwtVerify)(sessionCookie.value, auth_constants_1.encodedKey, {
+                            algorithms: ["HS256"],
+                        })
+                        // Validate payload matches SessionUser structure
+                    ];
                 case 2:
-                    error_1 = _a.sent();
-                    console.error("Session parsing error:", error_1);
+                    payload = (_a.sent()).payload;
+                    // Validate payload matches SessionUser structure
+                    if (payload &&
+                        typeof payload.id === 'string' &&
+                        typeof payload.email === 'string' &&
+                        typeof payload.name === 'string' &&
+                        payload.role &&
+                        typeof payload.role === 'string' &&
+                        ['admin', 'provider', 'student'].includes(payload.role)) {
+                        return [2 /*return*/, {
+                                id: payload.id,
+                                email: payload.email,
+                                name: payload.name,
+                                role: payload.role
+                            }];
+                    }
                     return [2 /*return*/, null];
-                case 3: return [2 /*return*/];
+                case 3:
+                    error_1 = _a.sent();
+                    console.error("Session verification error:", error_1);
+                    return [2 /*return*/, null];
+                case 4: return [2 /*return*/];
             }
         });
     });
@@ -94,7 +117,7 @@ function logout() {
                 case 0: return [4 /*yield*/, (0, headers_1.cookies)()];
                 case 1:
                     cookieStore = _a.sent();
-                    cookieStore.delete("varsitynest_session");
+                    cookieStore.delete("session");
                     (0, navigation_1.redirect)("/");
                     return [2 /*return*/];
             }

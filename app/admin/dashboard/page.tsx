@@ -69,24 +69,24 @@ export default function AdminDashboard() {
     },
     {
       title: "Active Providers",
-      value: stats.totalProviders,
+      value: stats.totalProviders || 0,
       icon: Users,
       color: "bg-green-500",
-      change: `${stats.providersChange >= 0 ? '+' : ''}${stats.providersChange}% this month`,
+      change: `${(stats.providersChange || 0) >= 0 ? '+' : ''}${stats.providersChange || 0}% this month`,
     },
     {
       title: "Monthly Revenue",
-      value: `R${stats.totalRevenue.toLocaleString()}`,
+      value: `R${(stats.totalRevenue || 0).toLocaleString()}`,
       icon: DollarSign,
       color: "bg-purple-500",
-      change: `${stats.revenueChange >= 0 ? '+' : ''}${stats.revenueChange}% from last month`,
+      change: `${(stats.revenueChange || 0) >= 0 ? '+' : ''}${stats.revenueChange || 0}% from last month`,
     },
     {
       title: "Total Views",
-      value: stats.totalViews.toLocaleString(),
+      value: (stats.totalViews || 0).toLocaleString(),
       icon: Eye,
       color: "bg-orange-500",
-      change: `${stats.viewsChange >= 0 ? '+' : ''}${stats.viewsChange}% this week`,
+      change: `${(stats.viewsChange || 0) >= 0 ? '+' : ''}${stats.viewsChange || 0}% this week`,
     },
   ]
 
@@ -329,7 +329,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">R{accommodation.price.toLocaleString()}/month</p>
+                    <p className="font-semibold text-green-600">R{(accommodation.price || 0).toLocaleString()}/month</p>
                     <p className="text-sm text-gray-500">{accommodation.reviewCount} reviews</p>
                   </div>
                 </div>

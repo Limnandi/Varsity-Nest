@@ -35,7 +35,7 @@ export async function login(prevState: any, formData: FormData) {
   const { email, password } = validatedFields.data
 
   try {
-    const result = await query("SELECT id, password_hash, role, is_active FROM users WHERE email = $1", [
+    const result = await query("SELECT id, email, first_name, last_name, password, role, is_active, email_verified, created_at FROM users WHERE email = $1", [
       email.toLowerCase(),
     ])
     const user = result.rows[0]
@@ -48,13 +48,23 @@ export async function login(prevState: any, formData: FormData) {
       return { message: "Your account has been deactivated. Please contact support." }
     }
 
-    const passwordsMatch = await bcrypt.compare(password, user.password_hash)
+    const passwordsMatch = await bcrypt.compare(password, user.password)
 
     if (!passwordsMatch) {
       return { message: "Invalid email or password." }
     }
 
-    await createSession(user.id, user.role)
+    await createSession({
+      id: user.id,
+      email: user.email,
+      name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+      role: user.role,
+      isVerified: user.email_verified || false,
+      isActive: user.is_active,
+      createdAt: user.created_at,
+      firstName: user.first_name || '',
+      lastName: user.last_name || ''
+    })
   } catch (error) {
     console.error("Login error:", error)
     return { message: "An unexpected error occurred. Please try again." }
@@ -91,8 +101,8 @@ export async function registerStudent(prevState: any, formData: FormData) {
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const userResult = await query(
-      "INSERT INTO users (name, email, password_hash, role, is_verified) VALUES ($1, $2, $3, 'student', true) RETURNING id",
-      [name, lowerCaseEmail, hashedPassword],
+      "INSERT INTO users (email, password, first_name, last_name, role, email_verified) VALUES ($1, $2, $3, $4, 'student', true) RETURNING id, email, first_name, last_name",
+      [lowerCaseEmail, hashedPassword, '', ''],
     )
     const newUser = userResult.rows[0]
 
@@ -102,7 +112,17 @@ export async function registerStudent(prevState: any, formData: FormData) {
       studentNumber,
     ])
 
-    await createSession(newUser.id, "student")
+    await createSession({
+      id: newUser.id,
+      email: newUser.email,
+      name: `${newUser.first_name || ''} ${newUser.last_name || ''}`.trim() || 'Student',
+      role: "student",
+      isVerified: true,
+      isActive: true,
+      createdAt: new Date(),
+      firstName: newUser.first_name || '',
+      lastName: newUser.last_name || ''
+    })
   } catch (error) {
     console.error("Student registration error:", error)
     return { message: "An unexpected error occurred during registration." }
@@ -133,8 +153,8 @@ export async function registerProvider(prevState: any, formData: FormData) {
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const userResult = await query(
-      "INSERT INTO users (name, email, password_hash, role, is_verified) VALUES ($1, $2, $3, 'provider', false) RETURNING id",
-      [contactPerson, lowerCaseEmail, hashedPassword],
+      "INSERT INTO users (email, password, first_name, last_name, role, email_verified) VALUES ($1, $2, $3, $4, 'provider', false) RETURNING id",
+      [lowerCaseEmail, hashedPassword, contactPerson, ''],
     )
     const newUser = userResult.rows[0]
 

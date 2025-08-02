@@ -43,12 +43,14 @@ exports.deleteOTP = deleteOTP;
 exports.incrementOTPAttempts = incrementOTPAttempts;
 exports.getOTPAttempts = getOTPAttempts;
 var redis_1 = require("@upstash/redis");
-if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+var redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+var redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+if (!redisUrl || !redisToken) {
     console.warn("Upstash Redis environment variables not set. OTP and other Redis features will not work.");
 }
 exports.redis = new redis_1.Redis({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
+    url: redisUrl,
+    token: redisToken,
 });
 // OTP Management
 function storeOTP(email_1, otp_1) {

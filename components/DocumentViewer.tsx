@@ -1,11 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Download, X } from "lucide-react"
-import { Document, Page } from 'react-pdf'
-import { pdfjs } from 'react-pdf'
+import dynamic from 'next/dynamic'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+// Dynamically import react-pdf components to prevent SSR issues
+const Document = dynamic(
+  () => import('react-pdf').then((mod) => mod.Document),
+  { ssr: false }
+)
+
+const Page = dynamic(
+  () => import('react-pdf').then((mod) => mod.Page),
+  { ssr: false }
+)
+
+// Configure PDF.js worker only on client side
+if (typeof window !== 'undefined') {
+  import('react-pdf').then((pdfjs) => {
+    pdfjs.pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.pdfjs.version}/pdf.worker.min.js`
+  })
+}
 
 interface Document {
   url: string
@@ -24,6 +39,11 @@ export function DocumentViewer({
 }) {
   const [numPages, setNumPages] = useState<number>()
   const [pageNumber, setPageNumber] = useState<number>(1)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages)
@@ -61,13 +81,19 @@ export function DocumentViewer({
                     />
                   ) : doc.type === 'application/pdf' ? (
                     <div className="border p-2">
-                      <Document
-                        file={doc.url}
-                        onLoadSuccess={onDocumentLoadSuccess}
-                        className="max-h-40"
-                      >
-                        <Page pageNumber={pageNumber} width={200} />
-                      </Document>
+                      {isClient ? (
+                        <Document
+                          file={doc.url}
+                          onLoadSuccess={onDocumentLoadSuccess}
+                          className="max-h-40"
+                        >
+                          <Page pageNumber={pageNumber} width={200} />
+                        </Document>
+                      ) : (
+                        <div className="bg-gray-100 p-4 rounded">
+                          <p className="text-sm">Loading PDF preview...</p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="bg-gray-100 p-4 rounded">
