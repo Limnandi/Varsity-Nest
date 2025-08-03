@@ -3,8 +3,15 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { StudentAuthService, type WhitelistedDomain } from "@/lib/student-auth"
 import { Plus, Edit, Trash2, Globe, Shield, CheckCircle, XCircle } from "lucide-react"
+
+interface WhitelistedDomain {
+  id: string
+  domain: string
+  university: string
+  createdAt: string
+  isActive: boolean
+}
 
 export default function AdminDomains() {
   const [domains, setDomains] = useState<WhitelistedDomain[]>([])
@@ -12,25 +19,44 @@ export default function AdminDomains() {
   const [editingDomain, setEditingDomain] = useState<WhitelistedDomain | null>(null)
   const [newDomain, setNewDomain] = useState({
     domain: "",
-    university: "UFS" as "UFS" | "CUT",
+    university: "",
   })
 
   useEffect(() => {
     loadDomains()
   }, [])
 
-  const loadDomains = () => {
-    const domainList = StudentAuthService.getWhitelistedDomains()
-    setDomains(domainList)
+  const loadDomains = async () => {
+    try {
+      const response = await fetch('/api/admin/domains')
+      if (!response.ok) throw new Error('Failed to fetch domains')
+      
+      const data = await response.json()
+      setDomains(data.domains || [])
+    } catch (error) {
+      console.error('Error loading domains:', error)
+      setDomains([])
+    }
   }
 
-  const handleAddDomain = () => {
-    if (!newDomain.domain.trim()) return
+  const handleAddDomain = async () => {
+    if (!newDomain.domain.trim() || !newDomain.university.trim()) return
 
     try {
-      StudentAuthService.addWhitelistedDomain(newDomain.domain, newDomain.university)
+      const response = await fetch('/api/admin/domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add',
+          domain: newDomain.domain,
+          university: newDomain.university
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to add domain')
+
       loadDomains()
-      setNewDomain({ domain: "", university: "UFS" })
+      setNewDomain({ domain: "", university: "" })
       setShowAddForm(false)
     } catch (error) {
       alert("Failed to add domain")
@@ -45,26 +71,40 @@ export default function AdminDomains() {
     })
   }
 
-  const handleUpdateDomain = () => {
-    if (!editingDomain || !newDomain.domain.trim()) return
+  const handleUpdateDomain = async () => {
+    if (!editingDomain || !newDomain.domain.trim() || !newDomain.university.trim()) return
 
     try {
-      StudentAuthService.updateWhitelistedDomain(editingDomain.id, {
-        domain: newDomain.domain.startsWith("@") ? newDomain.domain : `@${newDomain.domain}`,
-        university: newDomain.university,
+      const response = await fetch('/api/admin/domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          domainId: editingDomain.id,
+          domain: newDomain.domain,
+          university: newDomain.university
+        })
       })
+
+      if (!response.ok) throw new Error('Failed to update domain')
+
       loadDomains()
       setEditingDomain(null)
-      setNewDomain({ domain: "", university: "UFS" })
+      setNewDomain({ domain: "", university: "" })
     } catch (error) {
       alert("Failed to update domain")
     }
   }
 
-  const handleDeleteDomain = (id: string) => {
+  const handleDeleteDomain = async (id: string) => {
     if (confirm("Are you sure you want to delete this domain?")) {
       try {
-        StudentAuthService.deleteWhitelistedDomain(id)
+        const response = await fetch(`/api/admin/domains?id=${id}`, {
+          method: 'DELETE'
+        })
+
+        if (!response.ok) throw new Error('Failed to delete domain')
+
         loadDomains()
       } catch (error) {
         alert("Failed to delete domain")
@@ -72,11 +112,20 @@ export default function AdminDomains() {
     }
   }
 
-  const handleToggleStatus = (domain: WhitelistedDomain) => {
+  const handleToggleStatus = async (domain: WhitelistedDomain) => {
     try {
-      StudentAuthService.updateWhitelistedDomain(domain.id, {
-        isActive: !domain.isActive,
+      const response = await fetch('/api/admin/domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle',
+          domainId: domain.id,
+          isActive: !domain.isActive
+        })
       })
+
+      if (!response.ok) throw new Error('Failed to update domain status')
+
       loadDomains()
     } catch (error) {
       alert("Failed to update domain status")
@@ -86,7 +135,7 @@ export default function AdminDomains() {
   const cancelEdit = () => {
     setEditingDomain(null)
     setShowAddForm(false)
-    setNewDomain({ domain: "", university: "UFS" })
+    setNewDomain({ domain: "", university: "" })
   }
 
   return (
@@ -117,7 +166,7 @@ export default function AdminDomains() {
                 <ul className="text-blue-800 text-sm space-y-1">
                   <li>• Only students with whitelisted email domains can write reviews</li>
                   <li>• Students must verify their email with a 6-digit OTP code</li>
-                  <li>• Each domain is associated with a specific university (UFS or CUT)</li>
+                  <li>• Each domain is associated with a specific university</li>
                   <li>• You can temporarily disable domains without deleting them</li>
                 </ul>
               </div>
@@ -147,14 +196,14 @@ export default function AdminDomains() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">University</label>
-                  <select
+                  <input
+                    type="text"
                     value={newDomain.university}
-                    onChange={(e) => setNewDomain((prev) => ({ ...prev, university: e.target.value as "UFS" | "CUT" }))}
+                    onChange={(e) => setNewDomain((prev) => ({ ...prev, university: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="UFS">University of the Free State (UFS)</option>
-                    <option value="CUT">Central University of Technology (CUT)</option>
-                  </select>
+                    placeholder="e.g., UFS, CUT, WITS, UCT, etc."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter the university code or name</p>
                 </div>
               </div>
 
@@ -189,14 +238,8 @@ export default function AdminDomains() {
                     <div>
                       <p className="font-medium text-gray-900">{domain.domain}</p>
                       <div className="flex items-center space-x-4 mt-1">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            domain.university === "UFS" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {domain.university === "UFS"
-                            ? "University of the Free State"
-                            : "Central University of Technology"}
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          {domain.university}
                         </span>
                         <span className="text-sm text-gray-500">
                           Added {new Date(domain.createdAt).toLocaleDateString()}
@@ -283,7 +326,7 @@ export default function AdminDomains() {
                   <Shield className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{StudentAuthService.getStudents().length}</p>
+                  <p className="text-2xl font-bold text-gray-900">0</p>
                   <p className="text-sm text-gray-600">Verified Students</p>
                 </div>
               </div>

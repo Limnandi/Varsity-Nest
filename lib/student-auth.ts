@@ -2,7 +2,7 @@ export interface StudentUser {
   id: string
   email: string
   name: string
-  university: "UFS" | "CUT"
+  university: string
   isVerified: boolean
   createdAt: string
   isBlocked?: boolean
@@ -36,7 +36,7 @@ export interface OTPVerification {
 export interface WhitelistedDomain {
   id: string
   domain: string
-  university: "UFS" | "CUT"
+  university: string
   createdAt: string
   isActive: boolean
 }
@@ -71,7 +71,7 @@ export class StudentAuthService {
     localStorage.setItem("whitelistedDomains", JSON.stringify(domains))
   }
 
-  static addWhitelistedDomain(domain: string, university: "UFS" | "CUT"): WhitelistedDomain {
+  static addWhitelistedDomain(domain: string, university: string): WhitelistedDomain {
     const domains = this.getWhitelistedDomains()
     const newDomain: WhitelistedDomain = {
       id: Date.now().toString(),
@@ -104,7 +104,7 @@ export class StudentAuthService {
     return true
   }
 
-  static isEmailWhitelisted(email: string): { isValid: boolean; university?: "UFS" | "CUT" } {
+  static isEmailWhitelisted(email: string): { isValid: boolean; university?: string } {
     const domains = this.getWhitelistedDomains().filter((d) => d.isActive)
     const emailDomain = email.substring(email.indexOf("@"))
 

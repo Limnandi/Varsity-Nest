@@ -5,6 +5,7 @@ import { verifyRecaptcha } from "@/lib/recaptcha"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { sendOTP } from "@/lib/otp"
+import { DomainValidationService } from "@/lib/domain-validation"
 
 const StudentRegisterSchema = z
   .object({
@@ -39,6 +40,15 @@ export async function registerStudent(prevState: any, formData: FormData) {
   const { email, password, firstName, lastName } = validatedFields.data
 
   try {
+    // Check if email domain is whitelisted using live database validation
+    const domainCheck = await DomainValidationService.isEmailWhitelisted(email)
+    if (!domainCheck.isValid) {
+      return {
+        success: false,
+        message: domainCheck.error || "Your email domain is not whitelisted for student registration. Please contact admin to add your university domain."
+      }
+    }
+
     const existingUser = await getUserByEmail(email)
     if (existingUser) {
       return { success: false, message: "An account with this email already exists." }

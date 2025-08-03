@@ -15,6 +15,7 @@ import {
   FileText,
   DollarSign,
   GraduationCap,
+  Globe,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
@@ -49,6 +50,7 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
     { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/admin/providers", label: "Providers", icon: Building },
     { href: "/admin/students", label: "Students", icon: GraduationCap },
+    { href: "/admin/domains", label: "Domains", icon: Globe },
     { href: "/admin/reports", label: "Reports", icon: FileText },
     { href: "/admin/settings", label: "Settings", icon: Settings },
   ]

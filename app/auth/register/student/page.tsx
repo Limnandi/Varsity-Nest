@@ -70,7 +70,7 @@ export default function StudentRegistrationPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Use your UFS (@ufs4life.ac.za, @student.ufs.ac.za) or CUT (@cut.ac.za, @student.cut.ac.za) email
+                Use your university email address. Only whitelisted domains are allowed for registration.
               </p>
             </div>
 
