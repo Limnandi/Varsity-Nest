@@ -271,7 +271,7 @@ export default function ProviderRegistrationPage() {
             </div>
 
             {/* Document Upload for Non-Accredited */}
-            {isAccredited === "no" && (
+            {isAccredited === "yes" && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Accreditation Documents</h3>
                 <p className="text-sm text-gray-600">

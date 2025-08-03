@@ -1,4 +1,6 @@
 import type React from "react"
+import { StackProvider, StackTheme } from "@stackframe/stack";
+import { stackServerApp } from "../stack";
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
@@ -29,10 +31,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head />
       {gaId && <GoogleAnalytics gaId={gaId} />}
-      <body className={inter.className}>
+      <body className={inter.className}><StackProvider app={stackServerApp}><StackTheme>
         <Layout>{children}</Layout>
         <Toaster />
-      </body>
+      </StackTheme></StackProvider></body>
     </html>
   )
 }
