@@ -70,103 +70,77 @@ export interface SystemHealth {
 
 export class AnalyticsService {
   static async getOverviewData(): Promise<AnalyticsData> {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    return {
-      revenue: {
-        total: 125000,
-        thisMonth: 12500,
-        lastMonth: 11200,
-        growth: 11.6,
-      },
-      accommodations: {
-        total: 45,
-        active: 42,
-        pending: 3,
-        growth: 8.5,
-      },
-      providers: {
-        total: 28,
-        active: 26,
-        newThisMonth: 3,
-        growth: 12.0,
-      },
-      bookings: {
-        total: 1250,
-        thisMonth: 145,
-        lastMonth: 132,
-        growth: 9.8,
-      },
-      views: {
-        total: 25000,
-        thisMonth: 3200,
-        lastMonth: 2800,
-        growth: 14.3,
-      },
+    try {
+      const response = await fetch('/api/admin/analytics/overview')
+      if (!response.ok) throw new Error('Failed to fetch analytics data')
+      
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to fetch analytics overview:', error)
+      // Return empty/zero data instead of mock data
+      return {
+        revenue: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+        accommodations: { total: 0, active: 0, pending: 0, growth: 0 },
+        providers: { total: 0, active: 0, newThisMonth: 0, growth: 0 },
+        bookings: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+        views: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+      }
     }
   }
 
   static async getRevenueChart(period: "7d" | "30d" | "90d" | "1y"): Promise<ChartData> {
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const labels =
-      period === "7d"
-        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        : period === "30d"
-          ? Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`)
-          : period === "90d"
-            ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            : ["Q1", "Q2", "Q3", "Q4"]
-
-    const data = labels.map(() => Math.floor(Math.random() * 5000) + 1000)
-
-    return {
-      labels,
-      datasets: [
-        {
+    try {
+      const response = await fetch(`/api/admin/analytics/revenue?period=${period}`)
+      if (!response.ok) throw new Error('Failed to fetch revenue chart data')
+      
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to fetch revenue chart:', error)
+      // Return empty chart data instead of mock data
+      return {
+        labels: [],
+        datasets: [{
           label: "Revenue (R)",
-          data,
+          data: [],
           borderColor: "rgb(59, 130, 246)",
           backgroundColor: "rgba(59, 130, 246, 0.1)",
           tension: 0.4,
-        },
-      ],
+        }],
+      }
     }
   }
 
   static async getTopPerformers(): Promise<TopPerformer[]> {
-    await new Promise((resolve) => setTimeout(resolve, 600))
-
-    return [
-      { id: "1", name: "Campus View Apartments", value: 4200, change: 15.2, type: "accommodation" },
-      { id: "2", name: "Sunny Side Residence", value: 3500, change: 8.7, type: "accommodation" },
-      { id: "3", name: "Smith Properties", value: 8500, change: 22.1, type: "provider" },
-      { id: "4", name: "Modern Student Hub", value: 3800, change: 12.3, type: "accommodation" },
-      { id: "5", name: "ABC Housing Ltd", value: 6200, change: 18.9, type: "provider" },
-    ]
+    try {
+      const response = await fetch('/api/admin/analytics/top-performers')
+      if (!response.ok) throw new Error('Failed to fetch top performers')
+      
+      const data = await response.json()
+      return data.performers || []
+    } catch (error) {
+      console.error('Failed to fetch top performers:', error)
+      return []
+    }
   }
 
   static async getSystemHealth(): Promise<SystemHealth> {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    return {
-      apiLatency: {
-        average: 85,
-        status: "good",
-      },
-      errorRate: {
-        rate: 0.2,
-        status: "good",
-      },
-      database: {
-        status: "online",
-      },
-      uptime: {
-        percentage: 99.98,
-        status: "good",
-      },
+    try {
+      const response = await fetch('/api/admin/analytics/system-health')
+      if (!response.ok) throw new Error('Failed to fetch system health')
+      
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Failed to fetch system health:', error)
+      // Return degraded status instead of mock data
+      return {
+        apiLatency: { average: 0, status: "poor" },
+        errorRate: { rate: 100, status: "poor" },
+        database: { status: "offline" },
+        uptime: { percentage: 0, status: "poor" },
+      }
     }
   }
 }

@@ -33,30 +33,14 @@ export default function ProvidersPage() {
 
   const fetchPendingProviders = async () => {
     try {
-      // Mock data for now - replace with actual API call
-      const mockData: PendingProvider[] = [
-        {
-          id: "1",
-          name: "John Smith",
-          email: "john@example.com",
-          companyName: "Smith Student Housing",
-          submittedAt: "2024-01-15T10:30:00Z",
-          documents: ["certificate1.pdf", "license.jpg"],
-          status: "pending",
-        },
-        {
-          id: "2",
-          name: "Sarah Johnson",
-          email: "sarah@housing.com",
-          companyName: "Johnson Properties",
-          submittedAt: "2024-01-14T14:20:00Z",
-          documents: ["accreditation.pdf"],
-          status: "pending",
-        },
-      ]
-      setPendingProviders(mockData)
+      const response = await fetch('/api/admin/providers?type=pending')
+      if (!response.ok) throw new Error('Failed to fetch pending providers')
+      
+      const data = await response.json()
+      setPendingProviders(data.providers || [])
     } catch (error) {
       console.error("Error fetching pending providers:", error)
+      setPendingProviders([])
     } finally {
       setLoading(false)
     }
@@ -64,11 +48,18 @@ export default function ProvidersPage() {
 
   const handleApprove = async (providerId: string) => {
     try {
-      // API call to approve provider
-      console.log("Approving provider:", providerId)
+      const response = await fetch('/api/admin/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve',
+          providerId: providerId
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to approve provider')
 
       setPendingProviders((prev) => prev.map((p) => (p.id === providerId ? { ...p, status: "approved" } : p)))
-
       alert("Provider approved successfully!")
     } catch (error) {
       console.error("Error approving provider:", error)
@@ -81,11 +72,19 @@ export default function ProvidersPage() {
     if (!reason) return
 
     try {
-      // API call to reject provider
-      console.log("Rejecting provider:", providerId, "Reason:", reason)
+      const response = await fetch('/api/admin/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject',
+          providerId: providerId,
+          reason: reason
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to reject provider')
 
       setPendingProviders((prev) => prev.map((p) => (p.id === providerId ? { ...p, status: "rejected" } : p)))
-
       alert("Provider rejected successfully!")
     } catch (error) {
       console.error("Error rejecting provider:", error)
