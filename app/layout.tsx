@@ -1,23 +1,14 @@
-import type React from "react"
-import { StackProvider, StackTheme } from "@stackframe/stack";
-import { stackServerApp } from "../stack";
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Layout from "@/components/Layout"
-import { Toaster } from "@/components/ui/toaster"
-import GoogleAnalytics from "@/components/GoogleAnalytics"
+import { SessionProvider } from "next-auth/react"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: {
-    default: "Varsity Nest | Student Accommodation Platform",
-    template: "%s | Varsity Nest",
-  },
-  description:
-    "Find quality, verified student accommodation in Bloemfontein. Safe, comfortable, and close to UFS and CUT campuses. Browse accredited properties with 24/7 support.",
-    generator: 'v0.dev'
+  title: "Varsity Nest - Student Accommodation",
+  description: "Find your perfect student home in Bloemfontein",
 }
 
 export default function RootLayout({
@@ -25,16 +16,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const gaId = process.env.NEXT_PUBLIC_GA_ID
-
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head />
-      {gaId && <GoogleAnalytics gaId={gaId} />}
-      <body className={inter.className}><StackProvider app={stackServerApp}><StackTheme>
-        <Layout>{children}</Layout>
-        <Toaster />
-      </StackTheme></StackProvider></body>
+    <html lang="en">
+      <body className={inter.className}>
+        <SessionProvider>
+          <Layout>{children}</Layout>
+        </SessionProvider>
+      </body>
     </html>
   )
 }

@@ -2,31 +2,46 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useActionState } from "react"
-import { loginUser } from "./actions"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [state, formAction] = useActionState(loginUser, {
-    success: false,
-    error: "",
-  })
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
   const [isPending, setIsPending] = useState(false)
   const router = useRouter()
   const recaptchaRef = useRef<ReCAPTCHA>(null)
-  const recaptchaResponseRef = useRef<HTMLInputElement>(null)
-  const [recaptchaError, setRecaptchaError] = useState('')
 
-  useEffect(() => {
-    if (state.success && state.redirectTo) {
-      router.push(state.redirectTo)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      return
     }
-    if (!state.success && state.error) {
+
+    const recaptchaToken = recaptchaRef.current?.getValue()
+    if (!recaptchaToken) {
+      setError("Please complete the reCAPTCHA verification")
+      return
+    }
+
+    setIsPending(true)
+    setError("")
+
+    try {
+      // TODO: Implement StackAuth login
+      console.log("Login - StackAuth integration pending")
+      setError("Login functionality - StackAuth integration pending")
+    } catch (error: any) {
+      setError(error.message || "Login failed. Please try again.")
       recaptchaRef.current?.reset()
+    } finally {
+      setIsPending(false)
     }
-  }, [state, router])
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -36,7 +51,7 @@ export default function LoginPage() {
           <p className="mt-2 text-center text-sm text-gray-600">Access your Varsity Nest dashboard</p>
         </div>
 
-        <form className="mt-8 space-y-6" action={formAction}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -48,6 +63,8 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
                 disabled={isPending}
@@ -63,6 +80,8 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
                 disabled={isPending}
@@ -87,16 +106,15 @@ export default function LoginPage() {
               ref={recaptchaRef}
               sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
             />
-            <input type="hidden" name="g-recaptcha-response" />
           </div>
 
-          {state.error && (
+          {error && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">Login Failed</h3>
                   <div className="mt-2 text-sm text-red-700">
-                    <p>{state.error}</p>
+                    <p>{error}</p>
                   </div>
                 </div>
               </div>

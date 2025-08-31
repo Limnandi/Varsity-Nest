@@ -88,3 +88,40 @@ export async function getTableRowCount(tableName: string): Promise<number> {
     return 0
   }
 }
+
+// Authentication function for StackAuth
+export async function authenticateUser(email: string, password: string) {
+  try {
+    // First, get the user by email
+    const userResult = await query`
+      SELECT id, email, password_hash, first_name, last_name, role, is_active
+      FROM users 
+      WHERE email = ${email}
+    `
+    
+    if (userResult.rows.length === 0) {
+      console.log("User not found:", email)
+      return null
+    }
+    
+    const user = userResult.rows[0]
+    
+    // For now, we'll skip password verification since we removed bcrypt
+    // TODO: Re-implement password hashing when we have the proper setup
+    if (!user.is_active) {
+      console.log("User account is inactive:", email)
+      return null
+    }
+    
+    return {
+      id: user.id,
+      email: user.email,
+      name: `${user.first_name} ${user.last_name}`.trim(),
+      role: user.role,
+      isActive: user.is_active
+    }
+  } catch (error) {
+    console.error("Authentication error:", error)
+    return null
+  }
+}

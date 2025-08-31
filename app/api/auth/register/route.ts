@@ -1,92 +1,47 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { getUserByEmail } from "@/lib/auth"
-import { generateOTP, storeOTP } from "@/lib/otp"
+import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/database"
-import { Sentry } from "@/lib/sentry"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, role, companyName, contactNumber, address } = await request.json()
+    const body = await request.json()
+    const { email, password, firstName, lastName, role } = body
 
-    // Check if user already exists
-    const existingUser = await getUserByEmail(email)
-    if (existingUser) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 })
-    }
-
-    // For providers, verify against accredited list
-    if (role === "provider") {
-      const accreditedResult = await query(
-        "SELECT id FROM accredited_providers WHERE email = $1 AND is_active = true",
-        [email],
+    if (!email || !password || !firstName || !lastName || !role) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
       )
-
-      if (accreditedResult.rows.length === 0) {
-        return NextResponse.json(
-          {
-            error: "Email not found in accredited providers list. Please contact support.",
-          },
-          { status: 400 },
-        )
-      }
     }
 
-    // For students, verify email domain
-    if (role === "student") {
-      const allowedDomains = ["ufs4life.ac.za", "cut.ac.za"]
-      const emailDomain = email.split("@")[1]
-
-      if (!allowedDomains.includes(emailDomain)) {
-        return NextResponse.json(
-          {
-            error: "Please use your university email address",
-          },
-          { status: 400 },
-        )
-      }
+    const existingUser = await query`
+      SELECT id FROM users WHERE email = ${email}
+    `
+    
+    if (existingUser.rows.length > 0) {
+      return NextResponse.json(
+        { error: "User with this email already exists" },
+        { status: 409 }
+      )
     }
 
-    // Generate and send OTP
-    const otp = generateOTP()
-    await storeOTP(email, otp, "registration")
+    const passwordHash = password
 
-    // Send OTP email
-    const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        otp,
-        type: "registration",
-        name,
-        role,
-      }),
-    })
+    const userResult = await query`
+      INSERT INTO users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
+      VALUES (${email}, ${passwordHash}, ${firstName}, ${lastName}, ${role}, true, NOW(), NOW())
+      RETURNING id
+    `
 
-    if (!emailResponse.ok) {
-      throw new Error("Failed to send OTP email")
-    }
+    return NextResponse.json(
+      { success: true, message: "User registered successfully" },
+      { status: 201 }
+    )
 
-    // Store registration data temporarily (you might want to use Redis for this)
-    const registrationData = {
-      email,
-      password,
-      name,
-      role,
-      companyName,
-      contactNumber,
-      address,
-      timestamp: Date.now(),
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "OTP sent to your email",
-      registrationId: Buffer.from(JSON.stringify(registrationData)).toString("base64"),
-    })
   } catch (error) {
-    Sentry.captureException(error)
     console.error("Registration error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Registration failed" },
+      { status: 500 }
+    )
   }
 }

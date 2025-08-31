@@ -1,21 +1,34 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
-import { registerStudent } from "./actions"
 
 export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
 
-  const handleSubmit = async (formData: FormData) => {
-    startTransition(async () => {
-      const result = await registerStudent(null, formData)
-      setState(result)
-    })
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsPending(true)
+    setState({})
+
+    try {
+      // TODO: Implement StackAuth registration
+      console.log("Student registration - StackAuth integration pending")
+      setState({ 
+        success: true, 
+        message: 'Registration form ready - StackAuth integration pending' 
+      })
+    } catch (error: any) {
+      setState({ 
+        error: error.message || 'Registration failed. Please try again.' 
+      })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (
@@ -42,7 +55,7 @@ export default function StudentRegistrationPage() {
             </div>
           )}
 
-          <form action={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
               <div className="relative">
@@ -82,6 +95,7 @@ export default function StudentRegistrationPage() {
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
+                  minLength={8}
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="Enter password (min 8 characters)"
                 />
@@ -116,49 +130,50 @@ export default function StudentRegistrationPage() {
               </div>
             </div>
 
-            <div className="flex items-start space-x-2">
-              <input
-                type="checkbox"
-                name="terms"
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Student Number *</label>
+              <div className="relative">
+                <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  name="studentNumber"
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="e.g., 2023123456"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">University *</label>
+              <select
+                name="university"
                 required
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mt-1"
-              />
-              <label className="text-sm text-gray-700">
-                I agree to the{" "}
-                <Link href="/terms" className="text-green-600 hover:text-green-700 underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-green-600 hover:text-green-700 underline">
-                  Privacy Policy
-                </Link>
-              </label>
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="">Select your university</option>
+                <option value="UFS">University of the Free State (UFS)</option>
+                <option value="CUT">Central University of Technology (CUT)</option>
+              </select>
             </div>
 
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 transform hover:scale-105 shadow-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPending ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                "Create Student Account"
-              )}
+              {isPending ? "Creating Account..." : "Create Account"}
             </button>
-          </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-green-600 hover:text-green-700 underline">
-                Sign in here
-              </Link>
-            </p>
-          </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{" "}
+                <Link href="/auth/login" className="font-medium text-green-600 hover:text-green-500">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>

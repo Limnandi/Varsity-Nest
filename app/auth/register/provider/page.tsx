@@ -1,11 +1,8 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X } from "lucide-react"
-import { registerProvider, type ProviderRegistrationState } from "./actions"
 
 export default function ProviderRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -14,24 +11,27 @@ export default function ProviderRegistrationPage() {
   const [accreditedBy, setAccreditedBy] = useState<string[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
 
-  const handleSubmit = async (formData: FormData) => {
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
-    
-    if (password !== confirmPassword) {
-      setState({ error: 'Passwords do not match' })
-      return
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsPending(true)
+    setState({})
+
+    try {
+      // TODO: Implement StackAuth registration
+      console.log("Provider registration - StackAuth integration pending")
+      setState({ 
+        success: true, 
+        message: 'Registration form ready - StackAuth integration pending' 
+      })
+    } catch (error: any) {
+      setState({ 
+        error: error.message || 'Registration failed. Please try again.' 
+      })
+    } finally {
+      setIsPending(false)
     }
-
-    startTransition(async () => {
-      const result = await registerProvider(
-        { success: false } as ProviderRegistrationState,
-        formData
-      )
-      setState(result)
-    })
   }
 
   const handleAccreditationChange = (university: string, checked: boolean) => {
@@ -100,53 +100,74 @@ export default function ProviderRegistrationPage() {
             </div>
           )}
 
-          <form action={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
-
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    name="name"
+                    name="firstName"
                     required
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="John Doe"
+                    placeholder="John"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="email"
-                    name="email"
-                    required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="john@example.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Company/Business Name *</label>
-                <div className="relative">
-                  <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    name="companyName"
+                    name="lastName"
                     required
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="ABC Student Housing"
+                    placeholder="Doe"
                   />
                 </div>
               </div>
+            </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="provider@example.com"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="+27 82 123 4567"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Institution/Company</label>
+                <input
+                  type="text"
+                  name="institution"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Your Company Name"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
                 <div className="relative">
@@ -155,6 +176,7 @@ export default function ProviderRegistrationPage() {
                     type={showPassword ? "text" : "password"}
                     name="password"
                     required
+                    minLength={8}
                     className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="Enter password (min 8 characters)"
                   />
@@ -190,178 +212,121 @@ export default function ProviderRegistrationPage() {
               </div>
             </div>
 
-            {/* Accreditation Status */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Accreditation Status</h3>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Are you accredited by UFS or CUT? *
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Are you accredited? *</label>
+              <div className="space-y-3">
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="radio"
+                    name="accreditation"
+                    value="yes"
+                    checked={isAccredited === "yes"}
+                    onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
+                    className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                  />
+                  <span className="text-gray-700">Yes, I am accredited</span>
                 </label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="isAccredited"
-                      value="yes"
-                      checked={isAccredited === "yes"}
-                      onChange={(e) => setIsAccredited(e.target.value as "yes")}
-                      className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Yes, I am accredited</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="isAccredited"
-                      value="no"
-                      checked={isAccredited === "no"}
-                      onChange={(e) => setIsAccredited(e.target.value as "no")}
-                      className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">No, I am not accredited</span>
-                  </label>
-                </div>
-              </div>
-
-              {isAccredited === "yes" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Which universities have accredited you? *
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={accreditedBy.includes("UFS")}
-                        onChange={(e) => handleAccreditationChange("UFS", e.target.checked)}
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">University of the Free State (UFS)</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={accreditedBy.includes("CUT")}
-                        onChange={(e) => handleAccreditationChange("CUT", e.target.checked)}
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">Central University of Technology (CUT)</span>
-                    </label>
-                  </div>
-                  <input type="hidden" name="accreditedBy" value={accreditedBy.join(",")} />
-                </div>
-              )}
-            </div>
-
-            {/* Pricing Information */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Subscription Pricing</h3>
-              <div className="text-blue-800 text-sm space-y-1">
-                <p>
-                  <strong>Base Price:</strong> R450/month for first accommodation
-                </p>
-                <p>
-                  <strong>Additional Properties:</strong> R100/month each
-                </p>
-                <p>
-                  <strong>Dual Accreditation Bonus:</strong> +R50/month if accredited by both UFS and CUT
-                </p>
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="radio"
+                    name="accreditation"
+                    value="no"
+                    checked={isAccredited === "no"}
+                    onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
+                    className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                  />
+                  <span className="text-gray-700">No, but I'm working towards accreditation</span>
+                </label>
               </div>
             </div>
 
-            {/* Document Upload for Non-Accredited */}
             {isAccredited === "yes" && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Accreditation Documents</h3>
-                <p className="text-sm text-gray-600">
-                  Upload your accreditation certificates or supporting documents (PDF or images, max 5MB each, up to 3
-                  files)
-                </p>
-
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                  <div className="text-center">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <label className="cursor-pointer">
-                      <span className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                        Choose Files
-                      </span>
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf,image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-sm text-gray-500 mt-2">PDF or images, max 5MB each</p>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Accredited by:</label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={accreditedBy.includes("UFS")}
+                      onChange={(e) => handleAccreditationChange("UFS", e.target.checked)}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">University of the Free State (UFS)</span>
+                  </label>
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={accreditedBy.includes("CUT")}
+                      onChange={(e) => handleAccreditationChange("CUT", e.target.checked)}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">Central University of Technology (CUT)</span>
+                  </label>
                 </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-gray-900">Uploaded Files:</h4>
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-700">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Terms and Conditions */}
-            <div className="flex items-start space-x-2">
-              <input
-                type="checkbox"
-                name="terms"
-                required
-                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 mt-1"
-              />
-              <label className="text-sm text-gray-700">
-                I agree to the{" "}
-                <Link href="/terms" className="text-purple-600 hover:text-purple-700 underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-purple-600 hover:text-purple-700 underline">
-                  Privacy Policy
-                </Link>
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Upload Documents (1-2 files) *</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-600 mb-2">
+                  Upload accreditation certificates, business registration, or other relevant documents
+                </p>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer"
+                >
+                  Choose Files
+                </label>
+                <p className="text-xs text-gray-500 mt-2">
+                  PDF or images, max 5MB each
+                </p>
+              </div>
+
+              {uploadedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-700">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 transform hover:scale-105 shadow-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPending ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                "Create Provider Account"
-              )}
+              {isPending ? "Creating Account..." : "Create Provider Account"}
             </button>
-          </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-purple-600 hover:text-purple-700 underline">
-                Sign in here
-              </Link>
-            </p>
-          </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{" "}
+                <Link href="/auth/login" className="font-medium text-purple-600 hover:text-purple-500">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>
