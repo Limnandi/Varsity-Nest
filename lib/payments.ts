@@ -91,3 +91,22 @@ export class PaymentService {
     }
   }
 }
+
+// Pricing helpers for provider subscription
+export interface ProviderPricingInput {
+  basePrice?: number // default 450
+  extraSitePrice?: number // default 50 per additional accommodation
+  featuredPrice?: number // default 50
+  accommodationsCount: number
+  wantsFeatured: boolean
+}
+
+export function calculateProviderSubscriptionPrice(input: ProviderPricingInput): number {
+  const base = input.basePrice ?? 450
+  const extra = input.extraSitePrice ?? 50
+  const featured = input.featuredPrice ?? 50
+
+  const additionalSites = Math.max(0, (input.accommodationsCount || 0) - 1)
+  const total = base + (additionalSites * extra) + (input.wantsFeatured ? featured : 0)
+  return Number(total.toFixed(2))
+}

@@ -80,6 +80,7 @@ export function createPayFastPayment(
     billingDate?: string
     recurringAmount?: number
     cycles?: number
+    wantsFeatured?: boolean
   },
 ): PayFastData & { signature: string } {
   const data: PayFastData = {
@@ -106,6 +107,7 @@ export function createPayFastPayment(
     custom_str1: customData?.providerId,
     custom_str2: customData?.subscriptionType,
     custom_str3: customData?.paymentId,
+    custom_str4: customData?.wantsFeatured ? "featured_true" : undefined,
     
     // Currency and locale
     currency: "ZAR",

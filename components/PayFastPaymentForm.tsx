@@ -1,9 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { createPayFastPayment } from "@/lib/payfast"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -14,7 +12,7 @@ interface PayFastPaymentFormProps {
   userEmail: string
   userName: string
   itemName: string
-  customData?: { providerId?: string; subscriptionType?: string }
+  customData?: { providerId?: string; subscriptionType?: string; wantsFeatured?: boolean }
   onSuccess?: () => void
   onError?: (error: string) => void
 }
@@ -36,13 +34,19 @@ export default function PayFastPaymentForm({
     setError(null)
 
     try {
-      // Validate required fields
-      if (!process.env.NEXT_PUBLIC_PAYFAST_MERCHANT_ID || !process.env.NEXT_PUBLIC_PAYFAST_MERCHANT_KEY) {
-        throw new Error("PayFast configuration is missing")
+      // Request server to create signed PayFast payload (secrets stay server-side)
+      const resp = await fetch("/api/payfast/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, userEmail, userName, itemName, customData })
+      })
+
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}))
+        throw new Error(j.error || "Failed to initiate payment")
       }
 
-      // Create PayFast payment data
-      const paymentData = createPayFastPayment(amount, userEmail, userName, itemName, customData)
+      const { paymentData } = await resp.json()
 
       // Create form and submit to PayFast
       const form = document.createElement('form')
@@ -53,11 +57,11 @@ export default function PayFastPaymentForm({
 
       // Add all payment data as hidden fields
       Object.entries(paymentData).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value != null && String(value) !== '') {
           const input = document.createElement('input')
           input.type = 'hidden'
           input.name = key
-          input.value = value
+          input.value = String(value)
           form.appendChild(input)
         }
       })

@@ -40,29 +40,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
+    // Optional: Verify source IP (best effort; PayFast publishes IP ranges)
+    // NOTE: In serverless, exact client IP can be tricky; skip or implement via middleware/proxy allow-list
+
     // Extract payment details
     const providerId = data.custom_str1
     const amount = Number.parseFloat(data.amount_gross)
     const transactionId = data.pf_payment_id
+    const merchantPaymentId = data.m_payment_id
     const status = data.payment_status
     const paymentDate = new Date()
+
+    // Fetch the pending transaction to verify amount and existence (idempotency)
+    const pendingRes = await query`
+      SELECT id, amount, status FROM payment_transactions WHERE m_payment_id = ${merchantPaymentId}
+    `
+    const pending = pendingRes.rows[0]
+
+    if (!pending) {
+      console.error("No pending transaction for m_payment_id:", merchantPaymentId)
+      return NextResponse.json({ error: "Transaction not found" }, { status: 400 })
+    }
+
+    // Strict amount check
+    if (Number.parseFloat(pending.amount) !== amount) {
+      console.error("Amount mismatch:", { expected: pending.amount, got: amount, merchantPaymentId })
+      return NextResponse.json({ error: "Amount mismatch" }, { status: 400 })
+    }
 
     // Process payment based on status
     switch (status) {
       case "COMPLETE":
-        await processSuccessfulPayment(providerId, amount, transactionId, paymentDate, data)
+        await processSuccessfulPayment(providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
         break
         
       case "PENDING":
-        await processPendingPayment(providerId, amount, transactionId, paymentDate, data)
+        await processPendingPayment(providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
         break
         
       case "FAILED":
-        await processFailedPayment(providerId, amount, transactionId, paymentDate, data)
+        await processFailedPayment(providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
         break
         
       case "CANCELLED":
-        await processCancelledPayment(providerId, amount, transactionId, paymentDate, data)
+        await processCancelledPayment(providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
         break
         
       default:
@@ -84,41 +105,47 @@ export async function POST(request: NextRequest) {
 async function processSuccessfulPayment(
   providerId: string, 
   amount: number, 
-  transactionId: string, 
+  transactionId: string,
+  merchantPaymentId: string, 
   paymentDate: Date,
   webhookData: any
 ) {
   try {
-    // Update provider subscription status
-    await query(
-      `UPDATE service_providers 
-       SET subscription_status = $1, 
-           last_payment_date = $2, 
-           next_payment_date = $3,
-           updated_at = NOW()
-       WHERE id = $4`,
-      [
-        "active", 
-        paymentDate, 
-        new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        providerId
-      ]
-    )
+    // Idempotency: mark transaction as completed only once
+    await query`
+      UPDATE payment_transactions
+      SET pf_payment_id = ${transactionId}, status = 'completed', payment_date = ${paymentDate}, gateway_response = ${JSON.stringify(webhookData)}
+      WHERE m_payment_id = ${merchantPaymentId} AND status <> 'completed'
+    `
 
-    // Record successful transaction
-    await query(
-      `INSERT INTO payment_transactions 
-       (provider_id, amount, transaction_id, status, payment_date, gateway_response, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [
-        providerId, 
-        amount, 
-        transactionId, 
-        "completed", 
-        paymentDate,
-        JSON.stringify(webhookData)
-      ]
-    )
+    // Update provider subscription status
+    await query`
+      UPDATE providers 
+      SET subscription_status = ${"active"}, 
+          last_payment_date = ${paymentDate}, 
+          next_payment_date = ${new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000)},
+          updated_at = NOW()
+      WHERE id = ${providerId}
+    `
+
+    // If merchant requested featured, set it only if featured cap not exceeded (5)
+    if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
+      await query`
+        WITH current AS (
+          SELECT COUNT(*)::int AS cnt FROM providers WHERE is_featured = true
+        )
+        UPDATE providers p
+        SET is_featured = CASE WHEN (SELECT cnt FROM current) < 5 THEN true ELSE p.is_featured END
+        WHERE p.id = ${providerId}
+      `
+    }
+
+    // Ensure provider_id and amount are set on transaction
+    await query`
+      UPDATE payment_transactions
+      SET provider_id = ${providerId}, amount = ${amount}
+      WHERE m_payment_id = ${merchantPaymentId}
+    `
 
     console.log(`Payment successful for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -131,26 +158,16 @@ async function processPendingPayment(
   providerId: string, 
   amount: number, 
   transactionId: string, 
+  merchantPaymentId: string,
   paymentDate: Date,
   webhookData: any
 ) {
   try {
-    // Record pending transaction
-    await query(
-      `INSERT INTO payment_transactions 
-       (provider_id, amount, transaction_id, status, payment_date, gateway_response, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       ON CONFLICT (transaction_id) DO UPDATE SET
-       status = $4, updated_at = NOW()`,
-      [
-        providerId, 
-        amount, 
-        transactionId, 
-        "pending", 
-        paymentDate,
-        JSON.stringify(webhookData)
-      ]
-    )
+    await query`
+      UPDATE payment_transactions
+      SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'pending', gateway_response = ${JSON.stringify(webhookData)}
+      WHERE m_payment_id = ${merchantPaymentId}
+    `
 
     console.log(`Payment pending for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -163,26 +180,16 @@ async function processFailedPayment(
   providerId: string, 
   amount: number, 
   transactionId: string, 
+  merchantPaymentId: string,
   paymentDate: Date,
   webhookData: any
 ) {
   try {
-    // Record failed transaction
-    await query(
-      `INSERT INTO payment_transactions 
-       (provider_id, amount, transaction_id, status, payment_date, gateway_response, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       ON CONFLICT (transaction_id) DO UPDATE SET
-       status = $4, updated_at = NOW()`,
-      [
-        providerId, 
-        amount, 
-        transactionId, 
-        "failed", 
-        paymentDate,
-        JSON.stringify(webhookData)
-      ]
-    )
+    await query`
+      UPDATE payment_transactions
+      SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'failed', gateway_response = ${JSON.stringify(webhookData)}
+      WHERE m_payment_id = ${merchantPaymentId}
+    `
 
     console.log(`Payment failed for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -195,26 +202,16 @@ async function processCancelledPayment(
   providerId: string, 
   amount: number, 
   transactionId: string, 
+  merchantPaymentId: string,
   paymentDate: Date,
   webhookData: any
 ) {
   try {
-    // Record cancelled transaction
-    await query(
-      `INSERT INTO payment_transactions 
-       (provider_id, amount, transaction_id, status, payment_date, gateway_response, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       ON CONFLICT (transaction_id) DO UPDATE SET
-       status = $4, updated_at = NOW()`,
-      [
-        providerId, 
-        amount, 
-        transactionId, 
-        "cancelled", 
-        paymentDate,
-        JSON.stringify(webhookData)
-      ]
-    )
+    await query`
+      UPDATE payment_transactions
+      SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'cancelled', gateway_response = ${JSON.stringify(webhookData)}
+      WHERE m_payment_id = ${merchantPaymentId}
+    `
 
     console.log(`Payment cancelled for provider ${providerId}: ${transactionId}`)
   } catch (error) {
