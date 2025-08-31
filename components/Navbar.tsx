@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronDown, Menu, X, LogOut, User } from "lucide-react"
+import { ChevronDown, Menu, X, LogOut, User, Building, Home, Phone } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 
 interface SessionUser {
@@ -92,228 +92,145 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-32 bg-gray-900 bg-opacity-95 backdrop-blur-sm text-white shadow-lg border-b border-gray-700">
-      <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
-        {/* Left side - Logo and Text */}
-        <Link href="/" className="flex items-center space-x-4 hover:opacity-80 transition-opacity">
-          <div className="relative">
-            <Image
-              src="/images/varsity-nest-logo.png"
-              alt="Varsity Nest Logo"
-              width={120}
-              height={80}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-xl font-bold text-white">Varsity Nest</div>
-            <div className="text-lg text-gray-300">Student Accommodation</div>
-          </div>
-        </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
-          <Link href="/" className="hover:text-teal-400 transition-colors font-medium">
-            Home
-          </Link>
-
-          {/* Only show accommodations dropdown on public pages */}
-          {!isDashboardArea && (
+    <nav className="relative z-40 bg-black/20 backdrop-blur-xl border-b border-white/10 shadow-2xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-20">
+          {/* Left side - Logo and Text */}
+          <Link href="/" className="flex items-center space-x-3 group">
             <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-1 hover:text-teal-400 transition-colors font-medium"
-              >
-                <span>Accommodations</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white text-gray-900 rounded-lg shadow-xl py-2 border">
-                  <Link
-                    href="/accommodations/accredited"
-                    className="block px-4 py-3 hover:bg-teal-50 hover:text-teal-600 transition-colors font-medium"
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    ✅ Accredited
-                  </Link>
-                  {adminSettings.showProvisionallyAccredited && (
-                    <Link
-                      href="/accommodations/provisionally-accredited"
-                      className="block px-4 py-3 hover:bg-teal-50 hover:text-teal-600 transition-colors font-medium"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      ⏳ Provisionally-Accredited
-                    </Link>
-                  )}
-                  {adminSettings.showNonAccredited && (
-                    <Link
-                      href="/accommodations/non-accredited"
-                      className="block px-4 py-3 hover:bg-teal-50 hover:text-teal-600 transition-colors font-medium"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      💰 Non-Accredited
-                    </Link>
-                  )}
-                </div>
-              )}
+              <Image
+                src="/images/varsity-nest-logo.png"
+                alt="Varsity Nest Logo"
+                width={48}
+                height={48}
+                className="object-contain group-hover:scale-105 transition-transform duration-200"
+                priority
+              />
             </div>
-          )}
-
-          <Link href="/contact" className="hover:text-teal-400 transition-colors font-medium">
-            Contact
-          </Link>
-
-          {/* User Menu or Auth Buttons */}
-          {user ? (
-            <div className="relative">
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center space-x-2 hover:text-teal-400 transition-colors font-medium"
-              >
-                <User className="w-5 h-5" />
-                <span>{user.name}</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {isUserMenuOpen && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white text-gray-900 rounded-lg shadow-xl py-2 border">
-                  <Link
-                    href={getDashboardLink()}
-                    className="block px-4 py-3 hover:bg-teal-50 hover:text-teal-600 transition-colors font-medium"
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsUserMenuOpen(false)
-                      handleLogout()
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-red-50 hover:text-red-600 transition-colors font-medium flex items-center space-x-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            !isDashboardArea && (
-              <div className="flex items-center space-x-3">
-                <Link
-                  href="/auth/login"
-                  className="bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-lg transition-colors font-medium"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="border border-teal-400 hover:bg-teal-400 hover:text-gray-900 px-4 py-2 rounded-lg transition-colors font-medium"
-                >
-                  Join as Provider
-                </Link>
+            <div className="hidden sm:block">
+              <div className="text-xl font-bold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
+                Varsity Nest
               </div>
-            )
-          )}
-        </div>
+              <div className="text-sm text-gray-200 font-medium">Student Accommodation</div>
+            </div>
+          </Link>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-gray-800 bg-opacity-95 backdrop-blur-sm border-t border-gray-700">
-          <div className="px-6 py-4 space-y-3">
-            <Link
-              href="/"
-              className="block py-2 hover:text-teal-400 transition-colors font-medium"
-              onClick={() => setIsMobileMenuOpen(false)}
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Link 
+              href="/" 
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium text-white/90 backdrop-blur-sm"
             >
-              Home
+              <Home className="w-4 h-4" />
+              <span>Home</span>
             </Link>
 
-            {/* Only show accommodation links on public pages */}
+            {/* Only show accommodations dropdown on public pages */}
             {!isDashboardArea && (
-              <>
-                <Link
-                  href="/accommodations/accredited"
-                  className="block py-2 hover:text-teal-400 transition-colors font-medium"
-                  onClick={() => setIsMobileMenuOpen(false)}
+              <div className="relative">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium text-white/90 backdrop-blur-sm"
                 >
-                  ✅ Accredited
-                </Link>
-                {adminSettings.showProvisionallyAccredited && (
-                  <Link
-                    href="/accommodations/provisionally-accredited"
-                    className="block py-2 hover:text-teal-400 transition-colors font-medium"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    ⏳ Provisionally-Accredited
-                  </Link>
+                  <Building className="w-4 h-4" />
+                  <span>Accommodations</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-3 w-72 bg-black/40 backdrop-blur-2xl text-white rounded-2xl shadow-2xl py-4 border border-white/20">
+                    <Link
+                      href="/accommodations/accredited"
+                      className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg"></div>
+                      <span>Accredited</span>
+                    </Link>
+                    {adminSettings.showProvisionallyAccredited && (
+                      <Link
+                        href="/accommodations/provisionally-accredited"
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-lg"></div>
+                        <span>Provisionally-Accredited</span>
+                      </Link>
+                    )}
+                    {adminSettings.showNonAccredited && (
+                      <Link
+                        href="/accommodations/non-accredited"
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <div className="w-2 h-2 bg-gray-400 rounded-full shadow-lg"></div>
+                        <span>Non-Accredited</span>
+                      </Link>
+                    )}
+                  </div>
                 )}
-                {adminSettings.showNonAccredited && (
-                  <Link
-                    href="/accommodations/non-accredited"
-                    className="block py-2 hover:text-teal-400 transition-colors font-medium"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    💰 Non-Accredited
-                  </Link>
-                )}
-              </>
+              </div>
             )}
 
-            <Link
-              href="/contact"
-              className="block py-2 hover:text-teal-400 transition-colors font-medium"
-              onClick={() => setIsMobileMenuOpen(false)}
+            <Link 
+              href="/contact" 
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium text-white/90 backdrop-blur-sm"
             >
-              Contact
+              <Phone className="w-4 h-4" />
+              <span>Contact</span>
             </Link>
 
-            {/* Mobile User Menu or Auth Buttons */}
+            {/* User Menu or Auth Buttons */}
             {user ? (
-              <div className="pt-3 border-t border-gray-700 space-y-2">
-                <div className="text-sm text-gray-400">Signed in as {user.name}</div>
-                <Link
-                  href={getDashboardLink()}
-                  className="block bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-lg transition-colors font-medium text-center"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
+              <div className="relative">
                 <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false)
-                    handleLogout()
-                  }}
-                  className="w-full bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors font-medium text-center"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium text-white/90 backdrop-blur-sm"
                 >
-                  Sign Out
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <span>{user.name}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute top-full right-0 mt-3 w-56 bg-black/40 backdrop-blur-2xl text-white rounded-2xl shadow-2xl py-4 border border-white/20">
+                    <Link
+                      href={getDashboardLink()}
+                      className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                      <span>Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false)
+                        handleLogout()
+                      }}
+                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               !isDashboardArea && (
-                <div className="pt-3 border-t border-gray-700 space-y-2">
+                <div className="flex items-center space-x-3">
                   <Link
                     href="/auth/login"
-                    className="block bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-lg transition-colors font-medium text-center"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-4 py-2 text-white/90 hover:text-blue-300 transition-all duration-300 font-medium"
                   >
                     Sign In
                   </Link>
                   <Link
                     href="/auth/register"
-                    className="block border border-teal-400 hover:bg-teal-400 hover:text-gray-900 px-4 py-2 rounded-lg transition-colors font-medium text-center"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-500 hover:to-purple-500 text-white px-6 py-2 rounded-xl transition-all duration-300 font-medium shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 backdrop-blur-sm border border-white/20"
                   >
                     Join as Provider
                   </Link>
@@ -321,8 +238,117 @@ export default function Navbar() {
               )
             )}
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 hover:bg-white/10 rounded-xl transition-all duration-300"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6 text-white/90" /> : <Menu className="w-6 h-6 text-white/90" />}
+          </button>
         </div>
-      )}
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-black/40 backdrop-blur-2xl border-t border-white/20">
+            <div className="px-4 py-4 space-y-2">
+              <Link
+                href="/"
+                className="flex items-center space-x-3 px-3 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Home className="w-4 h-4" />
+                <span>Home</span>
+              </Link>
+
+              {/* Only show accommodation links on public pages */}
+              {!isDashboardArea && (
+                <>
+                  <Link
+                    href="/accommodations/accredited"
+                    className="flex items-center space-x-3 px-3 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg"></div>
+                    <span>Accredited</span>
+                  </Link>
+                  {adminSettings.showProvisionallyAccredited && (
+                    <Link
+                      href="/accommodations/provisionally-accredited"
+                      className="flex items-center space-x-3 px-3 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-lg"></div>
+                      <span>Provisionally-Accredited</span>
+                    </Link>
+                  )}
+                  {adminSettings.showNonAccredited && (
+                    <Link
+                      href="/accommodations/non-accredited"
+                      className="flex items-center space-x-3 px-3 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <div className="w-2 h-2 bg-gray-400 rounded-full shadow-lg"></div>
+                      <span>Non-Accredited</span>
+                    </Link>
+                  )}
+                </>
+              )}
+
+              <Link
+                href="/contact"
+                className="flex items-center space-x-3 px-3 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Phone className="w-4 h-4" />
+                <span>Contact</span>
+              </Link>
+
+              {/* Mobile User Menu or Auth Buttons */}
+              {user ? (
+                <div className="pt-3 border-t border-white/20 space-y-2">
+                  <div className="text-sm text-white/70 px-3">Signed in as {user.name}</div>
+                  <Link
+                    href={getDashboardLink()}
+                    className="block bg-gradient-to-r from-blue-500/80 to-purple-500/80 text-white px-4 py-3 rounded-xl transition-all duration-200 font-medium text-center backdrop-blur-sm border border-white/20"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false)
+                      handleLogout()
+                    }}
+                    className="w-full bg-red-500/80 hover:bg-red-500 text-white px-4 py-3 rounded-xl transition-all duration-200 font-medium text-center backdrop-blur-sm border border-white/20"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                !isDashboardArea && (
+                  <div className="pt-3 border-t border-white/20 space-y-2">
+                    <Link
+                      href="/auth/login"
+                      className="block text-center px-4 py-3 text-white/90 hover:text-blue-300 transition-all duration-200 font-medium"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/auth/register"
+                      className="block bg-gradient-to-r from-blue-500/80 to-purple-500/80 text-white px-4 py-3 rounded-xl transition-all duration-200 font-medium text-center backdrop-blur-sm border border-white/20"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Join as Provider
+                    </Link>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </nav>
   )
 }
