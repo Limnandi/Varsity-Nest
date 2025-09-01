@@ -38,10 +38,10 @@ NEXT_PUBLIC_PAYFAST_MERCHANT_KEY=your_payfast_merchant_key
 
 ## 🔧 Implementation Details
 
-### **1. StackAuth Configuration (`lib/stackauth.ts`)**
-- Configures authentication providers (credentials)
-- Sets up JWT session strategy
-- Defines custom callbacks for user data
+### **1. StackAuth Configuration (Hosted)**
+- `lib/stack.ts`: creates Stack client/server app instances
+- `app/handler/[...stack]/page.tsx`: Stack handler for cookies, callbacks, email links
+- `app/layout.tsx`: wraps app with `StackProvider` using the app instance
 
 ### **2. Custom Credentials Provider (`lib/credentials-provider.ts`)**
 - Integrates with existing `authenticateUser` function
@@ -53,10 +53,10 @@ NEXT_PUBLIC_PAYFAST_MERCHANT_KEY=your_payfast_merchant_key
 - Handles login, logout, and registration
 - Manages user sessions and redirects
 
-### **4. API Routes**
-- `/api/auth/[...nextauth]` - StackAuth API endpoints
-- `/api/auth/session` - Session management (updated)
-- `/api/auth/logout` - Logout handling (updated)
+### **4. Routes & Flows**
+- `/handler/*` - StackAuth hosted routes (OAuth callbacks, verification, reset, sign-out)
+- Google SSO enabled via SDK `OAuthButton` on login page
+- Email verification and password reset handled via `/handler/*` links
 
 ## 🎯 Migration Benefits
 
@@ -131,10 +131,10 @@ NEXT_PUBLIC_PAYFAST_MERCHANT_KEY=your_payfast_merchant_key
 ## 🔄 Next Steps
 
 ### **Phase 1 (Current):**
-- ✅ Basic StackAuth integration
-- ✅ Custom credentials provider
-- ✅ Session management
-- ✅ Login/logout functionality
+- ✅ Hosted StackAuth integrated with handler and provider
+- ✅ Google SSO wired
+- ✅ Email verification and password reset via Resend
+- ✅ Custom UI preserved
 
 ### **Phase 2 (Future):**
 - [ ] Add social login providers (Google, Facebook)
@@ -151,15 +151,11 @@ NEXT_PUBLIC_PAYFAST_MERCHANT_KEY=your_payfast_merchant_key
 ## 📚 Resources
 
 - [StackAuth Documentation](https://docs.stack-auth.com)
+- Handler signup: `http://localhost:3000/handler/signup`
+- Handler account settings: `http://localhost:3000/handler/account-settings`
 - [Next.js Authentication](https://nextjs.org/docs/authentication)
 - [JWT Best Practices](https://jwt.io/introduction)
 - [Security Headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers)
 
-## 🆘 Support
-
-If you encounter issues:
-1. Check this documentation first
-2. Review environment variables
-3. Check browser console for errors
-4. Verify database connectivity
-5. Contact the development team
+## 📝 Production TODO
+- Update StackAuth allowed origins and Google OAuth redirect URIs to `https://www.varsitynest.space`

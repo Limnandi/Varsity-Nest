@@ -46,9 +46,7 @@ export default function Navbar() {
   }, [])
 
   const handleLogout = async () => {
-    // TODO: Implement StackAuth logout
-    console.log("Logout - StackAuth integration pending")
-    router.push('/')
+    router.push('/auth/logout')
   }
 
   const getDashboardLink = () => {

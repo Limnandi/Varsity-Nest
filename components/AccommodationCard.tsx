@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Star, MapPin, Users, Shield, Heart } from "lucide-react"
 import { useState } from "react"
+import { formatZar } from "@/lib/utils"
 
 interface AccommodationCardProps {
   id: number
@@ -131,7 +132,7 @@ export default function AccommodationCard({
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold text-green-600">R{price.toLocaleString()}</span>
+            <span className="text-2xl font-bold text-green-600">{formatZar(price)}</span>
             <span className="text-gray-500 text-sm">/month</span>
           </div>
           <Link

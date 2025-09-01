@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { OAuthButton, useStackApp } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [isPending, setIsPending] = useState(false)
   const router = useRouter()
   const recaptchaRef = useRef<ReCAPTCHA>(null)
+  const app = useStackApp()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,14 +34,30 @@ export default function LoginPage() {
     setError("")
 
     try {
-      // TODO: Implement StackAuth login
-      console.log("Login - StackAuth integration pending")
-      setError("Login functionality - StackAuth integration pending")
+      const result = await app.signInWithCredential({ email, password })
+      if ((result as any)?.error) {
+        throw new Error((result as any).error)
+      }
+      router.push("/")
     } catch (error: any) {
       setError(error.message || "Login failed. Please try again.")
       recaptchaRef.current?.reset()
     } finally {
       setIsPending(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    setError("")
+    if (!email) {
+      setError("Enter your email first, then click Forgot Password")
+      return
+    }
+    try {
+      await app.sendForgotPasswordEmail(email)
+      setError("If an account exists, a reset link was sent.")
+    } catch (e: any) {
+      setError(e.message || "Could not send reset email")
     }
   }
 
@@ -138,7 +156,18 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="mt-4 flex items-center justify-between">
+            <OAuthButton provider="google" type="sign-in" />
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-sm text-blue-600 hover:text-blue-500"
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          <div className="text-center mt-4">
             <p className="text-sm text-gray-600">
               Don't have an account?{" "}
               <a href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">

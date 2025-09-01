@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/DashboardLayout"
 import { Building, Users, Star, TrendingUp, Calendar, DollarSign, CheckCircle, Clock, AlertTriangle } from "lucide-react"
+import { formatZar } from "@/lib/utils"
 
 export default function ProviderDashboard() {
   const [stats, setStats] = useState({
@@ -37,7 +38,7 @@ export default function ProviderDashboard() {
     },
     {
       title: "Monthly Revenue",
-      value: `R${stats.totalRevenue.toLocaleString()}`,
+      value: formatZar(stats.totalRevenue, true),
       icon: DollarSign,
       color: "bg-green-500",
       change: "Next payment: loading", // Will update with real data

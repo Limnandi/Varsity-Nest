@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useStackApp } from "@stackframe/stack"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X } from "lucide-react"
 
@@ -12,6 +13,7 @@ export default function ProviderRegistrationPage() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
+  const app = useStackApp()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -19,12 +21,17 @@ export default function ProviderRegistrationPage() {
     setState({})
 
     try {
-      // TODO: Implement StackAuth registration
-      console.log("Provider registration - StackAuth integration pending")
-      setState({ 
-        success: true, 
-        message: 'Registration form ready - StackAuth integration pending' 
-      })
+      const form = new FormData(e.currentTarget)
+      const email = String(form.get('email') || '')
+      const password = String(form.get('password') || '')
+      const confirmPassword = String(form.get('confirmPassword') || '')
+
+      if (password !== confirmPassword) {
+        throw new Error('Passwords do not match')
+      }
+
+      await app.signUpWithCredential({ email, password })
+      setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {
       setState({ 
         error: error.message || 'Registration failed. Please try again.' 

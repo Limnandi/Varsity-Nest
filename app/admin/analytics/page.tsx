@@ -26,7 +26,7 @@ import {
 } from "lucide-react"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import { cn } from "@/lib/utils"
+import { cn, formatZar } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -92,7 +92,7 @@ export default function AdminAnalytics() {
       body: [
         [
           "Total Revenue",
-          `R${analyticsData.revenue.total.toLocaleString()}`,
+          formatZar(analyticsData.revenue.total, true),
           `${analyticsData.revenue.growth.toFixed(1)}%`,
         ],
         ["Accommodations", analyticsData.accommodations.total, `${analyticsData.accommodations.growth.toFixed(1)}%`],
@@ -241,7 +241,7 @@ export default function AdminAnalytics() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Total Revenue"
-              value={`R${analyticsData.revenue.total.toLocaleString()}`}
+              value={formatZar(analyticsData.revenue.total, true)}
               change={analyticsData.revenue.growth}
               icon={DollarSign}
               color="bg-green-500"
@@ -322,7 +322,7 @@ export default function AdminAnalytics() {
                       style={{ height: `${(value / Math.max(...revenueChart.datasets[0].data)) * 100}%` }}
                     >
                       <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        R{value.toLocaleString()}
+                        {formatZar(value)}
                       </div>
                     </div>
                   </div>
@@ -349,7 +349,7 @@ export default function AdminAnalytics() {
                     </div>
                     <div className="text-right flex-shrink-0 pl-2">
                       <p className="font-semibold text-gray-900 dark:text-gray-100">
-                        R{performer.value.toLocaleString()}
+                        {formatZar(performer.value)}
                       </p>
                       <div className="flex items-center justify-end">
                         <TrendingUp className="w-3 h-3 text-green-600 mr-1" />

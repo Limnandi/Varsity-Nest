@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession, SessionUser } from '@/lib/stackauth'
+import { useUser } from '@stackframe/stack'
 import { LoadingSpinner } from './LoadingSpinner'
 
 interface AuthGuardProps {
@@ -16,45 +16,29 @@ export default function AuthGuard({
   requiredRole, 
   fallback 
 }: AuthGuardProps) {
-  const [user, setUser] = useState<SessionUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, isAuthenticated, isLoading } = useUser()
   const [authorized, setAuthorized] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const session = await getSession()
-        if (session?.user) {
-          setUser(session.user)
-          
-          // Check role authorization
-          if (requiredRole && session.user.role !== requiredRole) {
-            setAuthorized(false)
-            // Redirect unauthorized users
-            router.push('/unauthorized')
-            return
-          }
-          
-          setAuthorized(true)
-        } else {
-          setAuthorized(false)
-          // Redirect unauthenticated users
-          router.push('/auth/login')
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        setAuthorized(false)
-        router.push('/auth/login')
-      } finally {
-        setLoading(false)
-      }
+    if (isLoading) return
+
+    if (!isAuthenticated) {
+      setAuthorized(false)
+      router.push('/auth/login')
+      return
     }
 
-    checkAuth()
-  }, [requiredRole, router])
+    if (requiredRole && (user as any)?.metadata?.role !== requiredRole) {
+      setAuthorized(false)
+      router.push('/unauthorized')
+      return
+    }
 
-  if (loading) {
+    setAuthorized(true)
+  }, [isLoading, isAuthenticated, requiredRole, user, router])
+
+  if (isLoading) {
     return fallback || <LoadingSpinner />
   }
 

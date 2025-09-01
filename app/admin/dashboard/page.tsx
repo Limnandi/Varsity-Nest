@@ -4,6 +4,7 @@ import AuthGuard from "@/components/AuthGuard"
 import { DocumentViewer } from "@/components/DocumentViewer"
 import { useState, useEffect } from "react"
 import { Building, Users, DollarSign, TrendingUp, Eye, Plus, AlertTriangle } from "lucide-react"
+import { formatZar } from "@/lib/utils"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<{
@@ -76,7 +77,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Monthly Revenue",
-      value: `R${(stats.totalRevenue || 0).toLocaleString()}`,
+      value: formatZar(stats.totalRevenue || 0, true),
       icon: DollarSign,
       color: "bg-purple-500",
       change: `${(stats.revenueChange || 0) >= 0 ? '+' : ''}${stats.revenueChange || 0}% from last month`,
@@ -329,7 +330,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">R{(accommodation.price || 0).toLocaleString()}/month</p>
+                    <p className="font-semibold text-green-600">{formatZar(accommodation.price || 0)}/month</p>
                     <p className="text-sm text-gray-500">{accommodation.reviewCount} reviews</p>
                   </div>
                 </div>

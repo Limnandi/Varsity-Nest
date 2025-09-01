@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useStackApp } from "@stackframe/stack"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
 
@@ -9,6 +10,7 @@ export default function StudentRegistrationPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
+  const app = useStackApp()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -16,12 +18,19 @@ export default function StudentRegistrationPage() {
     setState({})
 
     try {
-      // TODO: Implement StackAuth registration
-      console.log("Student registration - StackAuth integration pending")
-      setState({ 
-        success: true, 
-        message: 'Registration form ready - StackAuth integration pending' 
-      })
+      const form = new FormData(e.currentTarget)
+      const name = String(form.get('name') || '')
+      const email = String(form.get('email') || '')
+      const password = String(form.get('password') || '')
+      const confirmPassword = String(form.get('confirmPassword') || '')
+
+      if (password !== confirmPassword) {
+        throw new Error('Passwords do not match')
+      }
+
+      await app.signUpWithCredential({ email, password })
+      // Optional: set display name metadata via server later
+      setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {
       setState({ 
         error: error.message || 'Registration failed. Please try again.' 

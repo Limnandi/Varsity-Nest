@@ -9,6 +9,7 @@ import { accommodations } from "@/lib/data"
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
 import Link from "next/link"
 import { Building } from "lucide-react" // Import Building component
+import { formatZar } from "@/lib/utils"
 
 export default function ProviderAccommodations() {
   const [user, setUser] = useState<User | null>(null)
@@ -113,7 +114,7 @@ export default function ProviderAccommodations() {
                     </div>
 
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-bold text-green-600">R{accommodation.price.toLocaleString()}</span>
+                      <span className="text-2xl font-bold text-green-600">{formatZar(accommodation.price)}</span>
                       <span className="text-gray-500">/month</span>
                     </div>
 
