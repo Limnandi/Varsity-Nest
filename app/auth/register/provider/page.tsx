@@ -31,6 +31,9 @@ export default function ProviderRegistrationPage() {
       }
 
       await app.signUpWithCredential({ email, password })
+      try {
+        await app.updateCurrentUser({ clientMetadata: { role: 'provider' } })
+      } catch {}
       setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {
       setState({ 

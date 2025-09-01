@@ -29,6 +29,9 @@ export default function StudentRegistrationPage() {
       }
 
       await app.signUpWithCredential({ email, password })
+      try {
+        await app.updateCurrentUser({ clientMetadata: { role: 'student', displayName: name } })
+      } catch {}
       // Optional: set display name metadata via server later
       setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {

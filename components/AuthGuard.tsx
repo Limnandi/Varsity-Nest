@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@stackframe/stack'
-import { LoadingSpinner } from './LoadingSpinner'
+import LoadingSpinner from './LoadingSpinner'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -16,35 +16,28 @@ export default function AuthGuard({
   requiredRole, 
   fallback 
 }: AuthGuardProps) {
-  const { user, isAuthenticated, isLoading } = useUser()
+  const user = useUser({ or: 'return-null' }) as any
   const [authorized, setAuthorized] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    if (isLoading) return
-
-    if (!isAuthenticated) {
+    if (!user) {
       setAuthorized(false)
       router.push('/auth/login')
       return
     }
 
-    if (requiredRole && (user as any)?.metadata?.role !== requiredRole) {
+    const role = user?.serverMetadata?.role || user?.clientMetadata?.role || user?.clientReadOnlyMetadata?.role
+    if (requiredRole && role !== requiredRole) {
       setAuthorized(false)
       router.push('/unauthorized')
       return
     }
 
     setAuthorized(true)
-  }, [isLoading, isAuthenticated, requiredRole, user, router])
+  }, [requiredRole, user, router])
 
-  if (isLoading) {
-    return fallback || <LoadingSpinner />
-  }
-
-  if (!authorized) {
-    return null
-  }
+  if (!authorized) return fallback || <LoadingSpinner />
 
   return <>{children}</>
 }

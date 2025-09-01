@@ -38,7 +38,7 @@ export default function LoginPage() {
       if ((result as any)?.error) {
         throw new Error((result as any).error)
       }
-      router.push("/")
+      router.push("/auth/redirect")
     } catch (error: any) {
       setError(error.message || "Login failed. Please try again.")
       recaptchaRef.current?.reset()
