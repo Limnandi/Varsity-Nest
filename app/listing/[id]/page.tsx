@@ -1,6 +1,6 @@
 "use client"
 import ImageCarousel from "@/components/ImageCarousel"
-import { sql } from "@/lib/database"
+import { postgrest } from "@/lib/postgrest"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,18 +9,14 @@ import { MapPin, Bath, Wifi, Car } from "lucide-react"
 
 async function getListing(id: string) {
   try {
-    const listingResult = await sql`
-      SELECT 
-        a.id, a.name, a.description, a.address, a.price_per_month, a.images, a.amenities,
-        u.name as provider_name, u.email as provider_email
-      FROM accommodations a
-      JOIN users u ON a.provider_id = u.id
-      WHERE a.id = ${id}
-    `
-    if (listingResult.length === 0) {
-      return null
+    const row = await postgrest.single<any>('accommodations', { id }, { select: 'id,name,description,address,price_per_month,images,amenities,provider_id' })
+    if (!row) return null
+    const provider = await postgrest.single<any>('users', { id: row.provider_id }, { select: 'name,email' })
+    return {
+      ...row,
+      provider_name: provider?.name,
+      provider_email: provider?.email
     }
-    return listingResult[0]
   } catch (error) {
     console.error("Failed to fetch listing:", error)
     return null

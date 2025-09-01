@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/stackauth"
 import type { User } from "@/lib/definitions"
 import { accommodations } from "@/lib/data"
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Toaster, toast } from "sonner"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/stackauth"
 import type { User } from "@/lib/definitions"
 import LoadingSpinner from "@/components/LoadingSpinner"
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createPayFastPayment } from "@/lib/payfast"
-import { query } from "@/lib/database"
 import { calculateProviderSubscriptionPrice } from "@/lib/payments"
+import { postgrest } from "@/lib/postgrest"
 
 export async function POST(request: Request) {
   try {
@@ -25,10 +25,7 @@ export async function POST(request: Request) {
       if (!customData?.providerId) {
         return NextResponse.json({ error: "Missing providerId for amount calculation" }, { status: 400 })
       }
-      const accRes = await query`
-        SELECT COUNT(*)::int AS cnt FROM accommodations WHERE provider_id = ${customData.providerId}
-      `
-      const accommodationsCount = accRes.rows?.[0]?.cnt ?? 0
+      const accommodationsCount = await postgrest.count("accommodations", { provider_id: customData.providerId })
       const wantsFeatured = Boolean(customData?.wantsFeatured)
       parsedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
     }
@@ -49,12 +46,15 @@ export async function POST(request: Request) {
 
     // Record a pending transaction for idempotency and amount verification
     try {
-      await query`
-        INSERT INTO payment_transactions 
-        (provider_id, amount, currency, m_payment_id, status, payment_date, gateway_response, created_at)
-        VALUES (${serverCustomData?.providerId ?? null}, ${parsedAmount}, ${"ZAR"}, ${paymentData.m_payment_id}, ${"pending"}, NOW(), ${JSON.stringify({ initiated_at: new Date().toISOString() })}, NOW())
-        ON CONFLICT (m_payment_id) DO NOTHING
-      `
+      await postgrest.post("payment_transactions", {
+        provider_id: serverCustomData?.providerId ?? null,
+        amount: parsedAmount,
+        currency: "ZAR",
+        m_payment_id: paymentData.m_payment_id,
+        status: "pending",
+        payment_date: new Date().toISOString(),
+        gateway_response: { initiated_at: new Date().toISOString() }
+      }, { on_conflict: "m_payment_id", resolution: "ignore-duplicates" })
     } catch (e) {
       console.error("Failed to record pending transaction", e)
       // Fail closed: do not proceed without DB record in production

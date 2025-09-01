@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser, updateAdminSettings, getAdminSettings } from "@/lib/auth"
+import { getCurrentUser, updateAdminSettings, getAdminSettings } from "@/lib/stackauth"
 import type { User } from "@/lib/definitions"
 
 interface AdminUser extends User {

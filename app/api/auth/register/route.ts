@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/database"
+import { postgrest } from "@/lib/postgrest"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,11 +13,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const existingUser = await query`
-      SELECT id FROM users WHERE email = ${email}
-    `
-    
-    if (existingUser.rows.length > 0) {
+    const existingUser = await postgrest.single<any>("users", { email })
+    if (existingUser) {
       return NextResponse.json(
         { error: "User with this email already exists" },
         { status: 409 }
@@ -26,11 +23,14 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = password
 
-    const userResult = await query`
-      INSERT INTO users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
-      VALUES (${email}, ${passwordHash}, ${firstName}, ${lastName}, ${role}, true, NOW(), NOW())
-      RETURNING id
-    `
+    await postgrest.post("users", {
+      email,
+      password_hash: passwordHash,
+      first_name: firstName,
+      last_name: lastName,
+      role,
+      is_active: true
+    })
 
     return NextResponse.json(
       { success: true, message: "User registered successfully" },

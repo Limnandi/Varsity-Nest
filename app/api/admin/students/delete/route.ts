@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { deleteUser } from "@/lib/auth"
-import { getSession } from "@/lib/session"
+import { deleteUser } from "@/lib/stackauth"
+import { getSession } from "@/lib/stackauth"
 
 export async function DELETE(request: NextRequest) {
   try {

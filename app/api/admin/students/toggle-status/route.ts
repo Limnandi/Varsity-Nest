@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { toggleUserStatus } from "@/lib/auth"
-import { getSession } from "@/lib/session"
+import { toggleUserStatus } from "@/lib/stackauth"
+import { getSession } from "@/lib/stackauth"
 
 export async function POST(request: NextRequest) {
   try {

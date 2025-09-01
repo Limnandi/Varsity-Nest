@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getAllStudents } from "@/lib/auth"
-import { getSession } from "@/lib/session"
+import { getAllStudents } from "@/lib/stackauth"
+import { getSession } from "@/lib/stackauth"
 
 export const dynamic = 'force-dynamic'
 

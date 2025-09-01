@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyPayFastSignature, validatePayFastResponse } from "@/lib/payfast"
-import { query } from "@/lib/database"
 import { Sentry } from "@/lib/sentry"
+import { postgrest } from "@/lib/postgrest"
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,10 +52,7 @@ export async function POST(request: NextRequest) {
     const paymentDate = new Date()
 
     // Fetch the pending transaction to verify amount and existence (idempotency)
-    const pendingRes = await query`
-      SELECT id, amount, status FROM payment_transactions WHERE m_payment_id = ${merchantPaymentId}
-    `
-    const pending = pendingRes.rows[0]
+    const pending = await postgrest.single<any>("payment_transactions", { m_payment_id: merchantPaymentId })
 
     if (!pending) {
       console.error("No pending transaction for m_payment_id:", merchantPaymentId)
@@ -112,40 +109,33 @@ async function processSuccessfulPayment(
 ) {
   try {
     // Idempotency: mark transaction as completed only once
-    await query`
-      UPDATE payment_transactions
-      SET pf_payment_id = ${transactionId}, status = 'completed', payment_date = ${paymentDate}, gateway_response = ${JSON.stringify(webhookData)}
-      WHERE m_payment_id = ${merchantPaymentId} AND status <> 'completed'
-    `
+    await postgrest.put("payment_transactions", {
+      pf_payment_id: transactionId,
+      status: "completed",
+      payment_date: paymentDate.toISOString(),
+      gateway_response: webhookData
+    }, { m_payment_id: merchantPaymentId, status: "neq.completed" })
 
     // Update provider subscription status
-    await query`
-      UPDATE providers 
-      SET subscription_status = ${"active"}, 
-          last_payment_date = ${paymentDate}, 
-          next_payment_date = ${new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000)},
-          updated_at = NOW()
-      WHERE id = ${providerId}
-    `
+    await postgrest.put("providers", {
+      subscription_status: "active",
+      last_payment_date: paymentDate.toISOString(),
+      next_payment_date: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    }, { id: providerId })
 
     // If merchant requested featured, set it only if featured cap not exceeded (5)
     if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
-      await query`
-        WITH current AS (
-          SELECT COUNT(*)::int AS cnt FROM providers WHERE is_featured = true
-        )
-        UPDATE providers p
-        SET is_featured = CASE WHEN (SELECT cnt FROM current) < 5 THEN true ELSE p.is_featured END
-        WHERE p.id = ${providerId}
-      `
+      const featuredCount = await postgrest.count("providers", { is_featured: true as any })
+      if (featuredCount < 5) {
+        await postgrest.put("providers", { is_featured: true }, { id: providerId })
+      }
     }
 
     // Ensure provider_id and amount are set on transaction
-    await query`
-      UPDATE payment_transactions
-      SET provider_id = ${providerId}, amount = ${amount}
-      WHERE m_payment_id = ${merchantPaymentId}
-    `
+    await postgrest.put("payment_transactions", {
+      provider_id: providerId,
+      amount
+    }, { m_payment_id: merchantPaymentId })
 
     console.log(`Payment successful for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -163,11 +153,13 @@ async function processPendingPayment(
   webhookData: any
 ) {
   try {
-    await query`
-      UPDATE payment_transactions
-      SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'pending', gateway_response = ${JSON.stringify(webhookData)}
-      WHERE m_payment_id = ${merchantPaymentId}
-    `
+    await postgrest.put("payment_transactions", {
+      provider_id: providerId,
+      amount,
+      pf_payment_id: transactionId,
+      status: "pending",
+      gateway_response: webhookData
+    }, { m_payment_id: merchantPaymentId })
 
     console.log(`Payment pending for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -185,11 +177,13 @@ async function processFailedPayment(
   webhookData: any
 ) {
   try {
-    await query`
-      UPDATE payment_transactions
-      SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'failed', gateway_response = ${JSON.stringify(webhookData)}
-      WHERE m_payment_id = ${merchantPaymentId}
-    `
+    await postgrest.put("payment_transactions", {
+      provider_id: providerId,
+      amount,
+      pf_payment_id: transactionId,
+      status: "failed",
+      gateway_response: webhookData
+    }, { m_payment_id: merchantPaymentId })
 
     console.log(`Payment failed for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -207,11 +201,13 @@ async function processCancelledPayment(
   webhookData: any
 ) {
   try {
-    await query`
-      UPDATE payment_transactions
-      SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'cancelled', gateway_response = ${JSON.stringify(webhookData)}
-      WHERE m_payment_id = ${merchantPaymentId}
-    `
+    await postgrest.put("payment_transactions", {
+      provider_id: providerId,
+      amount,
+      pf_payment_id: transactionId,
+      status: "cancelled",
+      gateway_response: webhookData
+    }, { m_payment_id: merchantPaymentId })
 
     console.log(`Payment cancelled for provider ${providerId}: ${transactionId}`)
   } catch (error) {

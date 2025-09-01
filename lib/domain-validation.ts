@@ -1,4 +1,4 @@
-import { query } from "./database"
+import { postgrest } from "./postgrest"
 
 export interface DomainValidationResult {
   isValid: boolean
@@ -20,16 +20,11 @@ export class DomainValidationService {
       }
 
       // Query database for active whitelisted domains
-      const result = await query(`
-        SELECT university 
-        FROM whitelisted_domains 
-        WHERE domain = $1 AND is_active = true
-      `, [emailDomain])
-
-      if (result.rows && result.rows.length > 0) {
+      const row = await postgrest.single<any>('whitelisted_domains', { domain: emailDomain, is_active: true as any })
+      if (row) {
         return { 
           isValid: true, 
-          university: result.rows[0].university 
+          university: row.university 
         }
       }
 
@@ -51,14 +46,8 @@ export class DomainValidationService {
    */
   static async getActiveWhitelistedDomains(): Promise<string[]> {
     try {
-      const result = await query(`
-        SELECT domain 
-        FROM whitelisted_domains 
-        WHERE is_active = true
-        ORDER BY domain
-      `)
-
-      return result.rows.map((row: any) => row.domain)
+      const rows = await postgrest.get<any>('whitelisted_domains', { select: 'domain', filter: { is_active: true as any }, order: 'domain.asc' })
+      return rows.map((row: any) => row.domain)
     } catch (error) {
       console.error("Error fetching whitelisted domains:", error)
       return []
@@ -74,19 +63,15 @@ export class DomainValidationService {
     inactive: number
   }> {
     try {
-      const result = await query(`
-        SELECT 
-          COUNT(*) as total,
-          COUNT(CASE WHEN is_active = true THEN 1 END) as active,
-          COUNT(CASE WHEN is_active = false THEN 1 END) as inactive
-        FROM whitelisted_domains
-      `)
-
-      const stats = result.rows[0]
+      const [total, active, inactive] = await Promise.all([
+        postgrest.count('whitelisted_domains'),
+        postgrest.count('whitelisted_domains', { is_active: true as any }),
+        postgrest.count('whitelisted_domains', { is_active: false as any })
+      ])
       return {
-        total: parseInt(stats.total) || 0,
-        active: parseInt(stats.active) || 0,
-        inactive: parseInt(stats.inactive) || 0
+        total,
+        active,
+        inactive
       }
     } catch (error) {
       console.error("Error fetching domain stats:", error)

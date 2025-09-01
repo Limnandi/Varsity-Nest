@@ -6,17 +6,11 @@ if (typeof window !== 'undefined') {
   )
 }
 
-import { query } from "./database"
+import { postgrest } from "./postgrest"
 
 export async function approveProvider(providerId: string) {
   try {
-    await query(
-      `UPDATE providers SET 
-        is_verified = true,
-        is_active = true
-      WHERE id = $1`,
-      [providerId]
-    )
+    await postgrest.put('providers', { is_verified: true, is_active: true }, { id: providerId as any })
     return { success: true }
   } catch (error) {
     console.error("Failed to approve provider:", error)
@@ -26,13 +20,7 @@ export async function approveProvider(providerId: string) {
 
 export async function rejectProvider(providerId: string) {
   try {
-    await query(
-      `UPDATE providers SET 
-        is_active = false,
-        rejection_reason = 'Manual rejection by admin'
-      WHERE id = $1`,
-      [providerId]
-    )
+    await postgrest.put('providers', { is_active: false, rejection_reason: 'Manual rejection by admin' }, { id: providerId as any })
     return { success: true }
   } catch (error) {
     console.error("Failed to reject provider:", error)
@@ -42,11 +30,8 @@ export async function rejectProvider(providerId: string) {
 
 export async function viewProviderDocuments(providerId: string) {
   try {
-    const result = await query(
-      `SELECT documents FROM providers WHERE id = $1`,
-      [providerId]
-    )
-    return result.rows[0]?.documents || []
+    const row = await postgrest.single<any>('providers', { id: providerId as any }, { select: 'documents' })
+    return row?.documents || []
   } catch (error) {
     console.error("Failed to fetch provider documents:", error)
     return []
@@ -55,34 +40,32 @@ export async function viewProviderDocuments(providerId: string) {
 
 export async function getDashboardStats() {
   try {
-    const [currentStats, previousStats] = await Promise.all([
-      query(`SELECT
-        COUNT(*) as totalAccommodations,
-        COUNT(DISTINCT provider_id) as totalProviders,
-        SUM(price) as totalRevenue,
-        SUM(view_count) as totalViews
-      FROM accommodations`),
-      query(`SELECT
-        COUNT(*) as totalAccommodations,
-        COUNT(DISTINCT provider_id) as totalProviders,
-        SUM(price) as totalRevenue,
-        SUM(view_count) as totalViews
-      FROM accommodations
-      WHERE created_at >= NOW() - INTERVAL '30 days'`)
+    const [totalAccommodations, totalProviders, totalViews, totalRevenue, totalAccommodations30, totalProviders30, totalViews30, totalRevenue30] = await Promise.all([
+      postgrest.count('accommodations'),
+      postgrest.count('accommodations', { provider_id: 'is.not.null' }),
+      (async () => {
+        const rows = await postgrest.get<any>('accommodations', { select: 'view_count', limit: 1000 })
+        return rows.reduce((sum: number, r: any) => sum + (Number(r.view_count) || 0), 0)
+      })(),
+      0,
+      postgrest.count('accommodations', { created_at: `gte.${new Date(Date.now() - 30*24*60*60*1000).toISOString()}` }),
+      postgrest.count('accommodations', { provider_id: 'is.not.null', created_at: `gte.${new Date(Date.now() - 30*24*60*60*1000).toISOString()}` }),
+      (async () => {
+        const rows = await postgrest.get<any>('accommodations', { select: 'view_count', filter: { created_at: `gte.${new Date(Date.now() - 30*24*60*60*1000).toISOString()}` }, limit: 1000 })
+        return rows.reduce((sum: number, r: any) => sum + (Number(r.view_count) || 0), 0)
+      })(),
+      0
     ])
 
-    const current = currentStats.rows[0]
-    const previous = previousStats.rows[0]
-
     return {
-      totalAccommodations: current.totalAccommodations,
-      totalProviders: current.totalProviders,
-      totalRevenue: current.totalRevenue,
-      totalViews: current.totalViews,
-      accommodationsChange: calculateChange(current.totalAccommodations, previous.totalAccommodations),
-      providersChange: calculateChange(current.totalProviders, previous.totalProviders),
-      revenueChange: calculateChange(current.totalRevenue, previous.totalRevenue),
-      viewsChange: calculateChange(current.totalViews, previous.totalViews)
+      totalAccommodations,
+      totalProviders,
+      totalRevenue,
+      totalViews,
+      accommodationsChange: calculateChange(totalAccommodations, totalAccommodations30),
+      providersChange: calculateChange(totalProviders, totalProviders30),
+      revenueChange: calculateChange(totalRevenue, totalRevenue30),
+      viewsChange: calculateChange(totalViews, totalViews30)
     }
   } catch (error) {
     console.error("Failed to get dashboard stats:", error)
@@ -131,16 +114,8 @@ interface PendingApproval {
 
 export async function getRecentActivity(): Promise<Activity[]> {
   try {
-    const result = await query(
-      `SELECT id, activity_type as type, message, created_at as time
-       FROM admin_activities
-       ORDER BY created_at DESC
-       LIMIT 5`
-    )
-    return (result.rows as Activity[]).map(row => ({
-      ...row,
-      time: formatTimeAgo(row.time)
-    }))
+    const rows = await postgrest.get<Activity>('admin_activities', { select: 'id,activity_type,message,created_at', order: 'created_at.desc', limit: 5 })
+    return rows.map((row: any) => ({ id: row.id, type: row.activity_type, message: row.message, time: formatTimeAgo(row.created_at) }))
   } catch (error) {
     console.error("Failed to get recent activity:", error)
     return []
@@ -149,21 +124,9 @@ export async function getRecentActivity(): Promise<Activity[]> {
 
 export async function getPendingApprovals() {
   try {
-    const result = await query(
-      `SELECT
-        p.id,
-        CASE
-          WHEN p.registration_status = 'pending' THEN 'provider'
-          WHEN a.verification_status = 'pending' THEN 'accommodation'
-        END as type,
-        COALESCE(a.title, p.business_name) as title,
-        COALESCE(p.business_name, 'New Registration') as provider,
-        'pending' as status
-       FROM providers p
-       LEFT JOIN accommodations a ON a.provider_id = p.id
-       WHERE p.registration_status = 'pending' OR a.verification_status = 'pending'`
-    )
-    return result.rows
+    // Simplified: fetch pending providers only (no join) due to PostgREST limitations without views
+    const rows = await postgrest.get<any>('providers', { select: 'id,business_name,registration_status', filter: { registration_status: 'eq.pending' }, limit: 100 })
+    return rows.map((r: any) => ({ id: r.id, type: 'provider', title: r.business_name, provider: r.business_name, status: 'pending' as const }))
   } catch (error) {
     console.error("Failed to get pending approvals:", error)
     return []
