@@ -4,14 +4,9 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
-export default function ImageCarousel() {
-  const [currentSlide, setCurrentSlide] = useState(4) // Start at 5th slide (index 4)
-  const totalSlides = 11
-
-  const images = Array.from(
-    { length: totalSlides },
-    (_, i) => `/placeholder.svg?height=400&width=600&text=Image ${i + 1}`,
-  )
+export default function ImageCarousel({ images = [] as string[] }) {
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const totalSlides = Math.max(images.length, 1)
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % totalSlides)
@@ -27,7 +22,7 @@ export default function ImageCarousel() {
         className="flex transition-transform duration-300 ease-in-out h-full"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
-        {images.map((image, index) => (
+        {(images.length > 0 ? images : ["/placeholder.svg?height=400&width=600"]).map((image, index) => (
           <div key={index} className="w-full h-full flex-shrink-0 relative">
             <Image src={image || "/placeholder.svg"} alt={`Listing image ${index + 1}`} fill className="object-cover" />
           </div>
@@ -51,7 +46,7 @@ export default function ImageCarousel() {
 
       {/* Slide Indicators */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {images.map((_, index) => (
+        {(images.length > 0 ? images : ["/placeholder.svg"]).map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}

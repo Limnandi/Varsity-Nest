@@ -1,4 +1,4 @@
-import { postgrest } from "./postgrest"
+import { query } from "./database"
 
 export interface DomainValidationResult {
   isValid: boolean
@@ -20,7 +20,8 @@ export class DomainValidationService {
       }
 
       // Query database for active whitelisted domains
-      const row = await postgrest.single<any>('whitelisted_domains', { domain: emailDomain, is_active: true as any })
+      const result = await query`SELECT university FROM whitelisted_domains WHERE domain = ${emailDomain} AND is_active = true LIMIT 1`
+      const row = result.rows?.[0]
       if (row) {
         return { 
           isValid: true, 
@@ -46,8 +47,8 @@ export class DomainValidationService {
    */
   static async getActiveWhitelistedDomains(): Promise<string[]> {
     try {
-      const rows = await postgrest.get<any>('whitelisted_domains', { select: 'domain', filter: { is_active: true as any }, order: 'domain.asc' })
-      return rows.map((row: any) => row.domain)
+      const rows = await query`SELECT domain FROM whitelisted_domains WHERE is_active = true ORDER BY domain ASC`
+      return rows.rows.map((row: any) => row.domain)
     } catch (error) {
       console.error("Error fetching whitelisted domains:", error)
       return []
@@ -64,9 +65,9 @@ export class DomainValidationService {
   }> {
     try {
       const [total, active, inactive] = await Promise.all([
-        postgrest.count('whitelisted_domains'),
-        postgrest.count('whitelisted_domains', { is_active: true as any }),
-        postgrest.count('whitelisted_domains', { is_active: false as any })
+        (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM whitelisted_domains`).rows[0].c))(),
+        (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM whitelisted_domains WHERE is_active = true`).rows[0].c))(),
+        (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM whitelisted_domains WHERE is_active = false`).rows[0].c))(),
       ])
       return {
         total,

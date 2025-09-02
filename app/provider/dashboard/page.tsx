@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { countAccommodationsByProvider } from "@/lib/repos/accommodations"
+import { getCurrentUser } from "@/lib/stackauth"
 import Link from "next/link"
 import DashboardLayout from "@/components/DashboardLayout"
 import { Building, Users, Star, TrendingUp, Calendar, DollarSign, CheckCircle, Clock, AlertTriangle } from "lucide-react"
@@ -17,15 +19,22 @@ export default function ProviderDashboard() {
   })
 
   useEffect(() => {
-    // TODO: Fetch real data from StackAuth/API
-    setStats({
-      totalAccommodations: 3,
-      activeBookings: 12,
-      totalRevenue: 4500,
-      averageRating: 4.8,
-      pendingReviews: 2,
-      upcomingMaintenance: 1
-    })
+    const load = async () => {
+      const user = await getCurrentUser()
+      if (!user) return
+      const totalAccommodations = await countAccommodationsByProvider(user.id)
+      // Placeholder computed stats; real endpoints can replace later
+      const averageRating = 0
+      setStats({
+        totalAccommodations,
+        activeBookings: 0,
+        totalRevenue: 0,
+        averageRating,
+        pendingReviews: 0,
+        upcomingMaintenance: 0
+      })
+    }
+    load()
   }, [])
 
   const statsData = [

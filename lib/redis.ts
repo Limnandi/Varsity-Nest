@@ -7,6 +7,7 @@ if (!redisUrl || !redisToken) {
   console.warn("Upstash Redis environment variables not set. OTP and other Redis features will not work.")
 }
 
+//Design pattern: Singleton
 export const redis = new Redis({
   url: redisUrl!,
   token: redisToken!,

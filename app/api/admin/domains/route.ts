@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/stackauth"
-import { postgrest } from "@/lib/postgrest"
+import { query } from "@/lib/database"
 
 // GET - Fetch all whitelisted domains
 export async function GET() {
@@ -10,8 +10,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const domainsRows = await postgrest.get<any>('whitelisted_domains', { order: 'created_at.desc' })
-    const domains = domainsRows.map((row: any) => ({
+    const result = await query`SELECT id, domain, university, created_at, is_active FROM whitelisted_domains ORDER BY created_at DESC`
+    const domains = result.rows.map((row: any) => ({
       id: row.id,
       domain: row.domain,
       university: row.university,
@@ -41,19 +41,13 @@ export async function POST(request: NextRequest) {
       // Add new domain
       const formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
       
-      const inserted = await postgrest.post<any>('whitelisted_domains', {
-        domain: formattedDomain,
-        university,
-        is_active: true
-      })
-
-      const newDomain = {
-        id: inserted.id,
-        domain: inserted.domain,
-        university: inserted.university,
-        createdAt: inserted.created_at,
-        isActive: inserted.is_active
-      }
+      const inserted = await query`
+        INSERT INTO whitelisted_domains (domain, university, is_active)
+        VALUES (${formattedDomain}, ${university}, true)
+        RETURNING id, domain, university, created_at, is_active
+      `
+      const row = inserted.rows[0]
+      const newDomain = { id: row.id, domain: row.domain, university: row.university, createdAt: row.created_at, isActive: row.is_active }
 
       return NextResponse.json({ domain: newDomain })
     }
@@ -62,19 +56,14 @@ export async function POST(request: NextRequest) {
       // Update existing domain
       const formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
       
-      await postgrest.put('whitelisted_domains', {
-        domain: formattedDomain,
-        university
-      }, { id: domainId as any })
+      await query`UPDATE whitelisted_domains SET domain = ${formattedDomain}, university = ${university} WHERE id = ${domainId}`
 
       return NextResponse.json({ success: true })
     }
 
     if (action === 'toggle') {
       // Toggle domain status
-      await postgrest.put('whitelisted_domains', {
-        is_active: Boolean(isActive)
-      }, { id: domainId as any })
+      await query`UPDATE whitelisted_domains SET is_active = ${Boolean(isActive)} WHERE id = ${domainId}`
 
       return NextResponse.json({ success: true })
     }
@@ -101,7 +90,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Domain ID required' }, { status: 400 })
     }
 
-    await postgrest.delete('whitelisted_domains', { id: domainId as any })
+    await query`DELETE FROM whitelisted_domains WHERE id = ${domainId}`
 
     return NextResponse.json({ success: true })
   } catch (error) {

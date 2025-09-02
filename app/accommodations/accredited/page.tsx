@@ -6,31 +6,39 @@ import SearchBar from "@/components/SearchBar"
 import TabFilter from "@/components/TabFilter"
 import AdvancedFilters from "@/components/AdvancedFilters"
 import SkeletonCard from "@/components/SkeletonCard"
-import { accommodations } from "@/lib/data"
+import { fetchAccommodationsByStatus } from "@/lib/repos/accommodations"
 import { SlidersHorizontal } from "lucide-react"
 
 export default function AccreditedAccommodations() {
-  const [filteredAccommodations, setFilteredAccommodations] = useState(accommodations)
+  const [allAccs, setAllAccs] = useState<any[]>([])
+  const [filteredAccommodations, setFilteredAccommodations] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "rating" | "reviews">("price-desc")
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setIsLoading(false), 1000)
-    return () => clearTimeout(timer)
+    const load = async () => {
+      try {
+        const accs = await fetchAccommodationsByStatus('accredited', 200)
+        setAllAccs(accs as any[])
+        setFilteredAccommodations(accs as any[])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const handleSort = (accommodations: typeof filteredAccommodations) => {
     const sorted = [...accommodations].sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
-          return a.price - b.price
+          return Number(a.price) - Number(b.price)
         case "price-desc":
-          return b.price - a.price
+          return Number(b.price) - Number(a.price)
         case "rating":
-          return b.rating - a.rating
+          return (b.rating ?? 0) - (a.rating ?? 0)
         case "reviews":
-          return b.reviewCount - a.reviewCount
+          return (b.review_count ?? 0) - (a.review_count ?? 0)
         default:
           return 0
       }
@@ -55,11 +63,11 @@ export default function AccreditedAccommodations() {
           <div className="flex items-center space-x-4 text-sm text-gray-600">
             <span className="flex items-center">
               <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-              {accommodations.filter((acc) => acc.isOpen).length} Available Now
+              {allAccs.filter((acc) => acc.is_open).length} Available Now
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
-              {accommodations.filter((acc) => acc.verified).length} Verified Properties
+              {allAccs.filter((acc) => acc.is_verified).length} Verified Properties
             </span>
           </div>
         </div>
@@ -68,13 +76,13 @@ export default function AccreditedAccommodations() {
         <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-lg">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1">
-              <SearchBar accommodations={accommodations} onFilter={setFilteredAccommodations} />
+              <SearchBar accommodations={allAccs} onFilter={setFilteredAccommodations} />
             </div>
-            <AdvancedFilters accommodations={accommodations} onFilter={setFilteredAccommodations} />
+            <AdvancedFilters accommodations={allAccs} onFilter={setFilteredAccommodations} />
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabFilter accommodations={accommodations} onFilter={setFilteredAccommodations} />
+            <TabFilter accommodations={allAccs} onFilter={setFilteredAccommodations} />
 
             <div className="flex items-center space-x-2">
               <SlidersHorizontal className="w-4 h-4 text-gray-600" />
@@ -95,7 +103,7 @@ export default function AccreditedAccommodations() {
         {/* Results Summary */}
         <div className="mb-6">
           <p className="text-white drop-shadow-lg">
-            Showing {sortedAccommodations.length} of {accommodations.length} accommodations
+            Showing {sortedAccommodations.length} of {allAccs.length} accommodations
           </p>
         </div>
 
@@ -108,8 +116,24 @@ export default function AccreditedAccommodations() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sortedAccommodations.map((accommodation) => (
-              <AccommodationCard key={accommodation.id} {...accommodation} />
+            {sortedAccommodations.map((acc) => (
+              <AccommodationCard
+                key={acc.id}
+                id={acc.id}
+                title={acc.name}
+                address={acc.address}
+                rating={acc.rating ?? 0}
+                reviewCount={acc.review_count ?? 0}
+                price={Number(acc.price) || 0}
+                isOpen={acc.is_open ?? true}
+                image={(acc.images && acc.images[0]) || "/placeholder.svg"}
+                amenities={acc.amenities || []}
+                distance={acc.distance || ""}
+                verified={acc.is_verified ?? false}
+                featured={acc.featured ?? false}
+                availableRooms={acc.available_rooms ?? 0}
+                totalRooms={acc.total_rooms ?? 0}
+              />
             ))}
           </div>
         )}

@@ -7,7 +7,7 @@ import { useState } from "react"
 import { formatZar } from "@/lib/utils"
 
 interface AccommodationCardProps {
-  id: number
+  id: string | number
   title: string
   address: string
   rating: number

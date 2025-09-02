@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { postgrest } from "@/lib/postgrest"
+import { query } from "@/lib/database"
 import { verifyToken } from "@/lib/stackauth"
 import { Sentry } from "@/lib/sentry"
 
@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const rows = await postgrest.get<any>('admin_settings', { select: 'key,value', limit: 1000 })
+    const rows = await query`SELECT key, value FROM admin_settings`
     const settings: any = {}
-    rows.forEach((row: { key: string, value: any }) => {
+    rows.rows.forEach((row: { key: string, value: any }) => {
       settings[row.key] = row.value
     })
 
@@ -35,8 +35,11 @@ export async function PUT(request: NextRequest) {
     }
 
     const { key, value } = await request.json()
-
-    await postgrest.post('admin_settings', { key, value }, { on_conflict: 'key' })
+    await query`
+      INSERT INTO admin_settings (key, value)
+      VALUES (${key}, ${value})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    `
 
     return NextResponse.json({ success: true })
   } catch (error) {

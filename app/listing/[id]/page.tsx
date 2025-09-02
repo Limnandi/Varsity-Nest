@@ -1,6 +1,6 @@
 "use client"
 import ImageCarousel from "@/components/ImageCarousel"
-import { postgrest } from "@/lib/postgrest"
+import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,14 +9,9 @@ import { MapPin, Bath, Wifi, Car } from "lucide-react"
 
 async function getListing(id: string) {
   try {
-    const row = await postgrest.single<any>('accommodations', { id }, { select: 'id,name,description,address,price_per_month,images,amenities,provider_id' })
+    const row = await fetchAccommodationByIdWithProvider(id)
     if (!row) return null
-    const provider = await postgrest.single<any>('users', { id: row.provider_id }, { select: 'name,email' })
-    return {
-      ...row,
-      provider_name: provider?.name,
-      provider_email: provider?.email
-    }
+    return row
   } catch (error) {
     console.error("Failed to fetch listing:", error)
     return null
@@ -74,7 +69,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
               <div className="md:col-span-1">
                 <Card className="sticky top-24">
                   <CardHeader>
-                    <CardTitle className="text-2xl">R{listing.price_per_month} / month</CardTitle>
+                    <CardTitle className="text-2xl">R{listing.price} / month</CardTitle>
                     <CardDescription>Contact provider for availability</CardDescription>
                   </CardHeader>
                   <CardContent>

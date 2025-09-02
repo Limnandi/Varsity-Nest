@@ -4,6 +4,7 @@ import { StackClientApp, StackServerApp } from "@stackframe/stack"
 let clientApp: InstanceType<typeof StackClientApp> | null = null
 let serverApp: InstanceType<typeof StackServerApp> | null = null
 
+//Design pattern: Singleton
 export function getStackClientApp() {
   if (!clientApp) {
     clientApp = new StackClientApp({
@@ -16,6 +17,7 @@ export function getStackClientApp() {
   return clientApp
 }
 
+//Design pattern: Singleton
 export function getStackServerApp() {
   if (!serverApp) {
     serverApp = new StackServerApp({

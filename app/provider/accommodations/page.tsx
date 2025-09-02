@@ -4,33 +4,69 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { getCurrentUser } from "@/lib/stackauth"
-import type { User } from "@/lib/definitions"
-import { accommodations } from "@/lib/data"
+import type { SessionUser } from "@/lib/stackauth"
+import { fetchAccommodationsByProvider } from "@/lib/repos/accommodations"
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
 import Link from "next/link"
 import { Building } from "lucide-react" // Import Building component
 import { formatZar } from "@/lib/utils"
 
 export default function ProviderAccommodations() {
-  const [user, setUser] = useState<User | null>(null)
-  const [userAccommodations, setUserAccommodations] = useState<typeof accommodations>([])
+  const [user, setUser] = useState<SessionUser | null>(null)
+  const [userAccommodations, setUserAccommodations] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadUser() {
       const currentUser = await getCurrentUser()
-      setUser(currentUser)
-      setUserAccommodations(
-        accommodations.filter((acc) => currentUser?.id.toString() === acc.id.toString().charAt(0))
-      )
+      setUser(currentUser) // TODO: fix this
+      if (currentUser) {
+        const accs = await fetchAccommodationsByProvider(currentUser.id, 200)
+        setUserAccommodations(accs)
+      }
       setIsLoading(false)
     }
     loadUser()
   }, [])
 
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this accommodation?")) {
+  const handleDelete = async (id: string | number) => {
+    if (!confirm("Are you sure you want to delete this accommodation?")) return
+    try {
+      const res = await fetch(`/api/accommodations/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
       setUserAccommodations((prev) => prev.filter((acc) => acc.id !== id))
+    } catch (e) {
+      alert('Failed to delete accommodation')
+    }
+  }
+
+  const handleToggleFeatured = async (id: string | number, next: boolean) => {
+    try {
+      const res = await fetch(`/api/accommodations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured: next })
+      })
+      if (!res.ok) throw new Error('Update failed')
+      const updated = await res.json()
+      setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { ...a, featured: updated.featured } : a)))
+    } catch (e) {
+      alert('Failed to update featured flag')
+    }
+  }
+
+  const handleUpdateRooms = async (id: string | number, available: number, total: number) => {
+    try {
+      const res = await fetch(`/api/accommodations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ available_rooms: available, total_rooms: total })
+      })
+      if (!res.ok) throw new Error('Update failed')
+      const updated = await res.json()
+      setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { ...a, available_rooms: updated.available_rooms, total_rooms: updated.total_rooms } : a)))
+    } catch (e) {
+      alert('Failed to update rooms')
     }
   }
 
@@ -72,22 +108,20 @@ export default function ProviderAccommodations() {
               {userAccommodations.map((accommodation) => (
                 <div key={accommodation.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
                   <div className="relative h-48">
-                    <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                      <span className="text-gray-500">Property Image</span>
-                    </div>
+                    <img src={(accommodation.images && accommodation.images[0]) || "/placeholder.svg"} alt="Property" className="w-full h-full object-cover" />
                     <div className="absolute top-3 right-3">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          accommodation.isOpen ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                          accommodation.is_open ? "bg-green-500 text-white" : "bg-red-500 text-white"
                         }`}
                       >
-                        {accommodation.isOpen ? "Available" : "Full"}
+                        {accommodation.is_open ? "Available" : "Full"}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-6">
-                    <h3 className="text-lg font-semibold mb-2">{accommodation.title}</h3>
+                    <h3 className="text-lg font-semibold mb-2">{accommodation.name}</h3>
 
                     <div className="flex items-center text-gray-600 text-sm mb-2">
                       <MapPin className="w-4 h-4 mr-1" />
@@ -97,7 +131,7 @@ export default function ProviderAccommodations() {
                     <div className="flex items-center text-gray-600 text-sm mb-3">
                       <Users className="w-4 h-4 mr-1" />
                       <span>
-                        {accommodation.availableRooms}/{accommodation.totalRooms} rooms available
+                        {accommodation.available_rooms ?? 0}/{accommodation.total_rooms ?? 0} rooms available
                       </span>
                     </div>
 
@@ -106,16 +140,29 @@ export default function ProviderAccommodations() {
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${i < accommodation.rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                            className={`w-4 h-4 ${i < (accommodation.rating ?? 0) ? "text-yellow-400 fill-current" : "text-gray-300"}`}
                           />
                         ))}
                       </div>
-                      <span className="ml-2 text-sm text-gray-600">({accommodation.reviewCount} reviews)</span>
+                      <span className="ml-2 text-sm text-gray-600">({accommodation.review_count ?? 0} reviews)</span>
                     </div>
 
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-bold text-green-600">{formatZar(accommodation.price)}</span>
+                      <span className="text-2xl font-bold text-green-600">{formatZar(Number(accommodation.price) || 0)}</span>
                       <span className="text-gray-500">/month</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 mb-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={Boolean(accommodation.featured)} onChange={(e) => handleToggleFeatured(accommodation.id, e.target.checked)} />
+                        Featured
+                      </label>
+                      <div className="flex items-center gap-2 text-sm">
+                        <input type="number" className="w-20 border rounded px-2 py-1" defaultValue={accommodation.available_rooms ?? 0} onBlur={(e) => handleUpdateRooms(accommodation.id, Number(e.target.value) || 0, Number(accommodation.total_rooms) || 0)} />
+                        /
+                        <input type="number" className="w-20 border rounded px-2 py-1" defaultValue={accommodation.total_rooms ?? 0} onBlur={(e) => handleUpdateRooms(accommodation.id, Number(accommodation.available_rooms) || 0, Number(e.target.value) || 0)} />
+                        rooms
+                      </div>
                     </div>
 
                     <div className="flex space-x-2">

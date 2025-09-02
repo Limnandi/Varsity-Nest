@@ -196,3 +196,19 @@ CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON reviews FOR EACH ROW E
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_reports_updated_at BEFORE UPDATE ON reports FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_admin_settings_updated_at BEFORE UPDATE ON admin_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- VarsityNest additions for production listing display parity with mock templates
+-- Add UI-facing fields to accommodations if they don't exist
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS area VARCHAR(100);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS distance TEXT;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS rating INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_open BOOLEAN DEFAULT true;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS available_rooms INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS total_rooms INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_accommodations_featured ON accommodations(featured) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_accommodations_created_at ON accommodations(created_at);

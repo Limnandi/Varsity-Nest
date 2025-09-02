@@ -48,13 +48,30 @@ export default function NewAccommodation() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const form = new FormData()
+      form.append("title", formData.title)
+      form.append("address", formData.address)
+      form.append("area", formData.area)
+      form.append("price", formData.price)
+      form.append("total_rooms", formData.totalRooms)
+      form.append("description", formData.description)
+      form.append("distance", formData.distance)
+      form.append("amenities", JSON.stringify(formData.amenities))
+      formData.images.forEach((file) => form.append("images", file))
 
-      alert("Accommodation added successfully!")
+      const res = await fetch("/api/accommodations", {
+        method: "POST",
+        body: form,
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || "Failed to add accommodation")
+      }
+
       router.push("/provider/accommodations")
     } catch (error) {
-      alert("Failed to add accommodation. Please try again.")
+      alert((error as Error).message || "Failed to add accommodation. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -221,6 +238,23 @@ export default function NewAccommodation() {
                     id="images"
                     onChange={(e) => {
                       const files = Array.from(e.target.files || [])
+                      const MAX_FILES = 10
+                      const MAX_SIZE = 10 * 1024 * 1024
+                      const ALLOWED = ['image/jpeg','image/png','image/webp']
+                      if (files.length > MAX_FILES) {
+                        alert(`Max ${MAX_FILES} images allowed`)
+                        return
+                      }
+                      for (const f of files) {
+                        if (!ALLOWED.includes(f.type)) {
+                          alert('Only JPEG, PNG, WEBP images allowed')
+                          return
+                        }
+                        if (f.size > MAX_SIZE) {
+                          alert('Each image must be <= 10MB')
+                          return
+                        }
+                      }
                       setFormData((prev) => ({ ...prev, images: files }))
                     }}
                   />

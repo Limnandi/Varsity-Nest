@@ -12,6 +12,7 @@ function getDatabaseUrl(): string {
   return process.env.DATABASE_URL
 }
 
+//Design pattern: Singleton
 export function getSQL() {
   if (!_sql) {
     _sql = neon(getDatabaseUrl())
@@ -19,6 +20,7 @@ export function getSQL() {
   return _sql
 }
 
+//Design pattern: Singleton
 export function getDB() {
   if (!_db) {
     _db = drizzle(getSQL(), { schema })

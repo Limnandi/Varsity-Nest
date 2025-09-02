@@ -109,6 +109,7 @@ export const reducer = (state: StateType, action: Action): StateType => {
   }
 }
 
+//Design pattern: Observer
 const listeners: Array<(state: StateType) => void> = []
 
 let memoryState: StateType = { toasts: [] }

@@ -9,10 +9,7 @@
     "lint": "next lint",
     "build:scripts": "tsc --project tsconfig.scripts.json",
     "setup-db": "pnpm run build:scripts && node dist/scripts/setup-db.js",
-    "postgrest:start": "docker-compose up postgrest -d",
-    "postgrest:stop": "docker-compose stop postgrest",
-    "postgrest:logs": "docker-compose logs postgrest",
-    "db:setup-roles": "psql $DATABASE_URL -f scripts/setup-postgrest-roles.sql"
+    
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",

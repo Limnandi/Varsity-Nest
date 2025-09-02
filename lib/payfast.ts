@@ -68,6 +68,7 @@ export function generatePayFastSignature(data: PayFastData, passphrase?: string)
   return crypto.createHash("md5").update(paramString).digest("hex")
 }
 
+//Design pattern: Adapter
 export function createPayFastPayment(
   amount: number,
   userEmail: string,

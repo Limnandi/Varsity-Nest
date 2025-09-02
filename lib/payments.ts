@@ -26,7 +26,8 @@ export interface Subscription {
   interval: "month" | "year"
 }
 
-// Mock payment service - in production, integrate with Stripe
+// Mock payment service - in production, integrate with Payfast
+// Reckon Design pattern: Strategy
 export class PaymentService {
   static async createPaymentIntent(amount: number, currency = "ZAR"): Promise<PaymentIntent> {
     // Simulate API call

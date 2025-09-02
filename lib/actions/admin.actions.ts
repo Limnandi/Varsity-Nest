@@ -1,6 +1,6 @@
 "use server"
 
-import { postgrest } from "../../lib/postgrest"
+import { query } from "@/lib/database"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getSession } from "@/lib/stackauth"
@@ -17,7 +17,8 @@ export type PlatformSettings = z.infer<typeof SettingsSchema>
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {
   try {
-    const row = await postgrest.single<any>('admin_settings', { id: 1 as any }, { select: 'maintenance_mode,registration_enabled,payments_enabled' })
+    const res = await query`SELECT maintenance_mode, registration_enabled, payments_enabled FROM admin_settings WHERE id = 1`
+    const row = res.rows?.[0]
     if (!row) {
       throw new Error("admin_settings not found. Please run the migration/seed script.")
     }
@@ -47,7 +48,7 @@ export async function updateProductionMode(isProduction: boolean) {
     const currentSettings = await getPlatformSettings()
     const newSettings = { ...currentSettings, production_mode: isProduction }
 
-    await postgrest.put('admin_settings', { maintenance_mode: !isProduction }, { id: 1 as any })
+    await query`UPDATE admin_settings SET maintenance_mode = ${!isProduction} WHERE id = 1`
     revalidatePath("/admin/dashboard")
     return { success: true, message: `Production mode set to ${isProduction ? "ON" : "OFF"}.` }
   } catch (error) {

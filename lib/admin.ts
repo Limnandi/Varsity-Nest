@@ -6,11 +6,11 @@ if (typeof window !== 'undefined') {
   )
 }
 
-import { postgrest } from "./postgrest"
+import { query } from "./database"
 
 export async function approveProvider(providerId: string) {
   try {
-    await postgrest.put('providers', { is_verified: true, is_active: true }, { id: providerId as any })
+    await query`UPDATE providers SET is_verified = true, is_active = true WHERE id = ${providerId}`
     return { success: true }
   } catch (error) {
     console.error("Failed to approve provider:", error)
@@ -20,7 +20,7 @@ export async function approveProvider(providerId: string) {
 
 export async function rejectProvider(providerId: string) {
   try {
-    await postgrest.put('providers', { is_active: false, rejection_reason: 'Manual rejection by admin' }, { id: providerId as any })
+    await query`UPDATE providers SET is_active = false, rejection_reason = 'Manual rejection by admin' WHERE id = ${providerId}`
     return { success: true }
   } catch (error) {
     console.error("Failed to reject provider:", error)
@@ -30,8 +30,8 @@ export async function rejectProvider(providerId: string) {
 
 export async function viewProviderDocuments(providerId: string) {
   try {
-    const row = await postgrest.single<any>('providers', { id: providerId as any }, { select: 'documents' })
-    return row?.documents || []
+    const res = await query`SELECT documents FROM providers WHERE id = ${providerId} LIMIT 1`
+    return res.rows?.[0]?.documents || []
   } catch (error) {
     console.error("Failed to fetch provider documents:", error)
     return []
@@ -40,21 +40,13 @@ export async function viewProviderDocuments(providerId: string) {
 
 export async function getDashboardStats() {
   try {
-    const [totalAccommodations, totalProviders, totalViews, totalRevenue, totalAccommodations30, totalProviders30, totalViews30, totalRevenue30] = await Promise.all([
-      postgrest.count('accommodations'),
-      postgrest.count('accommodations', { provider_id: 'is.not.null' }),
-      (async () => {
-        const rows = await postgrest.get<any>('accommodations', { select: 'view_count', limit: 1000 })
-        return rows.reduce((sum: number, r: any) => sum + (Number(r.view_count) || 0), 0)
-      })(),
-      0,
-      postgrest.count('accommodations', { created_at: `gte.${new Date(Date.now() - 30*24*60*60*1000).toISOString()}` }),
-      postgrest.count('accommodations', { provider_id: 'is.not.null', created_at: `gte.${new Date(Date.now() - 30*24*60*60*1000).toISOString()}` }),
-      (async () => {
-        const rows = await postgrest.get<any>('accommodations', { select: 'view_count', filter: { created_at: `gte.${new Date(Date.now() - 30*24*60*60*1000).toISOString()}` }, limit: 1000 })
-        return rows.reduce((sum: number, r: any) => sum + (Number(r.view_count) || 0), 0)
-      })(),
-      0
+    const [totalAccommodations, totalProviders, totalRevenue, totalAccommodations30, totalProviders30, totalRevenue30] = await Promise.all([
+      (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM accommodations`).rows[0].c))(),
+      (async () => Number.parseInt((await query`SELECT COUNT(DISTINCT provider_id) AS c FROM accommodations WHERE provider_id IS NOT NULL`).rows[0].c))(),
+      Promise.resolve(0),
+      (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM accommodations WHERE created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))(),
+      (async () => Number.parseInt((await query`SELECT COUNT(DISTINCT provider_id) AS c FROM accommodations WHERE provider_id IS NOT NULL AND created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))(),
+      Promise.resolve(0)
     ])
 
     return {
@@ -114,8 +106,8 @@ interface PendingApproval {
 
 export async function getRecentActivity(): Promise<Activity[]> {
   try {
-    const rows = await postgrest.get<Activity>('admin_activities', { select: 'id,activity_type,message,created_at', order: 'created_at.desc', limit: 5 })
-    return rows.map((row: any) => ({ id: row.id, type: row.activity_type, message: row.message, time: formatTimeAgo(row.created_at) }))
+    const res = await query`SELECT id, activity_type, message, created_at FROM admin_activities ORDER BY created_at DESC LIMIT 5`
+    return res.rows.map((row: any) => ({ id: row.id, type: row.activity_type, message: row.message, time: formatTimeAgo(row.created_at) }))
   } catch (error) {
     console.error("Failed to get recent activity:", error)
     return []
@@ -124,9 +116,8 @@ export async function getRecentActivity(): Promise<Activity[]> {
 
 export async function getPendingApprovals() {
   try {
-    // Simplified: fetch pending providers only (no join) due to PostgREST limitations without views
-    const rows = await postgrest.get<any>('providers', { select: 'id,business_name,registration_status', filter: { registration_status: 'eq.pending' }, limit: 100 })
-    return rows.map((r: any) => ({ id: r.id, type: 'provider', title: r.business_name, provider: r.business_name, status: 'pending' as const }))
+    const res = await query`SELECT id, business_name, registration_status FROM providers WHERE registration_status = 'pending' LIMIT 100`
+    return res.rows.map((r: any) => ({ id: r.id, type: 'provider', title: r.business_name, provider: r.business_name, status: 'pending' as const }))
   } catch (error) {
     console.error("Failed to get pending approvals:", error)
     return []
