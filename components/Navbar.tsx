@@ -62,7 +62,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center space-x-3 group">
             <div className="relative">
               <Image
-                src="/logo.png"
+                src="/images/varsity-nest-logo.png"
                 alt="Varsity Nest Logo"
                 width={40}
                 height={40}

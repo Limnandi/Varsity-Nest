@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Layout from "@/components/Layout"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { StackProvider } from "@stackframe/stack"
 import { getStackServerApp } from "@/lib/stack"
 
@@ -21,7 +22,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <StackProvider app={getStackServerApp()}>
-          <Layout>{children}</Layout>
+          <TooltipProvider>
+            <Layout>{children}</Layout>
+          </TooltipProvider>
         </StackProvider>
       </body>
     </html>
