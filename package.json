@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "build:scripts": "tsc --project tsconfig.scripts.json",
-    "setup-db": "pnpm run build:scripts && node dist/scripts/setup-db.js",
+    "setup-db": "pnpm run build:scripts && node dist/scripts/setup-db.js"
     
   },
   "dependencies": {
