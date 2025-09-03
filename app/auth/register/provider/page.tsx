@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useStackApp } from "@stackframe/stack"
+import { useStackApp, useUser } from "@stackframe/stack"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X } from "lucide-react"
 
@@ -14,6 +14,7 @@ export default function ProviderRegistrationPage() {
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
   const app = useStackApp()
+  const user = useUser({ or: 'return-null' })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -40,6 +41,13 @@ export default function ProviderRegistrationPage() {
 
       // Client-side sign-up with StackAuth
       await app.signUpWithCredential({ email, password })
+      // Set Stack display name from first/last name
+      try {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+        if (fullName) {
+          await user?.update({ displayName: fullName })
+        }
+      } catch {}
 
       // Build multipart form for server registration (DB + docs)
       const payload = new FormData()

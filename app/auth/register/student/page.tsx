@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useStackApp } from "@stackframe/stack"
+import { useStackApp, useUser } from "@stackframe/stack"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
 
@@ -11,6 +11,7 @@ export default function StudentRegistrationPage() {
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
   const app = useStackApp()
+  const user = useUser({ or: 'return-null' })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -29,10 +30,11 @@ export default function StudentRegistrationPage() {
       }
 
       await app.signUpWithCredential({ email, password })
+      // Set Stack display name after signup
       try {
-        await app.updateCurrentUser({ clientMetadata: { role: 'student', displayName: name } })
+        await user?.update({ displayName: name })
       } catch {}
-      // Optional: set display name metadata via server later
+      // Role is persisted in our DB; display name set on Stack profile
       setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {
       setState({ 
