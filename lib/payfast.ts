@@ -149,6 +149,35 @@ export function verifyPayFastSignature(data: any, signature: string): boolean {
   }
 }
 
+// Best-practice: Server-to-server ITN verification with PayFast
+// Docs: https://developers.payfast.co.za/documentation/#itn-instant-transaction-notification
+export async function verifyPayFastITNWithServer(data: Record<string, string>, originalFieldOrder?: string[]): Promise<boolean> {
+  try {
+    // Build query string in the exact original order if provided, else sorted
+    const keys = Array.isArray(originalFieldOrder) && originalFieldOrder.length > 0
+      ? originalFieldOrder.filter((k) => k !== 'signature')
+      : Object.keys(data).sort()
+    const queryString = keys
+      .filter((k) => data[k] !== undefined && data[k] !== "" && k !== "signature")
+      .map((k) => `${k}=${encodeURIComponent(data[k])}`)
+      .join("&")
+
+    const host = process.env.NODE_ENV === 'production' ? 'www.payfast.co.za' : 'sandbox.payfast.co.za'
+
+    const resp = await fetch(`https://${host}/eng/query/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: queryString,
+    })
+
+    const text = (await resp.text()).trim().toLowerCase()
+    return text === 'valid'
+  } catch (error) {
+    console.error('ITN server verification error:', error)
+    return false
+  }
+}
+
 // Helper function to validate PayFast response
 export function validatePayFastResponse(data: any): {
   isValid: boolean

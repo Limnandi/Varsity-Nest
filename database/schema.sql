@@ -177,6 +177,35 @@ CREATE INDEX IF NOT EXISTS idx_reviews_accommodation ON reviews(accommodation_id
 CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 
+-- Provider subscription and billing columns
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'inactive' CHECK (subscription_status IN ('inactive','active','past_due','canceled'));
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS next_payment_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
+
+-- Payment transactions for gateway idempotency and audits
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    provider_id VARCHAR(255) REFERENCES providers(id) ON DELETE SET NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'ZAR',
+    m_payment_id VARCHAR(100) UNIQUE NOT NULL,
+    pf_payment_id VARCHAR(100),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'cancelled')),
+    payment_date TIMESTAMP WITH TIME ZONE,
+    gateway_response JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Helpful indexes for payment transactions
+CREATE INDEX IF NOT EXISTS idx_payment_txn_provider ON payment_transactions(provider_id);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_status ON payment_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_created_at ON payment_transactions(created_at);
+
+-- Trigger for updated_at on payment_transactions
+CREATE TRIGGER update_payment_transactions_updated_at BEFORE UPDATE ON payment_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

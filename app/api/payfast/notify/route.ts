@@ -1,25 +1,32 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verifyPayFastSignature, validatePayFastResponse } from "@/lib/payfast"
+import { verifyPayFastSignature, validatePayFastResponse, verifyPayFastITNWithServer } from "@/lib/payfast"
 import { Sentry } from "@/lib/sentry"
 import { query } from "@/lib/database"
 
 export async function POST(request: NextRequest) {
   try {
+    // Optional: IP allowlist (configure via env PAYFAST_IP_ALLOWLIST as comma-separated list)
+    const allowlist = (process.env.PAYFAST_IP_ALLOWLIST || "").split(",").map(s => s.trim()).filter(Boolean)
+    if (allowlist.length > 0) {
+      const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || (request as any).ip || ""
+      if (!allowlist.includes(ip)) {
+        console.error("Webhook IP not allowed", ip)
+        return new Response("FORBIDDEN", { status: 403, headers: { "Content-Type": "text/plain" } })
+      }
+    }
+
     const formData = await request.formData()
     const data: any = {}
+    const fieldOrder: string[] = []
 
     // Parse form data
     formData.forEach((value, key) => {
       data[key] = value.toString()
+      fieldOrder.push(key)
     })
 
-    // Log incoming webhook for debugging (remove in production)
-    console.log("PayFast webhook received:", {
-      paymentId: data.pf_payment_id,
-      status: data.payment_status,
-      amount: data.amount_gross,
-      timestamp: new Date().toISOString()
-    })
+    // Minimal logging to reduce sensitive data exposure
+    console.log("PayFast webhook received", data.pf_payment_id, data.payment_status)
 
     // Validate PayFast response structure
     const validation = validatePayFastResponse(data)
@@ -40,8 +47,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
-    // Optional: Verify source IP (best effort; PayFast publishes IP ranges)
-    // NOTE: In serverless, exact client IP can be tricky; skip or implement via middleware/proxy allow-list
+    // ITN server-to-server verification with PayFast (defense in depth)
+    const itnValid = await verifyPayFastITNWithServer(data, fieldOrder)
+    if (!itnValid) {
+      console.error("PayFast ITN server verification failed:", data.pf_payment_id)
+      return NextResponse.json({ error: "ITN verification failed" }, { status: 400 })
+    }
+
+    // Merchant safety: ensure webhook includes our merchant credentials
+    if (data.merchant_id !== process.env.PAYFAST_MERCHANT_ID) {
+      console.error('Merchant id mismatch in webhook', data.merchant_id)
+      return new Response("MERCHANT_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
+    }
 
     // Extract payment details
     const providerId = data.custom_str1
@@ -52,7 +69,7 @@ export async function POST(request: NextRequest) {
     const paymentDate = new Date()
 
     // Fetch the pending transaction to verify amount and existence (idempotency)
-    const pendingRes = await query`SELECT amount FROM payment_transactions WHERE m_payment_id = ${merchantPaymentId} LIMIT 1`
+    const pendingRes = await query`SELECT amount, provider_id FROM payment_transactions WHERE m_payment_id = ${merchantPaymentId} LIMIT 1`
     const pending = pendingRes.rows?.[0]
 
     if (!pending) {
@@ -60,10 +77,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 400 })
     }
 
-    // Strict amount check
+    // Strict provider and amount checks
+    if (pending.provider_id && String(pending.provider_id) !== String(providerId)) {
+      console.error("Provider mismatch:", { expected: pending.provider_id, got: providerId, merchantPaymentId })
+      return new Response("PROVIDER_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
+    }
+
     if (Number.parseFloat(pending.amount) !== amount) {
       console.error("Amount mismatch:", { expected: pending.amount, got: amount, merchantPaymentId })
-      return NextResponse.json({ error: "Amount mismatch" }, { status: 400 })
+      return new Response("AMOUNT_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
     }
 
     // Process payment based on status
@@ -88,15 +110,15 @@ export async function POST(request: NextRequest) {
         console.warn("Unknown payment status:", status, "for payment:", transactionId)
     }
 
-    // Return success to PayFast (important to prevent retries)
-    return NextResponse.json({ success: true })
+    // Return success to PayFast in plain text as per recommendations
+    return new Response("OK", { status: 200, headers: { "Content-Type": "text/plain" } })
 
   } catch (error) {
     Sentry.captureException(error)
     console.error("PayFast notification error:", error)
     
     // Return 500 to trigger PayFast retry mechanism
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return new Response("ERROR", { status: 500, headers: { "Content-Type": "text/plain" } })
   }
 }
 

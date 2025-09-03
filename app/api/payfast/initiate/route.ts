@@ -2,14 +2,21 @@ import { NextResponse } from "next/server"
 import { createPayFastPayment } from "@/lib/payfast"
 import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 import { query } from "@/lib/database"
+import { getSession } from "@/lib/stackauth"
 
 export async function POST(request: Request) {
   try {
+    // Enforce authenticated provider and bind providerId server-side
+    const session = await getSession()
+    if (!session || session.user.role !== 'provider') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await request.json()
 
-    const { amount, userEmail, userName, itemName, customData } = body || {}
+    const { amount, itemName, customData } = body || {}
 
-    if (!userEmail || !userName || !itemName) {
+    if (!itemName) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -31,16 +38,30 @@ export async function POST(request: Request) {
       parsedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
     }
 
+    // Resolve provider id from session to prevent client tampering
+    const providerRow = await query`
+      SELECT id, contact_email, contact_person FROM providers WHERE user_id = ${session.user.id} LIMIT 1
+    `
+    const providerId: string | null = providerRow.rows?.[0]?.id ?? null
+
+    if (!providerId) {
+      return NextResponse.json({ error: "Provider account not found" }, { status: 403 })
+    }
+
     // Create signed payload (server-generated m_payment_id)
     const serverCustomData = {
       ...customData,
+      providerId,
       paymentId: `vn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     }
 
+    const effectiveEmail = providerRow.rows?.[0]?.contact_email || session.user.email
+    const effectiveName = providerRow.rows?.[0]?.contact_person || session.user.name || 'Provider'
+
     const paymentData = createPayFastPayment(
       parsedAmount,
-      userEmail,
-      userName,
+      effectiveEmail,
+      effectiveName,
       itemName,
       serverCustomData
     )
@@ -49,7 +70,7 @@ export async function POST(request: Request) {
     try {
       await query`
         INSERT INTO payment_transactions (provider_id, amount, currency, m_payment_id, status, payment_date, gateway_response)
-        VALUES (${serverCustomData?.providerId ?? null}, ${parsedAmount}, 'ZAR', ${paymentData.m_payment_id}, 'pending', ${new Date().toISOString()}, ${JSON.stringify({ initiated_at: new Date().toISOString() })}::jsonb)
+        VALUES (${providerId}, ${parsedAmount}, 'ZAR', ${paymentData.m_payment_id}, 'pending', ${new Date().toISOString()}, ${JSON.stringify({ initiated_at: new Date().toISOString() })}::jsonb)
         ON CONFLICT (m_payment_id) DO NOTHING
       `
     } catch (e) {
