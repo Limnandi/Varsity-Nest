@@ -182,6 +182,12 @@ CREATE INDEX IF NOT EXISTS idx_reviews_accommodation ON reviews(accommodation_id
 CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 
+-- Webhook events for idempotency
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Provider subscription and billing columns
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'inactive' CHECK (subscription_status IN ('inactive','active','past_due','canceled'));
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMP WITH TIME ZONE;

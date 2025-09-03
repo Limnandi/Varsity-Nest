@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/database"
-import { getStackServerApp } from "@/lib/stack"
 import { uploadDocument } from "@/lib/cloudinary"
 
 export async function POST(request: NextRequest) {
@@ -8,28 +7,22 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type') || ''
 
     if (contentType.includes('multipart/form-data')) {
-      // Provider registration with documents
+      // Provider registration documents and DB linkage after client StackAuth signup
       const form = await request.formData()
       const email = String(form.get('email') || '')
-      const password = String(form.get('password') || '')
       const firstName = String(form.get('firstName') || '')
       const lastName = String(form.get('lastName') || '')
       const phone = String(form.get('phone') || '')
       const institution = String(form.get('institution') || '')
 
-      if (!email || !password || !firstName || !lastName) {
+      if (!email || !firstName || !lastName) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
       }
 
-      // Create StackAuth user
-      const app = getStackServerApp()
-      // Create StackAuth user (role metadata can be set client-side post-verification)
-      await app.signUpWithCredential({ email, password })
-
-      // Create DB user and provider
+      // Create/ensure DB user and provider
       const userRes = await query`
         INSERT INTO users (email, password, first_name, last_name, role, phone, email_verified, is_active)
-        VALUES (${email}, ${'stackauth'}, ${firstName}, ${lastName}, 'provider', ${phone || null}, true, true)
+        VALUES (${email}, ${'stackauth'}, ${firstName}, ${lastName}, 'provider', ${phone || null}, false, true)
         ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
         RETURNING id
       `
@@ -58,16 +51,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
     }
 
-    // Fallback: simple JSON registration (students/admins)
-    const body = await request.json()
-    const { email, password, firstName, lastName, role } = body
-    if (!email || !password || !firstName || !lastName || !role) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-    const app = getStackServerApp()
-    await app.signUpWithCredential({ email, password })
-
-    return NextResponse.json({ success: true }, { status: 201 })
+    // Unsupported content type to avoid server-side StackAuth sign-up
+    return NextResponse.json({ error: 'Unsupported content type' }, { status: 415 })
 
   } catch (error) {
     console.error("Registration error:", error)

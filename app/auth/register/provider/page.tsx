@@ -38,10 +38,12 @@ export default function ProviderRegistrationPage() {
         throw new Error('Please upload 1-2 documents (PDF or images)')
       }
 
-      // Build multipart form for server registration (StackAuth + DB + docs)
+      // Client-side sign-up with StackAuth
+      await app.signUpWithCredential({ email, password })
+
+      // Build multipart form for server registration (DB + docs)
       const payload = new FormData()
       payload.set('email', email)
-      payload.set('password', password)
       payload.set('firstName', firstName)
       payload.set('lastName', lastName)
       payload.set('phone', phone)
