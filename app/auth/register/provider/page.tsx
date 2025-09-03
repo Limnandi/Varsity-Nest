@@ -25,15 +25,38 @@ export default function ProviderRegistrationPage() {
       const email = String(form.get('email') || '')
       const password = String(form.get('password') || '')
       const confirmPassword = String(form.get('confirmPassword') || '')
+      const firstName = String(form.get('firstName') || '')
+      const lastName = String(form.get('lastName') || '')
+      const phone = String(form.get('phone') || '')
+      const institution = String(form.get('institution') || '')
 
       if (password !== confirmPassword) {
         throw new Error('Passwords do not match')
       }
 
-      await app.signUpWithCredential({ email, password })
-      try {
-        await app.updateCurrentUser({ clientMetadata: { role: 'provider' } })
-      } catch {}
+      if (uploadedFiles.length < 1 || uploadedFiles.length > 2) {
+        throw new Error('Please upload 1-2 documents (PDF or images)')
+      }
+
+      // Build multipart form for server registration (StackAuth + DB + docs)
+      const payload = new FormData()
+      payload.set('email', email)
+      payload.set('password', password)
+      payload.set('firstName', firstName)
+      payload.set('lastName', lastName)
+      payload.set('phone', phone)
+      payload.set('institution', institution)
+      for (const f of uploadedFiles) payload.append('documents', f)
+
+      const resp = await fetch('/api/auth/register', {
+        method: 'POST',
+        body: payload,
+      })
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}))
+        throw new Error(j.error || 'Registration failed')
+      }
+
       setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {
       setState({ 

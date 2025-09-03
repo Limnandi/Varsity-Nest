@@ -163,6 +163,11 @@ ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS registration_status VARCHAR(20) DEFAULT 'pending' CHECK (registration_status IN ('pending', 'approved', 'rejected'));
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]';
+-- Seed compatibility and richer provider metadata
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS province VARCHAR(100);
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20);
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS accreditation_status VARCHAR(30) DEFAULT 'pending' CHECK (accreditation_status IN ('accredited','provisionally_accredited','non_accredited','pending'));
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -237,6 +242,12 @@ ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT fal
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS available_rooms INTEGER DEFAULT 0;
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS total_rooms INTEGER DEFAULT 0;
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+-- Seed compatibility: extra fields referenced by seeding scripts
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS province VARCHAR(100);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS accommodation_type VARCHAR(50);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS price_per_month DECIMAL(10,2);
 
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_accommodations_featured ON accommodations(featured) WHERE is_active = true;

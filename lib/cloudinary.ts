@@ -46,3 +46,30 @@ export async function deleteImage(publicId: string) {
     throw new Error("Failed to delete image")
   }
 }
+
+export async function uploadDocument(file: File, folder = "varsity-nest/documents") {
+  try {
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder,
+            resource_type: "raw",
+            use_filename: true,
+            unique_filename: true,
+            overwrite: false,
+          },
+          (error, result) => {
+            if (error) reject(error)
+            else resolve(result)
+          },
+        )
+        .end(buffer)
+    })
+  } catch (error) {
+    throw new Error("Failed to upload document")
+  }
+}
