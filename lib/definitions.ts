@@ -1,18 +1,25 @@
 export interface User {
   id: string
   email: string
-  name: string
+  password: string
+  firstName: string
+  lastName: string
   role: "admin" | "provider" | "student"
-  isVerified: boolean
-  isActive: boolean
-  createdAt: Date
-  updatedAt?: Date
-  firstName?: string
-  lastName?: string
   phone?: string
   studentNumber?: string
   institution?: string
+  isActive: boolean
+  emailVerified: boolean
+  createdAt: Date
+  updatedAt: Date
+  // Computed field for backward compatibility
+  name?: string
+  // Student-specific fields (from students table)
   university?: "UFS" | "CUT"
+  yearOfStudy?: number
+  course?: string
+  emergencyContactName?: string
+  emergencyContactPhone?: string
 }
 
 export interface SessionPayload {

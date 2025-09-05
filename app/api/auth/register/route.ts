@@ -19,14 +19,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
       }
 
-      // Create/ensure DB user and provider
+      // Get existing user (created by webhook) and update with additional info
       const userRes = await query`
-        INSERT INTO users (email, password, first_name, last_name, role, phone, email_verified, is_active)
-        VALUES (${email}, ${'stackauth'}, ${firstName}, ${lastName}, 'provider', ${phone || null}, false, true)
-        ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
-        RETURNING id
+        SELECT id FROM users WHERE email = ${email}
       `
-      const userId = userRes.rows?.[0]?.id
+      
+      if (userRes.rows.length === 0) {
+        return NextResponse.json({ error: 'User not found. Please complete registration first.' }, { status: 404 })
+      }
+      
+      const userId = userRes.rows[0].id
+      
+      // Update user with additional provider info
+      await query`
+        UPDATE users 
+        SET first_name = ${firstName}, last_name = ${lastName}, phone = ${phone || null}, updated_at = NOW()
+        WHERE id = ${userId}
+      `
 
       const providerRes = await query`
         INSERT INTO providers (user_id, business_name, contact_person, contact_email, contact_phone, address, registration_status)

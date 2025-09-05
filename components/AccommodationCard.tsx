@@ -46,7 +46,7 @@ export default function AccommodationCard({
     <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
       <div className="relative h-48 overflow-hidden">
         <Image
-          src={image || "/placeholder.svg"}
+          src={image || "/placeholder.jpg"}
           alt={title}
           fill
           className={`object-cover transition-all duration-300 group-hover:scale-105 ${

@@ -19,7 +19,7 @@ export default function ProviderAccommodations() {
   useEffect(() => {
     async function loadUser() {
       const currentUser = await getCurrentUser()
-      setUser(currentUser) // TODO: fix this
+      setUser(currentUser)
       if (currentUser) {
         const accs = await fetchAccommodationsByProvider(currentUser.id, 200)
         setUserAccommodations(accs)
@@ -108,7 +108,7 @@ export default function ProviderAccommodations() {
               {userAccommodations.map((accommodation) => (
                 <div key={accommodation.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
                   <div className="relative h-48">
-                    <img src={(accommodation.images && accommodation.images[0]) || "/placeholder.svg"} alt="Property" className="w-full h-full object-cover" />
+                    <img src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} alt="Property" className="w-full h-full object-cover" />
                     <div className="absolute top-3 right-3">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${

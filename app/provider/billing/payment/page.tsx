@@ -17,46 +17,21 @@ export default function PaymentPage() {
     // Fetch user session
     const checkSession = async () => {
       try {
-        // Temporarily disable session checking to stop the infinite loop
-        // TODO: Re-enable this once we have proper session management
-        console.log("Provider billing: Session checking temporarily disabled")
-        
-        // For now, just use mock data
-        setUser({
-          id: "temp-provider-id",
-          user_id: "temp-provider-id",
-          business_name: "Provider Business",
-          contact_person: "Provider",
-          contact_email: "provider@example.com",
-          contact_phone: "+27123456789",
-          address: "123 Provider Street",
-          is_verified: true,
-          is_active: true,
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-        
-        /* 
-        // Original code - commented out temporarily
         const response = await fetch("/api/auth/session")
         if (response.ok) {
           const sessionData = await response.json()
-          // Mock provider data for now - replace with actual API call
-          setUser({
-            id: sessionData.userId,
-            user_id: sessionData.userId,
-            business_name: "Provider Business",
-            contact_person: sessionData.name || "Provider",
-            contact_email: sessionData.email,
-            contact_phone: "+27123456789",
-            address: "123 Provider Street",
-            is_verified: true,
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date()
-          })
+          
+          // Fetch provider data from database
+          const providerResponse = await fetch(`/api/providers/${sessionData.userId}`)
+          if (providerResponse.ok) {
+            const providerData = await providerResponse.json()
+            setUser(providerData)
+          } else {
+            throw new Error("Failed to fetch provider data")
+          }
+        } else {
+          throw new Error("Authentication required")
         }
-        */
       } catch (error) {
         console.error("Session check failed:", error)
       } finally {

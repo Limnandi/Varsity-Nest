@@ -192,57 +192,6 @@ export class StudentAuthService {
     }
   }
 
-  // 🚨 DEMO OTP (Keep for testing)
-  static async sendOTP(
-    email: string,
-    type: "registration" | "password_reset" = "registration",
-  ): Promise<{ success: boolean; hashedOTP?: string; error?: string }> {
-    const { isValid, university } = this.isEmailWhitelisted(email)
-
-    if (!isValid) {
-      return { success: false, error: "Email domain not whitelisted for student access" }
-    }
-
-    // For password reset, check if user exists
-    if (type === "password_reset") {
-      const students = this.getStudents()
-      const existingStudent = students.find((s) => s.email === email)
-      if (!existingStudent) {
-        return { success: false, error: "No account found with this email address" }
-      }
-      if (existingStudent.isBlocked) {
-        return { success: false, error: "Your account has been suspended. Please contact support." }
-      }
-    }
-
-    // Generate and hash OTP
-    const otp = this.generateOTP()
-    const hashedOTP = this.hashOTP(otp)
-
-    // 🚨 DEMO MODE - Just a timeout, no real email!
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Store OTP verification data
-    const verification: OTPVerification = {
-      email,
-      otp: hashedOTP,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
-      attempts: 0,
-      type,
-    }
-
-    localStorage.setItem(`otp_${email}`, JSON.stringify(verification))
-
-    // 🚨 DEMO ONLY - In development, log the actual OTP to console
-    console.log(`🔥 DEMO OTP for ${email} (${type}): ${otp} (Hashed: ${hashedOTP})`)
-
-    // 🚨 DEMO ALERT - Show OTP in browser for testing
-    if (typeof window !== "undefined") {
-      alert(`DEMO MODE: Your OTP is ${otp}\n\nIn production, this would be sent to your email.`)
-    }
-
-    return { success: true, hashedOTP }
-  }
 
   static async verifyOTP(email: string, inputOTP: string): Promise<{ success: boolean; error?: string }> {
     const stored = localStorage.getItem(`otp_${email}`)

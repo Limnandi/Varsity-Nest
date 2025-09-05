@@ -35,7 +35,7 @@ export default async function Home() {
                 reviewCount={acc.review_count ?? 0}
                 price={Number(acc.price) || 0}
                 isOpen={acc.is_open ?? true}
-                image={(acc.images && acc.images[0]) || "/placeholder.svg"}
+                image={(acc.images && acc.images[0]) || "/placeholder.jpg"}
                 amenities={acc.amenities || []}
                 distance={acc.distance || ""}
                 verified={acc.is_verified ?? false}

@@ -41,8 +41,22 @@ export async function POST(request: NextRequest) {
       case 'user.created': {
         const { id, primaryEmail, firstName, lastName } = event.data || {}
         if (primaryEmail) {
+          // Determine role based on email domain and admin emails
+          let role = 'student' // default for student domains
+          
+          // Check if it's an admin email
+          const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+          if (adminEmails.includes(primaryEmail.toLowerCase())) {
+            role = 'admin'
+          }
+          // Check if it's a provider email (non-student domain)
+          else if (!primaryEmail.includes('@ufs4life.ac.za') && !primaryEmail.includes('@cut.ac.za')) {
+            role = 'provider'
+          }
+          // Student domains (@ufs4life.ac.za, @cut.ac.za) get 'student' role by default
+          
           await query`INSERT INTO users (email, password, first_name, last_name, role, email_verified, is_active)
-            VALUES (${primaryEmail}, ${'stackauth'}, ${firstName || ''}, ${lastName || ''}, 'student', false, true)
+            VALUES (${primaryEmail}, ${'stackauth'}, ${firstName || ''}, ${lastName || ''}, ${role}, false, true)
             ON CONFLICT (email) DO NOTHING`
         }
         break

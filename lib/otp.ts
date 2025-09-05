@@ -77,7 +77,7 @@ export async function sendOTP(
     `
 
     await resend.emails.send({
-      from: "Varsity Nest <no-reply@varsitynest.space>", // TODO: Replace with verified domain email for production
+      from: "Varsity Nest <noreply@varsitynest.space>",
       to: [email],
       subject,
       html,

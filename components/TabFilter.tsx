@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { Accommodation } from "@/lib/data"
+import type { Accommodation } from "@/lib/types"
 
 interface TabFilterProps {
   accommodations: Accommodation[]

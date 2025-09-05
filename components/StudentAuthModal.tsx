@@ -33,7 +33,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
 
     try {
       if (mode === "forgot") {
-        // Password reset flow - USE REAL EMAILS! 🔥
+        // Password reset flow
         const result = await StudentAuthService.sendRealOTP(email, "password_reset")
         if (result.success) {
           setHashedOTP(result.hashedOTP!)
@@ -57,8 +57,8 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
             setError("No account found with this email. Please register first.")
             return
           }
-          // Send OTP for registration - USE REAL EMAILS! 🔥
-          const result = await StudentAuthService.sendRealOTP(email, "registration")
+                  // Send OTP for registration
+        const result = await StudentAuthService.sendRealOTP(email, "registration")
           if (result.success) {
             setHashedOTP(result.hashedOTP!)
             setStep("otp")

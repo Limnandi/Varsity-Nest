@@ -22,9 +22,9 @@ export default function ImageCarousel({ images = [] as string[] }) {
         className="flex transition-transform duration-300 ease-in-out h-full"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
-        {(images.length > 0 ? images : ["/placeholder.svg?height=400&width=600"]).map((image, index) => (
+        {(images.length > 0 ? images : ["/placeholder.jpg"]).map((image, index) => (
           <div key={index} className="w-full h-full flex-shrink-0 relative">
-            <Image src={image || "/placeholder.svg"} alt={`Listing image ${index + 1}`} fill className="object-cover" />
+            <Image src={image || "/placeholder.jpg"} alt={`Listing image ${index + 1}`} fill className="object-cover" />
           </div>
         ))}
       </div>
@@ -46,7 +46,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
 
       {/* Slide Indicators */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {(images.length > 0 ? images : ["/placeholder.svg"]).map((_, index) => (
+        {(images.length > 0 ? images : ["/placeholder.jpg"]).map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}

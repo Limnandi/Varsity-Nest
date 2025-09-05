@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Filter, X } from "lucide-react"
-import type { Accommodation } from "@/lib/data"
+import type { Accommodation } from "@/lib/types"
 
 interface AdvancedFiltersProps {
   accommodations: Accommodation[]

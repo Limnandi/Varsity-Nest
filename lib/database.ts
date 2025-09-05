@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
+import bcrypt from "bcryptjs"
 
 let _sql: any;
 let _db: any;
@@ -96,31 +97,44 @@ export async function authenticateUser(email: string, password: string) {
   try {
     // First, get the user by email
     const userResult = await query`
-      SELECT id, email, password_hash, first_name, last_name, role, is_active
+      SELECT id, email, password_hash, first_name, last_name, role, is_active, email_verified, created_at, updated_at
       FROM users 
       WHERE email = ${email}
     `
     
     if (userResult.rows.length === 0) {
-      console.log("User not found:", email)
+      // Log security event for monitoring
+      console.warn(`Authentication attempt failed: User not found for email: ${email}`)
       return null
     }
     
     const user = userResult.rows[0]
     
-    // For now, we'll skip password verification since we removed bcrypt
-    // TODO: Re-implement password hashing when we have the proper setup
+    // Verify password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash)
+    if (!isPasswordValid) {
+      // Log security event for monitoring
+      console.warn(`Authentication attempt failed: Invalid password for email: ${email}`)
+      return null
+    }
+    
     if (!user.is_active) {
-      console.log("User account is inactive:", email)
+      // Log security event for monitoring
+      console.warn(`Authentication attempt failed: Inactive account for email: ${email}`)
       return null
     }
     
     return {
       id: user.id,
       email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
       name: `${user.first_name} ${user.last_name}`.trim(),
       role: user.role,
-      isActive: user.is_active
+      isActive: user.is_active,
+      emailVerified: user.email_verified || false,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
     }
   } catch (error) {
     console.error("Authentication error:", error)

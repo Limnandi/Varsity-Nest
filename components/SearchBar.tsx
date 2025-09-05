@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Search } from "lucide-react"
-import type { Accommodation } from "@/lib/data"
+import type { Accommodation } from "@/lib/types"
 
 interface SearchBarProps {
   accommodations: Accommodation[]
