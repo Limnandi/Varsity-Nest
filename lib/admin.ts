@@ -40,13 +40,15 @@ export async function viewProviderDocuments(providerId: string) {
 
 export async function getDashboardStats() {
   try {
-    const [totalAccommodations, totalProviders, totalRevenue, totalAccommodations30, totalProviders30, totalRevenue30] = await Promise.all([
+    const [totalAccommodations, totalProviders, totalRevenue, totalViews, totalAccommodations30, totalProviders30, totalRevenue30, totalViews30] = await Promise.all([
       (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM accommodations`).rows[0].c))(),
       (async () => Number.parseInt((await query`SELECT COUNT(DISTINCT provider_id) AS c FROM accommodations WHERE provider_id IS NOT NULL`).rows[0].c))(),
       Promise.resolve(0),
+      (async () => Number.parseInt((await query`SELECT COALESCE(SUM(view_count), 0) AS c FROM accommodations`).rows[0].c))(),
       (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM accommodations WHERE created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))(),
       (async () => Number.parseInt((await query`SELECT COUNT(DISTINCT provider_id) AS c FROM accommodations WHERE provider_id IS NOT NULL AND created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))(),
-      Promise.resolve(0)
+      Promise.resolve(0),
+      (async () => Number.parseInt((await query`SELECT COALESCE(SUM(view_count), 0) AS c FROM accommodations WHERE created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))()
     ])
 
     return {
