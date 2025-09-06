@@ -38,6 +38,84 @@ export async function viewProviderDocuments(providerId: string) {
   }
 }
 
+export async function getPendingProviders() {
+  try {
+    const res = await query`
+      SELECT p.id, p.business_name, p.contact_person, p.contact_email, p.contact_phone, 
+             p.address, p.registration_status, p.created_at, p.documents,
+             u.first_name, u.last_name, u.email
+      FROM providers p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.registration_status = 'pending'
+      ORDER BY p.created_at DESC
+    `
+    return res.rows.map((row: any) => ({
+      id: row.id,
+      name: `${row.first_name} ${row.last_name}`,
+      email: row.contact_email,
+      companyName: row.business_name,
+      submittedAt: row.created_at,
+      documents: row.documents || [],
+      status: row.registration_status,
+      phone: row.contact_phone,
+      address: row.address
+    }))
+  } catch (error) {
+    console.error("Failed to fetch pending providers:", error)
+    return []
+  }
+}
+
+export async function getCurrentProviders() {
+  try {
+    const res = await query`
+      SELECT p.id, p.business_name, p.contact_person, p.contact_email, p.contact_phone, 
+             p.address, p.registration_status, p.created_at, p.is_active, p.is_verified,
+             u.first_name, u.last_name, u.email
+      FROM providers p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.registration_status = 'approved'
+      ORDER BY p.created_at DESC
+    `
+    return res.rows.map((row: any) => ({
+      id: row.id,
+      name: `${row.first_name} ${row.last_name}`,
+      email: row.contact_email,
+      companyName: row.business_name,
+      submittedAt: row.created_at,
+      status: row.registration_status,
+      phone: row.contact_phone,
+      address: row.address,
+      isActive: row.is_active,
+      isVerified: row.is_verified
+    }))
+  } catch (error) {
+    console.error("Failed to fetch current providers:", error)
+    return []
+  }
+}
+
+export async function deleteProvider(providerId: string) {
+  try {
+    // First get the user_id to delete the user as well
+    const providerRes = await query`SELECT user_id FROM providers WHERE id = ${providerId}`
+    if (providerRes.rows.length === 0) {
+      return { success: false, error: "Provider not found" }
+    }
+    
+    const userId = providerRes.rows[0].user_id
+    
+    // Delete provider and user (cascade should handle this, but being explicit)
+    await query`DELETE FROM providers WHERE id = ${providerId}`
+    await query`DELETE FROM users WHERE id = ${userId}`
+    
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to delete provider:", error)
+    return { success: false, error: "Failed to delete provider" }
+  }
+}
+
 export async function getDashboardStats() {
   try {
     const [totalAccommodations, totalProviders, totalRevenue, totalViews, totalAccommodations30, totalProviders30, totalRevenue30, totalViews30] = await Promise.all([

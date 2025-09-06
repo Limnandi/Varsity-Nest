@@ -1,16 +1,28 @@
-import { NextResponse } from "next/server"
-import { approveProvider, rejectProvider, viewProviderDocuments, getDashboardStats, getTopAccommodations } from "@/lib/admin"
+import { NextRequest, NextResponse } from "next/server"
+import { approveProvider, rejectProvider, viewProviderDocuments, getDashboardStats, getTopAccommodations, getPendingProviders, getCurrentProviders, deleteProvider } from "@/lib/admin"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const [stats, accommodations] = await Promise.all([
-      getDashboardStats(),
-      getTopAccommodations()
-    ])
-    return NextResponse.json({ stats, accommodations })
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type')
+
+    if (type === 'pending') {
+      const providers = await getPendingProviders()
+      return NextResponse.json({ providers })
+    } else if (type === 'current') {
+      const providers = await getCurrentProviders()
+      return NextResponse.json({ providers })
+    } else {
+      // Default: return dashboard stats
+      const [stats, accommodations] = await Promise.all([
+        getDashboardStats(),
+        getTopAccommodations()
+      ])
+      return NextResponse.json({ stats, accommodations })
+    }
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch dashboard data" },
+      { error: "Failed to fetch data" },
       { status: 500 }
     )
   }
@@ -25,6 +37,8 @@ export async function POST(request: Request) {
       result = await approveProvider(providerId)
     } else if (action === 'reject') {
       result = await rejectProvider(providerId)
+    } else if (action === 'delete') {
+      result = await deleteProvider(providerId)
     } else if (action === 'view-documents') {
       const documents = await viewProviderDocuments(providerId)
       return NextResponse.json({ documents })
