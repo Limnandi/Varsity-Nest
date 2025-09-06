@@ -40,41 +40,27 @@ export async function viewProviderDocuments(providerId: string) {
 
 export async function getPendingProviders() {
   try {
-    const res = await query`
-      SELECT p.id, p.business_name, p.contact_person, p.contact_email, p.contact_phone, 
-             p.address, p.registration_status, p.created_at, p.documents,
-             u.first_name, u.last_name, u.email
-      FROM providers p
-      JOIN users u ON p.user_id = u.id
-      WHERE p.registration_status = 'pending'
-      ORDER BY p.created_at DESC
-    `
-    return res.rows.map((row: any) => ({
-      id: row.id,
-      name: `${row.first_name} ${row.last_name}`,
-      email: row.contact_email,
-      companyName: row.business_name,
-      submittedAt: row.created_at,
-      documents: row.documents || [],
-      status: row.registration_status,
-      phone: row.contact_phone,
-      address: row.address
-    }))
+    const allProviders = await getAllProviders()
+    return allProviders.filter((provider: any) => 
+      (provider.status === 'pending' && provider.isActive === false) ||
+      (provider.status === 'pending' && provider.isVerified === false) ||
+      provider.status === 'rejected'
+    )
   } catch (error) {
     console.error("Failed to fetch pending providers:", error)
     return []
   }
 }
 
-export async function getCurrentProviders() {
+export async function getAllProviders() {
   try {
     const res = await query`
       SELECT p.id, p.business_name, p.contact_person, p.contact_email, p.contact_phone, 
-             p.address, p.registration_status, p.created_at, p.is_active, p.is_verified,
+             p.address, p.registration_status, p.created_at, p.is_active, p.is_verified, p.documents,
              u.first_name, u.last_name, u.email
       FROM providers p
       JOIN users u ON p.user_id = u.id
-      WHERE p.registration_status = 'approved'
+      WHERE u.role = 'provider'
       ORDER BY p.created_at DESC
     `
     return res.rows.map((row: any) => ({
@@ -83,12 +69,27 @@ export async function getCurrentProviders() {
       email: row.contact_email,
       companyName: row.business_name,
       submittedAt: row.created_at,
-      status: row.registration_status,
+      status: row.registration_status || 'pending',
       phone: row.contact_phone,
       address: row.address,
       isActive: row.is_active,
-      isVerified: row.is_verified
+      isVerified: row.is_verified,
+      documents: row.documents || []
     }))
+  } catch (error) {
+    console.error("Failed to fetch all providers:", error)
+    return []
+  }
+}
+
+export async function getCurrentProviders() {
+  try {
+    const allProviders = await getAllProviders()
+    return allProviders.filter((provider: any) => 
+      provider.status === 'approved' || 
+      (provider.status === 'pending' && provider.isActive === true) ||
+      (provider.status === 'pending' && provider.isVerified === true)
+    )
   } catch (error) {
     console.error("Failed to fetch current providers:", error)
     return []
