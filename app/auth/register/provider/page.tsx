@@ -40,7 +40,11 @@ export default function ProviderRegistrationPage() {
       }
 
       // Client-side sign-up with StackAuth
-      await app.signUpWithCredential({ email, password })
+      await app.signUpWithCredential({ 
+        email, 
+        password,
+        verificationCallbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email`
+      })
       // Set Stack display name from first/last name
       try {
         const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
