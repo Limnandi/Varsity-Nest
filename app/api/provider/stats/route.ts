@@ -1,27 +1,39 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { countAccommodationsByProvider, fetchAccommodationsByProvider } from "@/lib/repos/accommodations"
+import { NextRequest, NextResponse } from "next/server"
+import { query } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
-    const providerId = request.headers.get('x-user-id') || ''
-    const [totalAccommodations, accommodations] = await Promise.all([
-      countAccommodationsByProvider(providerId),
-      fetchAccommodationsByProvider(providerId, 1000)
-    ])
+    const { searchParams } = new URL(request.url)
+    const providerId = searchParams.get('providerId')
 
-    const totalViews = 0
-    // booking_count and revenue may not exist on accommodations; default to 0 aggregates
-    const totalBookings = 0
-    const totalRevenue = 0
+    if (!providerId) {
+      return NextResponse.json(
+        { error: "Provider ID is required" },
+        { status: 400 }
+      )
+    }
 
-    return NextResponse.json({
+    // Get accommodation count for the provider
+    const accommodationResult = await query`
+      SELECT COUNT(*) as count FROM accommodations WHERE provider_id = ${providerId}
+    `
+
+    const totalAccommodations = Number.parseInt(accommodationResult.rows[0].count) || 0
+
+    // Get additional stats (placeholder for now, can be expanded)
+    const stats = {
       totalAccommodations,
-      totalViews,
-      totalBookings,
-      totalRevenue
-    })
+      activeBookings: 0,
+      totalRevenue: 0,
+      averageRating: 0,
+      pendingReviews: 0,
+      upcomingMaintenance: 0
+    }
+
+    return NextResponse.json({ stats })
+
   } catch (error) {
+    console.error("Provider stats API error:", error)
     return NextResponse.json(
       { error: "Failed to fetch provider stats" },
       { status: 500 }

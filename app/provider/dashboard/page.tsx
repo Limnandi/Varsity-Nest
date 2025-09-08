@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { countAccommodationsByProvider } from "@/lib/repos/accommodations"
 import { getCurrentUser } from "@/lib/stackauth"
 import Link from "next/link"
 import DashboardLayout from "@/components/DashboardLayout"
@@ -38,17 +37,37 @@ export default function ProviderDashboard() {
         return
       }
       
-      const totalAccommodations = await countAccommodationsByProvider(user.id)
-      // Placeholder computed stats; real endpoints can replace later
-      const averageRating = 0
-      setStats({
-        totalAccommodations,
-        activeBookings: 0,
-        totalRevenue: 0,
-        averageRating,
-        pendingReviews: 0,
-        upcomingMaintenance: 0
-      })
+      try {
+        // Fetch stats from server-side API
+        const response = await fetch(`/api/provider/stats?providerId=${user.id}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data.stats)
+        } else {
+          console.error('Failed to fetch provider stats:', response.statusText)
+          // Set default stats on error
+          setStats({
+            totalAccommodations: 0,
+            activeBookings: 0,
+            totalRevenue: 0,
+            averageRating: 0,
+            pendingReviews: 0,
+            upcomingMaintenance: 0
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching provider stats:', error)
+        // Set default stats on error
+        setStats({
+          totalAccommodations: 0,
+          activeBookings: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          pendingReviews: 0,
+          upcomingMaintenance: 0
+        })
+      }
     }
     load()
   }, [])
