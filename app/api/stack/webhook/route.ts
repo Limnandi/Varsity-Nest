@@ -99,10 +99,25 @@ export async function POST(request: NextRequest) {
         break
       }
       case 'user.updated': {
-        const { id, primaryEmail, firstName, lastName } = event.data || {}
+        const { id, primaryEmail, firstName, lastName, primaryEmailVerified } = event.data || {}
         if (id && primaryEmail) {
           try {
+            // Update basic user info
             await query`UPDATE users SET first_name = ${firstName || ''}, last_name = ${lastName || ''}, updated_at = NOW() WHERE id = ${id}`
+            
+            // Check if email verification status changed
+            if (primaryEmailVerified === true) {
+              await query`UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = ${id}`
+              
+              // Log the verification event
+              await query`
+                INSERT INTO admin_activities (activity_type, message, admin_id)
+                VALUES ('email_verification_webhook', ${`User ${primaryEmail} verified their email address via webhook`}, ${id})
+              `
+              
+              console.log(`User email verified via webhook: ${id} (${primaryEmail})`)
+            }
+            
             console.log(`User updated: ${id} (${primaryEmail})`)
           } catch (error) {
             console.error('Failed to update user:', error)
