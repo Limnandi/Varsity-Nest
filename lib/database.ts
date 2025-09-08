@@ -92,14 +92,14 @@ export async function getTableRowCount(tableName: string): Promise<number> {
   }
 }
 
-// Authentication function for StackAuth
+// Authentication function for database fallback
 export async function authenticateUser(email: string, password: string) {
   try {
     // First, get the user by email
     const userResult = await query`
-      SELECT id, email, password_hash, first_name, last_name, role, is_active, email_verified, created_at, updated_at
+      SELECT id, email, password, first_name, last_name, role, is_active, email_verified, created_at, updated_at
       FROM users 
-      WHERE email = ${email}
+      WHERE email = ${email.toLowerCase()}
     `
     
     if (userResult.rows.length === 0) {
@@ -111,7 +111,7 @@ export async function authenticateUser(email: string, password: string) {
     const user = userResult.rows[0]
     
     // Verify password using bcrypt
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash)
+    const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
       // Log security event for monitoring
       console.warn(`Authentication attempt failed: Invalid password for email: ${email}`)
