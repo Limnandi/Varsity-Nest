@@ -34,11 +34,48 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const result = await app.signInWithCredential({ email, password })
-      if ((result as any)?.error) {
-        throw new Error((result as any).error)
+      // Step 1: Try StackAuth first
+      try {
+        const result = await app.signInWithCredential({ email, password })
+        if ((result as any)?.error) {
+          throw new Error((result as any).error)
+        }
+        router.push("/auth/redirect")
+        return
+      } catch (stackError: any) {
+        // StackAuth failed, try database fallback
+        console.log("StackAuth authentication failed, trying database fallback:", stackError.message)
+        
+        // Step 2: Fallback to database authentication
+        const fallbackResponse = await fetch('/api/auth/fallback-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        })
+
+        const fallbackData = await fallbackResponse.json()
+
+        if (fallbackResponse.ok && fallbackData.success) {
+          // Database authentication successful
+          // Create a session for the database user
+          const sessionData = {
+            user: fallbackData.user,
+            authMethod: fallbackData.authMethod
+          }
+          
+          // Store session data in localStorage for now
+          // In production, you might want to use httpOnly cookies
+          localStorage.setItem('varsityNestSession', JSON.stringify(sessionData))
+          
+          router.push("/auth/redirect")
+          return
+        } else {
+          // Both StackAuth and database authentication failed
+          throw new Error(fallbackData.error || "Invalid email or password")
+        }
       }
-      router.push("/auth/redirect")
     } catch (error: any) {
       setError(error.message || "Login failed. Please try again.")
       recaptchaRef.current?.reset()
