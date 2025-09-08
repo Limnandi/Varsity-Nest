@@ -30,7 +30,8 @@ export function getStackServerApp() {
         signIn: "/auth/login",
         signUp: "/auth/register",
         afterSignIn: "/auth/redirect",
-        afterSignUp: "/auth/redirect",
+        afterSignUp: "/auth/check-email",
+        emailVerification: "/auth/verify-email",
       },
     })
   }
