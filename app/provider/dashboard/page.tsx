@@ -20,8 +20,24 @@ export default function ProviderDashboard() {
 
   useEffect(() => {
     const load = async () => {
-      const user = await getCurrentUser()
-      if (!user) return
+      // Check for database session first
+      const sessionData = localStorage.getItem('varsityNestSession')
+      let user = null
+      
+      if (sessionData) {
+        const session = JSON.parse(sessionData)
+        user = session.user
+      } else {
+        // Fallback to StackAuth
+        user = await getCurrentUser()
+      }
+      
+      if (!user) {
+        // Redirect to login if no user found
+        window.location.href = '/auth/login'
+        return
+      }
+      
       const totalAccommodations = await countAccommodationsByProvider(user.id)
       // Placeholder computed stats; real endpoints can replace later
       const averageRating = 0
