@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { getCurrentUser } from "@/lib/stackauth"
 import type { SessionUser } from "@/lib/stackauth"
-import { fetchAccommodationsByProvider } from "@/lib/repos/accommodations"
+// Removed direct database import - using API endpoint instead
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
 import Link from "next/link"
 import { Building } from "lucide-react" // Import Building component
@@ -18,11 +18,42 @@ export default function ProviderAccommodations() {
 
   useEffect(() => {
     async function loadUser() {
-      const currentUser = await getCurrentUser()
+      // Check for database session first
+      const sessionData = localStorage.getItem('varsityNestSession')
+      let currentUser = null
+      
+      if (sessionData) {
+        const session = JSON.parse(sessionData)
+        currentUser = session.user
+      } else {
+        // Fallback to StackAuth
+        try {
+          currentUser = await getCurrentUser()
+        } catch (error) {
+          console.error('StackAuth error:', error)
+          // If StackAuth fails, redirect to login
+          window.location.href = '/auth/login'
+          return
+        }
+      }
+      
       setUser(currentUser)
       if (currentUser) {
-        const accs = await fetchAccommodationsByProvider(currentUser.id, 200)
-        setUserAccommodations(accs)
+        try {
+          // Fetch accommodations from server-side API
+          const response = await fetch(`/api/provider/accommodations?providerId=${currentUser.id}&limit=200`)
+          
+          if (response.ok) {
+            const data = await response.json()
+            setUserAccommodations(data.accommodations || [])
+          } else {
+            console.error('Failed to fetch accommodations:', response.statusText)
+            setUserAccommodations([])
+          }
+        } catch (error) {
+          console.error('Error fetching accommodations:', error)
+          setUserAccommodations([])
+        }
       }
       setIsLoading(false)
     }
