@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronDown, Menu, X, LogOut, User, Building, Home, Phone } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
+import { ChevronDown, Menu, X, LogOut, User, Building, Home, Phone } from "lucide-react"
 
 export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -21,19 +21,31 @@ export default function Navbar() {
     pathname.startsWith("/admin") || pathname.startsWith("/provider") || pathname.startsWith("/auth")
 
   useEffect(() => {
-    // Get admin settings
-    const settings = {
-      showProvisionallyAccredited: true,
-      showNonAccredited: true,
+    // Fetch admin settings from API
+    const fetchAdminSettings = async () => {
+      try {
+        const response = await fetch('/api/admin/settings')
+        if (response.ok) {
+          const { settings } = await response.json()
+          setAdminSettings({
+            showProvisionallyAccredited: settings.show_provisionally_accredited ?? true,
+            showNonAccredited: settings.show_non_accredited ?? true,
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching admin settings:', error)
+        // Fallback to default values
+        setAdminSettings({
+          showProvisionallyAccredited: true,
+          showNonAccredited: true,
+        })
+      }
     }
-    setAdminSettings(settings)
+
+    fetchAdminSettings()
 
     const handleStorageChange = () => {
-      const newSettings = {
-        showProvisionallyAccredited: true,
-        showNonAccredited: true,
-      }
-      setAdminSettings(newSettings)
+      fetchAdminSettings()
     }
 
     window.addEventListener("storage", handleStorageChange)

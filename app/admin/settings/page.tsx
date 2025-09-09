@@ -80,15 +80,20 @@ export default function AdminSettings() {
         body: JSON.stringify({
           maintenanceMode: settings.maintenanceMode,
           registrationEnabled: settings.registrationEnabled,
-          paymentsEnabled: settings.paymentsEnabled
+          paymentsEnabled: settings.paymentsEnabled,
+          showProvisionallyAccredited: settings.showProvisionallyAccredited,
+          showNonAccredited: settings.showNonAccredited
         })
       })
 
       const result = await response.json()
 
       if (response.ok && result.success) {
-        setSaveMessage("Core platform settings saved successfully!")
+        setSaveMessage("All settings saved successfully!")
         setTimeout(() => setSaveMessage(""), 3000)
+        
+        // Trigger navbar refresh
+        window.dispatchEvent(new CustomEvent('adminSettingsUpdated'))
       } else {
         setSaveMessage(result.error || "Failed to save settings. Please try again.")
       }

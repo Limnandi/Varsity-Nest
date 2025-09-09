@@ -122,11 +122,80 @@ export const deleteUser = async (userId: string) => {
 
 // Admin settings functions
 export const updateAdminSettings = async (settings: any) => {
-  return { success: true }
+  try {
+    const { getSQL } = await import('./database')
+    
+    // Update or insert admin settings
+    await getSQL()`
+      INSERT INTO admin_settings (
+        maintenance_mode,
+        registration_enabled,
+        payments_enabled,
+        show_provisionally_accredited,
+        show_non_accredited,
+        updated_at
+      ) VALUES (
+        ${settings.maintenanceMode || false},
+        ${settings.registrationEnabled ?? true},
+        ${settings.paymentsEnabled ?? true},
+        ${settings.showProvisionallyAccredited ?? true},
+        ${settings.showNonAccredited ?? true},
+        NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        maintenance_mode = EXCLUDED.maintenance_mode,
+        registration_enabled = EXCLUDED.registration_enabled,
+        payments_enabled = EXCLUDED.payments_enabled,
+        show_provisionally_accredited = EXCLUDED.show_provisionally_accredited,
+        show_non_accredited = EXCLUDED.show_non_accredited,
+        updated_at = EXCLUDED.updated_at
+    `
+    
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating admin settings:', error)
+    return { success: false, error: 'Failed to update settings' }
+  }
 }
 
 export const getAdminSettings = async () => {
-  return {}
+  try {
+    const { getSQL } = await import('./database')
+    
+    const result = await getSQL()`
+      SELECT 
+        maintenance_mode,
+        registration_enabled,
+        payments_enabled,
+        show_provisionally_accredited,
+        show_non_accredited
+      FROM admin_settings
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `
+    
+    if (result.length > 0) {
+      return result[0]
+    }
+    
+    // Return default settings if none exist
+    return {
+      maintenance_mode: false,
+      registration_enabled: true,
+      payments_enabled: true,
+      show_provisionally_accredited: true,
+      show_non_accredited: true
+    }
+  } catch (error) {
+    console.error('Error fetching admin settings:', error)
+    return {
+      maintenance_mode: false,
+      registration_enabled: true,
+      payments_enabled: true,
+      show_provisionally_accredited: true,
+      show_non_accredited: true
+    }
+  }
 }
 
 // Export the StackProvider for use in layout

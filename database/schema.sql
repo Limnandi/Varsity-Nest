@@ -137,14 +137,16 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     maintenance_mode BOOLEAN DEFAULT false,
     registration_enabled BOOLEAN DEFAULT true,
     payments_enabled BOOLEAN DEFAULT true,
+    show_provisionally_accredited BOOLEAN DEFAULT true,
+    show_non_accredited BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT single_row CHECK (id = 1)
 );
 
 -- Insert default admin settings
-INSERT INTO admin_settings (id, maintenance_mode, registration_enabled, payments_enabled)
-VALUES (1, false, true, true)
+INSERT INTO admin_settings (id, maintenance_mode, registration_enabled, payments_enabled, show_provisionally_accredited, show_non_accredited)
+VALUES (1, false, true, true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Admin activities table for tracking admin actions
