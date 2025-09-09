@@ -11,6 +11,10 @@ export default function LogoutPage() {
   useEffect(() => {
     const run = async () => {
       try {
+        // Clear localStorage session data
+        localStorage.removeItem('varsityNestSession')
+        
+        // Logout from StackAuth
         await app.logout()
       } catch (e) {
         // ignore

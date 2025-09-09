@@ -114,10 +114,13 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
           ))}
         </nav>
         <div className="p-4 border-t border-white/10">
-          <button className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg text-white hover:bg-white/10 transition-all duration-300 hover:scale-105">
-            <LogOut className="w-5 h-5 mr-3" />
+          <Link 
+            href="/auth/logout"
+            className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg text-white hover:bg-white/10 transition-all duration-300 hover:scale-105 group"
+          >
+            <LogOut className="w-5 h-5 mr-3 group-hover:text-red-400 transition-colors" />
             <span>Logout</span>
-          </button>
+          </Link>
         </div>
       </aside>
 
