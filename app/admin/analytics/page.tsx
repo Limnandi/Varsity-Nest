@@ -316,19 +316,46 @@ export default function AdminAnalytics() {
                   </span>
                 </div>
               </div>
-              <div className="h-64 bg-gradient-to-t from-blue-50 to-transparent dark:from-blue-900/20 rounded-lg flex items-end justify-around p-4">
-                {revenueChart?.datasets[0].data.map((value, index) => (
-                  <div key={index} className="w-full flex justify-center">
-                    <div
-                      className="bg-blue-500 rounded-t-sm w-3/4 relative group"
-                      style={{ height: `${(value / Math.max(...revenueChart.datasets[0].data)) * 100}%` }}
-                    >
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        {formatZar(value)}
+              <div className="h-64 bg-gradient-to-t from-blue-50 to-transparent dark:from-blue-900/20 rounded-lg p-4">
+                {revenueChart?.datasets[0].data && revenueChart.datasets[0].data.length > 0 ? (
+                  <div className="h-full flex items-end justify-between space-x-1">
+                    {revenueChart.datasets[0].data.map((value, index) => {
+                      const maxValue = Math.max(...revenueChart.datasets[0].data)
+                      const heightPercentage = maxValue > 0 ? (value / maxValue) * 100 : 0
+                      const label = revenueChart.labels[index] || `Day ${index + 1}`
+                      
+                      return (
+                        <div key={index} className="flex flex-col items-center h-full flex-1 group">
+                          {/* Tooltip */}
+                          <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            {formatZar(value)}
+                          </div>
+                          
+                          {/* Bar */}
+                          <div
+                            className="bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-sm w-full relative group-hover:from-blue-500 group-hover:to-blue-300 transition-all duration-200 min-h-[2px]"
+                            style={{ height: `${Math.max(heightPercentage, 2)}%` }}
+                          />
+                          
+                          {/* Date Label */}
+                          <div className="text-xs text-neutral-400 mt-2 text-center transform -rotate-45 origin-left whitespace-nowrap">
+                            {label}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <DollarSign className="w-8 h-8 text-blue-400" />
                       </div>
+                      <p className="text-neutral-400 text-lg">No Revenue Data</p>
+                      <p className="text-neutral-500 text-sm">Revenue data will appear here once payments are processed</p>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
