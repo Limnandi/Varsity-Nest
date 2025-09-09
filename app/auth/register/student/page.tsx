@@ -50,77 +50,79 @@ export default function StudentRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-blue-800 to-blue-900 px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
+      <div className="max-w-md w-full">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
           <div className="text-center mb-8">
-            <GraduationCap className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Registration</h1>
-            <p className="text-gray-600">Join Varsity Nest with your university email</p>
+            <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl w-fit mx-auto mb-4">
+              <GraduationCap className="w-16 h-16 text-blue-400" />
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Student Registration</h1>
+            <p className="text-neutral-300 text-lg">Join Varsity Nest with your university email</p>
           </div>
 
           {state?.error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <span className="text-red-700 text-sm">{state.error}</span>
+            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <span className="text-red-300 text-sm">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-green-700 text-sm">{state.message}</span>
+            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-green-300 text-sm">{state.message}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Full Name *</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type="text"
                   name="name"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="John Doe"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">University Email *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">University Email *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type="email"
                   name="email"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="student@ufs4life.ac.za"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-2">
                 Use your university email address. Only whitelisted domains are allowed for registration.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
                   minLength={8}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Enter password (min 8 characters)"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -128,20 +130,20 @@ export default function StudentRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   required
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Confirm your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -149,25 +151,25 @@ export default function StudentRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Student Number *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Student Number *</label>
               <div className="relative">
-                <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type="text"
                   name="studentNumber"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="e.g., 2023123456"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">University *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">University *</label>
               <select
                 name="university"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
               >
                 <option value="">Select your university</option>
                 <option value="UFS">University of the Free State (UFS)</option>
@@ -178,15 +180,18 @@ export default function StudentRegistrationPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-green-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
             >
-              {isPending ? "Creating Account..." : "Create Account"}
+              <span className="relative z-10">
+                {isPending ? "Creating Account..." : "Create Account"}
+              </span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
 
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-400">
                 Already have an account?{" "}
-                <Link href="/auth/login" className="font-medium text-green-600 hover:text-green-500">
+                <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
                   Sign in here
                 </Link>
               </p>

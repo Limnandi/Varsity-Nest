@@ -106,10 +106,12 @@ export default function ClientRedirect() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-800 to-blue-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">Redirecting...</p>
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+            <p className="text-white text-lg font-medium">Redirecting...</p>
+          </div>
         </div>
       </div>
     )
@@ -117,15 +119,18 @@ export default function ClientRedirect() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-800 to-blue-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 text-lg mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/auth/login')}
-            className="bg-white text-purple-600 px-6 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-          >
-            Go to Login
-          </button>
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+            <p className="text-red-400 text-lg mb-6 font-medium">{error}</p>
+            <button
+              onClick={() => router.push('/auth/login')}
+              className="group relative bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span className="relative z-10">Go to Login</span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+          </div>
         </div>
       </div>
     )
