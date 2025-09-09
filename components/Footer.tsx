@@ -30,7 +30,7 @@ export default function Footer() {
               comfortable, and close to campus.
             </p>
             <div className="flex space-x-6">
-              <a href="#" className="group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-110">
+              <a href="https://www.facebook.com/people/Massive-Operations/61573795036731/" target="_blank" rel="noopener noreferrer" className="group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-110">
                 <Facebook className="w-6 h-6 text-neutral-400 group-hover:text-blue-400 transition-colors" />
               </a>
               <a href="#" className="group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-110">
@@ -129,7 +129,7 @@ export default function Footer() {
             <Link href="/terms" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Terms of Service
             </Link>
-            <Link href="/support" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
+            <Link href="/contact" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Support
             </Link>
           </div>
