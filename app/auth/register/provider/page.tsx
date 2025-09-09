@@ -44,7 +44,7 @@ export default function ProviderRegistrationPage() {
       await app.signUpWithCredential({ 
         email, 
         password,
-        verificationCallbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email`
+        verificationCallbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/check-email`
       })
       // Set Stack display name from first/last name
       try {
