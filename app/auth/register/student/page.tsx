@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
 import Link from "next/link"
-import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
+import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
 
 export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -53,6 +53,13 @@ export default function StudentRegistrationPage() {
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
       <div className="max-w-md w-full">
         <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+          {/* Home Button */}
+          <Link 
+            href="/" 
+            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          >
+            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+          </Link>
           <div className="text-center mb-8">
             <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl w-fit mx-auto mb-4">
               <GraduationCap className="w-16 h-16 text-blue-400" />

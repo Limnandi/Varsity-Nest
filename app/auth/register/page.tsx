@@ -2,7 +2,7 @@
 
 import type React from "react"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Home } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -50,6 +50,13 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8">
       <div className="max-w-md w-full relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 text-center">
+        {/* Home Button */}
+        <Link 
+          href="/" 
+          className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+        >
+          <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+        </Link>
         <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-2xl tracking-tight">Join Varsity Nest</h1>
         <p className="text-neutral-300 text-lg mb-8">Choose your account type to get started</p>
 

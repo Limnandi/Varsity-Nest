@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
 import Link from "next/link"
-import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X } from "lucide-react"
+import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X, Home } from "lucide-react"
 
 export default function ProviderRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -35,7 +35,8 @@ export default function ProviderRegistrationPage() {
         throw new Error('Passwords do not match')
       }
 
-      if (uploadedFiles.length < 1 || uploadedFiles.length > 2) {
+      // Only require documents if provider is accredited
+      if (isAccredited === "yes" && (uploadedFiles.length < 1 || uploadedFiles.length > 2)) {
         throw new Error('Please upload 1-2 documents (PDF or images)')
       }
 
@@ -127,6 +128,13 @@ export default function ProviderRegistrationPage() {
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+          {/* Home Button */}
+          <Link 
+            href="/" 
+            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          >
+            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+          </Link>
           <div className="text-center mb-8">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_theme(colors.purple.500/40%)] mb-6">
               <Building className="w-10 h-10 text-purple-400" />
@@ -315,52 +323,54 @@ export default function ProviderRegistrationPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Upload Documents (1-2 files) *</label>
-              <div className="border-2 border-dashed border-white/20 bg-black/20 backdrop-blur-xl rounded-xl p-8 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-4">
-                  <Upload className="w-8 h-8 text-blue-400" />
+            {isAccredited === "yes" && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Upload Documents (1-2 files) *</label>
+                <div className="border-2 border-dashed border-white/20 bg-black/20 backdrop-blur-xl rounded-xl p-8 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-4">
+                    <Upload className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <p className="text-neutral-300 mb-4">
+                    Upload accreditation certificates, business registration, or other relevant documents
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <span className="relative z-10">Choose Files</span>
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </label>
+                  <p className="text-xs text-neutral-500 mt-3">
+                    PDF or images, max 5MB each
+                  </p>
                 </div>
-                <p className="text-neutral-300 mb-4">
-                  Upload accreditation certificates, business registration, or other relevant documents
-                </p>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  <span className="relative z-10">Choose Files</span>
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </label>
-                <p className="text-xs text-neutral-500 mt-3">
-                  PDF or images, max 5MB each
-                </p>
-              </div>
 
-              {uploadedFiles.length > 0 && (
-                <div className="mt-6 space-y-3">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                      <span className="text-sm text-neutral-300">{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+                        <span className="text-sm text-neutral-300">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               type="submit"
