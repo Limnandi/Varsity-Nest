@@ -105,24 +105,24 @@ export default function ProviderDashboard() {
 
   return (
     <DashboardLayout userRole="provider">
-      <div className="space-y-6">
+      <div className="space-y-8 p-6">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">Welcome back, {/* user.name */}!</h1>
-          <p className="text-blue-100">Manage your accommodations and track your performance</p>
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
+          <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Welcome back!</h1>
+          <p className="text-neutral-300 text-lg">Manage your accommodations and track your performance</p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statsData.map((stat, index) => (
-            <div key={index} className="bg-white rounded-xl p-6 shadow-sm border">
+            <div key={index} className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
+                  <p className="text-sm font-medium text-neutral-400 mb-2">{stat.title}</p>
+                  <p className="text-2xl font-bold text-white mb-1">{stat.value}</p>
+                  <p className="text-sm text-neutral-500">{stat.change}</p>
                 </div>
-                <div className={`${stat.color} p-3 rounded-lg`}>
+                <div className={`${stat.color} p-3 rounded-xl shadow-lg`}>
                   <stat.icon className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -131,65 +131,68 @@ export default function ProviderDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Link
               href="/provider/accommodations/new"
-              className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-500/20"
             >
-              <Building className="w-8 h-8 text-blue-600 mr-3" />
+              <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl mr-4 group-hover:bg-blue-500/20 transition-all duration-300">
+                <Building className="w-8 h-8 text-blue-400" />
+              </div>
               <div>
-                <h3 className="font-medium text-gray-900">Add New Accommodation</h3>
-                <p className="text-sm text-gray-600">List a new property</p>
+                <h3 className="font-semibold text-white text-lg group-hover:text-blue-300 transition-colors">Add New Accommodation</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">List a new property</p>
               </div>
             </Link>
 
             <Link
               href="/provider/billing"
-              className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-green-500/20"
             >
-              <DollarSign className="w-8 h-8 text-green-600 mr-3" />
+              <div className="p-4 border border-green-500/50 bg-green-500/10 rounded-xl mr-4 group-hover:bg-green-500/20 transition-all duration-300">
+                <DollarSign className="w-8 h-8 text-green-400" />
+              </div>
               <div>
-                <h3 className="font-medium text-gray-900">View Billing</h3>
-                <p className="text-sm text-gray-600">Manage payments</p>
+                <h3 className="font-semibold text-white text-lg group-hover:text-green-300 transition-colors">View Billing</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Manage payments</p>
               </div>
             </Link>
 
             <Link
               href="/provider/accommodations"
-              className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-purple-500/20"
             >
-              <Building className="w-8 h-8 text-purple-600 mr-3" />
+              <div className="p-4 border border-purple-500/50 bg-purple-500/10 rounded-xl mr-4 group-hover:bg-purple-500/20 transition-all duration-300">
+                <Building className="w-8 h-8 text-purple-400" />
+              </div>
               <div>
-                <h3 className="font-medium text-gray-900">Manage Properties</h3>
-                <p className="text-sm text-gray-600">Edit your listings</p>
+                <h3 className="font-semibold text-white text-lg group-hover:text-purple-300 transition-colors">Manage Properties</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Edit your listings</p>
               </div>
             </Link>
           </div>
         </div>
 
-        {/* Accommodations section will be added back with live data implementation */}
-
         {/* Billing Status */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold mb-4">Billing Status</h2>
-          <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Billing Status</h2>
+          <div className="flex items-center justify-between p-6 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl">
+            <div className="flex items-center space-x-4">
+              <div className="w-4 h-4 bg-green-400 rounded-full shadow-lg shadow-green-500/50"></div>
               <div>
-                <p className="font-medium text-gray-900">Account in Good Standing</p>
-                <p className="text-sm text-gray-600">
-                  {/* user.billingInfo ? `Next payment due: ${user.billingInfo.nextPayment}` : "Loading payment info..." */}
+                <p className="font-semibold text-white text-lg">Account in Good Standing</p>
+                <p className="text-neutral-400">
                   Loading payment info...
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="font-semibold text-gray-900">
-                R{/* user.billingInfo?.monthlyFee ?? "0" */}0
+              <p className="font-bold text-white text-xl">
+                R0
               </p>
-              <p className="text-sm text-gray-600">Monthly fee</p>
+              <p className="text-neutral-400">Monthly fee</p>
             </div>
           </div>
         </div>

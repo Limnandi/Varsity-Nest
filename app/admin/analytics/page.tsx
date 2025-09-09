@@ -109,25 +109,25 @@ export default function AdminAnalytics() {
     icon: Icon,
     color,
   }: { title: string; value: string | number; change: number; icon: any; color: string }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border dark:border-gray-700">
+    <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{value}</p>
+          <p className="text-sm font-medium text-neutral-300">{title}</p>
+          <p className="text-2xl font-bold text-white mt-1 bg-gradient-to-r from-blue-400 via-purple-500 to-blue-600 bg-clip-text text-transparent">{value}</p>
           <div className="flex items-center mt-2">
             {change >= 0 ? (
-              <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
+              <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
             ) : (
-              <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
+              <TrendingDown className="w-4 h-4 text-red-400 mr-1" />
             )}
-            <span className={`text-sm font-medium ${change >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <span className={`text-sm font-medium ${change >= 0 ? "text-green-400" : "text-red-400"}`}>
               {change >= 0 ? "+" : ""}
               {change.toFixed(1)}%
             </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">vs last month</span>
+            <span className="text-sm text-neutral-400 ml-1">vs last month</span>
           </div>
         </div>
-        <div className={`${color} p-3 rounded-lg`}>
+        <div className={`${color} p-3 rounded-lg shadow-lg`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
       </div>
@@ -146,21 +146,23 @@ export default function AdminAnalytics() {
     icon: any
   }) => {
     const statusColors = {
-      good: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-      average: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      poor: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-      online: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-      degraded: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      offline: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+      good: "bg-green-500/20 text-green-400 border-green-500/50",
+      average: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+      poor: "bg-red-500/20 text-red-400 border-red-500/50",
+      online: "bg-green-500/20 text-green-400 border-green-500/50",
+      degraded: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+      offline: "bg-red-500/20 text-red-400 border-red-500/50",
     }
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border dark:border-gray-700 flex items-center space-x-4">
-        <Icon className="w-8 h-8 text-gray-500" />
-        <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
+      <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 text-white shadow-lg hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02] flex items-center space-x-4">
+        <div className="p-2 border border-white/20 bg-white/10 rounded-lg">
+          <Icon className="w-6 h-6 text-blue-400" />
         </div>
-        <span className={cn("text-xs font-medium ml-auto px-2.5 py-0.5 rounded-full", statusColors[status])}>
+        <div>
+          <p className="text-sm text-neutral-300">{title}</p>
+          <p className="text-lg font-bold text-white">{value}</p>
+        </div>
+        <span className={cn("text-xs font-medium ml-auto px-2.5 py-0.5 rounded-full border", statusColors[status])}>
           {status}
         </span>
       </div>
@@ -190,12 +192,12 @@ export default function AdminAnalytics() {
   return (
     <AuthGuard requiredRole="admin">
       <DashboardLayout userRole="admin">
-        <div className="space-y-8">
+        <div className="space-y-8 p-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Analytics Dashboard</h1>
-              <p className="text-gray-600 dark:text-gray-400">Track your platform's performance and growth</p>
+              <h1 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Analytics Dashboard</h1>
+              <p className="text-neutral-300">Track your platform's performance and growth</p>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <Popover>
@@ -203,7 +205,7 @@ export default function AdminAnalytics() {
                   <Button
                     id="date"
                     variant={"outline"}
-                    className={cn("w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground")}
+                    className={cn("w-[300px] justify-start text-left font-normal border-white/20 bg-black/20 text-white hover:bg-white/10", !date && "text-neutral-400")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date?.from ? (
@@ -230,7 +232,7 @@ export default function AdminAnalytics() {
                   />
                 </PopoverContent>
               </Popover>
-              <Button onClick={exportToPDF}>
+              <Button onClick={exportToPDF} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0">
                 <Download className="w-4 h-4 mr-2" />
                 Export PDF
               </Button>
@@ -271,7 +273,7 @@ export default function AdminAnalytics() {
 
           {/* System Health */}
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">System Health</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">System Health</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <HealthCard
                 title="API Latency"
@@ -302,12 +304,12 @@ export default function AdminAnalytics() {
 
           {/* Revenue Chart & Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border dark:border-gray-700">
+            <div className="lg:col-span-2 group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Revenue Trends</h2>
+                <h2 className="text-xl font-semibold text-white">Revenue Trends</h2>
                 <div className="flex items-center space-x-2">
-                  <CalendarIcon className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <CalendarIcon className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm text-neutral-300">
                     {date?.from && date?.to
                       ? `${format(date.from, "LLL dd, y")} - ${format(date.to, "LLL dd, y")}`
                       : "All Time"}
@@ -330,30 +332,30 @@ export default function AdminAnalytics() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border dark:border-gray-700">
-              <h2 className="text-lg font-semibold mb-4">Top Performers</h2>
+            <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300">
+              <h2 className="text-xl font-semibold mb-4 text-white">Top Performers</h2>
               <div className="space-y-4">
                 {topPerformers.map((performer, index) => (
                   <div
                     key={performer.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    className="flex items-center justify-between p-3 border border-white/10 bg-white/5 rounded-lg hover:bg-white/10 transition-all duration-300"
                   >
                     <div className="flex items-center space-x-3 overflow-hidden">
-                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-semibold text-blue-600 dark:text-blue-300">#{index + 1}</span>
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-semibold text-blue-400">#{index + 1}</span>
                       </div>
                       <div className="overflow-hidden">
-                        <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{performer.name}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{performer.type}</p>
+                        <p className="font-medium text-white truncate">{performer.name}</p>
+                        <p className="text-sm text-neutral-300 capitalize">{performer.type}</p>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 pl-2">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      <p className="font-semibold text-white">
                         {formatZar(performer.value)}
                       </p>
                       <div className="flex items-center justify-end">
-                        <TrendingUp className="w-3 h-3 text-green-600 mr-1" />
-                        <span className="text-sm text-green-600">+{performer.change}%</span>
+                        <TrendingUp className="w-3 h-3 text-green-400 mr-1" />
+                        <span className="text-sm text-green-400">+{performer.change}%</span>
                       </div>
                     </div>
                   </div>

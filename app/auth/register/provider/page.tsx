@@ -124,54 +124,56 @@ export default function ProviderRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-800 to-blue-900 px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
           <div className="text-center mb-8">
-            <Building className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Provider Registration</h1>
-            <p className="text-gray-600">Join Varsity Nest as an accommodation provider</p>
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_theme(colors.purple.500/40%)] mb-6">
+              <Building className="w-10 h-10 text-purple-400" />
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Provider Registration</h1>
+            <p className="text-neutral-300 text-lg">Join Varsity Nest as an accommodation provider</p>
           </div>
 
           {state?.error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <span className="text-red-700 text-sm">{state.error}</span>
+            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <span className="text-red-300 text-sm">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-green-700 text-sm">{state.message}</span>
+            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-green-300 text-sm">{state.message}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">First Name *</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                   <input
                     type="text"
                     name="firstName"
                     required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                     placeholder="John"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Last Name *</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                   <input
                     type="text"
                     name="lastName"
                     required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                     placeholder="Doe"
                   />
                 </div>
@@ -179,14 +181,14 @@ export default function ProviderRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Email Address *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type="email"
                   name="email"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="provider@example.com"
                 />
               </div>
@@ -194,21 +196,21 @@ export default function ProviderRegistrationPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Phone Number</label>
                 <input
                   type="tel"
                   name="phone"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="+27 82 123 4567"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Institution/Company</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Institution/Company</label>
                 <input
                   type="text"
                   name="institution"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Your Company Name"
                 />
               </div>
@@ -216,21 +218,21 @@ export default function ProviderRegistrationPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     required
                     minLength={8}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                     placeholder="Enter password (min 8 characters)"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -238,20 +240,20 @@ export default function ProviderRegistrationPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     required
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                     placeholder="Confirm your password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -260,64 +262,66 @@ export default function ProviderRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Are you accredited? *</label>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3">
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Are you accredited? *</label>
+              <div className="space-y-4">
+                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
                   <input
                     type="radio"
                     name="accreditation"
                     value="yes"
                     checked={isAccredited === "yes"}
                     onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
-                    className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20"
                   />
-                  <span className="text-gray-700">Yes, I am accredited</span>
+                  <span className="text-white">Yes, I am accredited</span>
                 </label>
-                <label className="flex items-center space-x-3">
+                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
                   <input
                     type="radio"
                     name="accreditation"
                     value="no"
                     checked={isAccredited === "no"}
                     onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
-                    className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20"
                   />
-                  <span className="text-gray-700">No, but I'm working towards accreditation</span>
+                  <span className="text-white">No, but I'm working towards accreditation</span>
                 </label>
               </div>
             </div>
 
             {isAccredited === "yes" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Accredited by:</label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-3">
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Accredited by:</label>
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={accreditedBy.includes("UFS")}
                       onChange={(e) => handleAccreditationChange("UFS", e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20"
                     />
-                    <span className="text-gray-700">University of the Free State (UFS)</span>
+                    <span className="text-white">University of the Free State (UFS)</span>
                   </label>
-                  <label className="flex items-center space-x-3">
+                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={accreditedBy.includes("CUT")}
                       onChange={(e) => handleAccreditationChange("CUT", e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20"
                     />
-                    <span className="text-gray-700">Central University of Technology (CUT)</span>
+                    <span className="text-white">Central University of Technology (CUT)</span>
                   </label>
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Upload Documents (1-2 files) *</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Upload Documents (1-2 files) *</label>
+              <div className="border-2 border-dashed border-white/20 bg-black/20 backdrop-blur-xl rounded-xl p-8 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-4">
+                  <Upload className="w-8 h-8 text-blue-400" />
+                </div>
+                <p className="text-neutral-300 mb-4">
                   Upload accreditation certificates, business registration, or other relevant documents
                 </p>
                 <input
@@ -330,24 +334,25 @@ export default function ProviderRegistrationPage() {
                 />
                 <label
                   htmlFor="file-upload"
-                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer"
+                  className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 cursor-pointer"
                 >
-                  Choose Files
+                  <span className="relative z-10">Choose Files</span>
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </label>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-neutral-500 mt-3">
                   PDF or images, max 5MB each
                 </p>
               </div>
 
               {uploadedFiles.length > 0 && (
-                <div className="mt-4 space-y-2">
+                <div className="mt-6 space-y-3">
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-700">{file.name}</span>
+                    <div key={index} className="flex items-center justify-between p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+                      <span className="text-sm text-neutral-300">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => removeFile(index)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -360,15 +365,18 @@ export default function ProviderRegistrationPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
             >
-              {isPending ? "Creating Account..." : "Create Provider Account"}
+              <span className="relative z-10">
+                {isPending ? "Creating Account..." : "Create Provider Account"}
+              </span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
 
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-400">
                 Already have an account?{" "}
-                <Link href="/auth/login" className="font-medium text-purple-600 hover:text-purple-500">
+                <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
                   Sign in here
                 </Link>
               </p>

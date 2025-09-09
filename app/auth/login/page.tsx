@@ -3,7 +3,8 @@
 import { useState, useRef } from "react"
 import { OAuthButton, useStackApp } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle } from "lucide-react"
+import Link from "next/link"
+import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 
 export default function LoginPage() {
@@ -99,26 +100,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-800 to-blue-900 px-4 py-8 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+          {/* Home Button */}
+          <Link 
+            href="/" 
+            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          >
+            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+          </Link>
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h1>
-            <p className="text-gray-600">Access your Varsity Nest dashboard</p>
+            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Welcome Back</h1>
+            <p className="text-neutral-300 text-lg">Access your Varsity Nest dashboard</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <span className="text-red-700 text-sm">{error}</span>
+            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <span className="text-red-300 text-sm">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Email Address *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   id="email"
                   name="email"
@@ -128,16 +136,16 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isPending}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="you@example.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   id="password"
                   name="password"
@@ -147,12 +155,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isPending}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Enter your password"
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isPending}
                 >
@@ -175,33 +183,43 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
             >
-              {isPending ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <Loader2 className="animate-spin h-5 w-5" />
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                "Sign in"
-              )}
+              <span className="relative z-10">
+                {isPending ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <Loader2 className="animate-spin h-5 w-5" />
+                    <span>Signing in...</span>
+                  </div>
+                ) : (
+                  "Sign In"
+                )}
+              </span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
 
             <div className="flex items-center justify-between">
-              <OAuthButton provider="google" type="sign-in" />
+              <div className="group relative w-full">
+                <OAuthButton 
+                  provider="google" 
+                  type="sign-in"
+                  className="!w-full !px-6 !py-3 !bg-black/20 !text-white !border !border-white/20 !rounded-xl !font-medium !shadow-lg !hover:bg-white/5 !hover:shadow-blue-500/20 !transition-all !duration-300 !hover:scale-105 !active:scale-95 !flex !items-center !justify-center !space-x-3 !backdrop-blur-xl"
+                />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+              </div>
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-sm text-purple-600 hover:text-purple-500"
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
               >
                 Forgot password?
               </button>
             </div>
 
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-400">
                 Don&apos;t have an account?{" "}
-                <a href="/auth/register" className="font-medium text-purple-600 hover:text-purple-500">
+                <a href="/auth/register" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
                   Register here
                 </a>
               </p>

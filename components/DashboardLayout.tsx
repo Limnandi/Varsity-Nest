@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
-import ProductionModeSwitch from "./ProductionModeSwitch"
+// Removed ProductionModeSwitch import
 
 interface DashboardLayoutProps {
   userRole: "admin" | "provider"
@@ -72,34 +72,40 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
         href={href}
         onClick={() => isMobile && setSidebarOpen(false)}
         className={cn(
-          "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+          "group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105",
           isActive
-            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-white border border-blue-500/50 shadow-lg shadow-blue-500/20"
+            : "text-neutral-300 hover:bg-white/10 hover:text-white",
         )}
       >
-        <Icon className="w-5 h-5 mr-3" />
+        <Icon className={cn(
+          "w-5 h-5 mr-3 transition-colors",
+          isActive ? "text-blue-400" : "text-neutral-400 group-hover:text-white"
+        )} />
         <span>{label}</span>
       </Link>
     )
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen bg-gradient-to-b from-[#02042b] to-[#040945]">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 w-64 bg-sidebar-background text-sidebar-foreground border-r border-sidebar-border transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 w-64 bg-black/20 backdrop-blur-xl text-white border-r border-white/10 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shadow-2xl",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex items-center justify-between p-4 border-b border-sidebar-border h-16">
-          <Link href="/" className="flex items-center space-x-2">
-            <Image src="/images/varsity-nest-logo.png" alt="Varsity Nest Logo" width={32} height={32} />
-            <span className="font-bold text-lg text-sidebar-primary">Varsity Nest</span>
+        <div className="flex items-center justify-between p-4 border-b border-white/10 h-16">
+          <Link href="/" className="flex items-center space-x-2 group">
+            <div className="relative">
+              <Image src="/images/varsity-nest-logo.png" alt="Varsity Nest Logo" width={32} height={32} />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm"></div>
+            </div>
+            <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Varsity Nest</span>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1">
-            <X className="w-6 h-6" />
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
         <nav className="flex-1 p-4 space-y-2">
@@ -107,9 +113,8 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
             <NavLink key={item.href} {...item} />
           ))}
         </nav>
-        <div className="p-4 border-t border-sidebar-border">
-          <ProductionModeSwitch isProduction={false} />
-          <button className="w-full flex items-center mt-4 px-4 py-3 text-sm font-medium rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+        <div className="p-4 border-t border-white/10">
+          <button className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg text-white hover:bg-white/10 transition-all duration-300 hover:scale-105">
             <LogOut className="w-5 h-5 mr-3" />
             <span>Logout</span>
           </button>
@@ -118,14 +123,14 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between md:justify-end h-16 px-6 bg-white dark:bg-gray-800 border-b">
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden p-1">
+        <header className="flex items-center justify-between md:justify-end h-16 px-6 bg-black/20 backdrop-blur-xl border-b border-white/10">
+          <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-4">{/* User profile, notifications etc. can go here */}</div>
         </header>
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900">
-          <div className="container mx-auto px-6 py-8">{children}</div>
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          {children}
         </main>
       </div>
     </div>

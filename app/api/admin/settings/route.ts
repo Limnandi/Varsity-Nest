@@ -1,49 +1,38 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/database"
-import { verifyToken } from "@/lib/stackauth"
-import { Sentry } from "@/lib/sentry"
+import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUser, getAdminSettings, updateAdminSettings } from '@/lib/stackauth'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    const payload = await verifyToken(token || "")
-
-    if (!payload || payload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const user = await getCurrentUser()
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const rows = await query`SELECT key, value FROM admin_settings`
-    const settings: any = {}
-    rows.rows.forEach((row: { key: string, value: any }) => {
-      settings[row.key] = row.value
-    })
-
-    return NextResponse.json(settings)
+    const settings = await getAdminSettings()
+    return NextResponse.json({ settings })
   } catch (error) {
-    Sentry.captureException(error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error('Error fetching admin settings:', error)
+    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    const payload = await verifyToken(token || "")
-
-    if (!payload || payload.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const user = await getCurrentUser()
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { key, value } = await request.json()
-    await query`
-      INSERT INTO admin_settings (key, value)
-      VALUES (${key}, ${value})
-      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-    `
-
-    return NextResponse.json({ success: true })
+    const body = await request.json()
+    const result = await updateAdminSettings(body)
+    
+    if (result.success) {
+      return NextResponse.json({ success: true })
+    } else {
+      return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
+    }
   } catch (error) {
-    Sentry.captureException(error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error('Error updating admin settings:', error)
+    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
   }
 }

@@ -55,7 +55,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="relative z-40 bg-black/20 backdrop-blur-xl border-b border-white/10 shadow-2xl">
+    <nav className="relative z-40 bg-gradient-to-r from-[#02042b] to-[#040945] backdrop-blur-xl border-b border-white/10 shadow-2xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Left side - Logo and Text */}
@@ -68,12 +68,13 @@ export default function Navbar() {
                 height={40}
                 className="w-10 h-10 object-contain"
               />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm"></div>
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                 Varsity Nest
               </h1>
-              <p className="text-xs text-gray-300">Student Accommodation</p>
+              <p className="text-xs text-neutral-400">Student Accommodation</p>
             </div>
           </Link>
 
@@ -81,7 +82,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center space-x-8">
             <Link
               href="/"
-              className="text-white hover:text-blue-300 transition-colors duration-200 font-medium"
+              className="text-white hover:text-blue-300 transition-all duration-300 font-medium hover:scale-105"
             >
               Home
             </Link>
@@ -90,39 +91,39 @@ export default function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-2 text-white hover:text-blue-300 transition-colors duration-200 font-medium"
+                className="flex items-center space-x-2 text-white hover:text-blue-300 transition-all duration-300 font-medium hover:scale-105"
               >
                 <span>Accommodations</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isDropdownOpen && (
-                <div className="absolute top-full left-0 mt-3 w-72 bg-black/40 backdrop-blur-2xl text-white rounded-2xl shadow-2xl py-4 border border-white/20">
+                <div className="absolute top-full left-0 mt-3 w-72 bg-black/40 backdrop-blur-2xl text-white rounded-2xl shadow-2xl shadow-blue-500/20 py-4 border border-white/20">
                   <Link
                     href="/accommodations/accredited"
-                    className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                    className="group flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium rounded-xl mx-2"
                     onClick={() => setIsDropdownOpen(false)}
                   >
-                    <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg"></div>
+                    <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg group-hover:shadow-green-500/50 transition-all duration-300"></div>
                     <span>Accredited</span>
                   </Link>
                   {adminSettings.showProvisionallyAccredited && (
                     <Link
                       href="/accommodations/provisionally-accredited"
-                      className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                      className="group flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium rounded-xl mx-2"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-lg"></div>
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-lg group-hover:shadow-yellow-500/50 transition-all duration-300"></div>
                       <span>Provisionally-Accredited</span>
                     </Link>
                   )}
                   {adminSettings.showNonAccredited && (
                     <Link
                       href="/accommodations/non-accredited"
-                      className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-200 font-medium rounded-xl mx-2"
+                      className="group flex items-center space-x-3 px-4 py-3 hover:bg-white/10 hover:text-blue-300 transition-all duration-300 font-medium rounded-xl mx-2"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      <div className="w-2 h-2 bg-gray-400 rounded-full shadow-lg"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full shadow-lg group-hover:shadow-gray-500/50 transition-all duration-300"></div>
                       <span>Non-Accredited</span>
                     </Link>
                   )}
@@ -132,7 +133,7 @@ export default function Navbar() {
 
             <Link
               href="/contact"
-              className="text-white hover:text-blue-300 transition-colors duration-200 font-medium"
+              className="text-white hover:text-blue-300 transition-all duration-300 font-medium hover:scale-105"
             >
               Contact
             </Link>
@@ -143,21 +144,22 @@ export default function Navbar() {
             {/* Basic navigation buttons */}
             <Link
               href="/auth/login"
-              className="hidden sm:inline-flex items-center px-4 py-2 border border-white/20 text-white rounded-lg hover:bg-white/10 transition-all duration-200 font-medium"
+              className="hidden sm:inline-flex items-center px-6 py-3 border border-white/20 text-white rounded-xl hover:bg-white/10 transition-all duration-300 font-medium hover:scale-105"
             >
               Sign In
             </Link>
             <Link
               href="/auth/register"
-              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+              className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
             >
-              Get Started
+              <span className="relative z-10">Get Started</span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Link>
 
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors duration-200"
+              className="lg:hidden p-3 text-white hover:bg-white/10 rounded-xl transition-all duration-300 hover:scale-105"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -166,41 +168,44 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-black/40 backdrop-blur-2xl border-t border-white/10 py-4">
-            <div className="space-y-2">
+          <div className="lg:hidden bg-black/40 backdrop-blur-2xl border-t border-white/10 py-6">
+            <div className="space-y-4">
               <Link
                 href="/"
-                className="block px-4 py-2 text-white hover:bg-white/10 transition-colors duration-200 font-medium"
+                className="block px-4 py-3 text-white hover:bg-white/10 transition-all duration-300 font-medium rounded-xl mx-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Home
               </Link>
               
               <div className="px-4 py-2">
-                <p className="text-white font-medium mb-2">Accommodations</p>
-                <div className="space-y-1 ml-4">
+                <p className="text-white font-medium mb-3 text-lg">Accommodations</p>
+                <div className="space-y-2 ml-4">
                   <Link
                     href="/accommodations/accredited"
-                    className="block py-1 text-gray-300 hover:text-white transition-colors duration-200"
+                    className="group flex items-center py-2 text-neutral-300 hover:text-white transition-all duration-300"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
+                    <div className="w-2 h-2 bg-green-400 rounded-full mr-3 group-hover:shadow-green-500/50 transition-all duration-300"></div>
                     Accredited
                   </Link>
                   {adminSettings.showProvisionallyAccredited && (
                     <Link
                       href="/accommodations/provisionally-accredited"
-                      className="block py-1 text-gray-300 hover:text-white transition-colors duration-200"
+                      className="group flex items-center py-2 text-neutral-300 hover:text-white transition-all duration-300"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full mr-3 group-hover:shadow-yellow-500/50 transition-all duration-300"></div>
                       Provisionally-Accredited
                     </Link>
                   )}
                   {adminSettings.showNonAccredited && (
                     <Link
                       href="/accommodations/non-accredited"
-                      className="block py-1 text-gray-300 hover:text-white transition-colors duration-200"
+                      className="group flex items-center py-2 text-neutral-300 hover:text-white transition-all duration-300"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
+                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:shadow-gray-500/50 transition-all duration-300"></div>
                       Non-Accredited
                     </Link>
                   )}
@@ -209,7 +214,7 @@ export default function Navbar() {
               
               <Link
                 href="/contact"
-                className="block px-4 py-2 text-white hover:bg-white/10 transition-colors duration-200 font-medium"
+                className="block px-4 py-3 text-white hover:bg-white/10 transition-all duration-300 font-medium rounded-xl mx-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Contact

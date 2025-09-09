@@ -195,24 +195,24 @@ export default function AdminDashboard() {
       />
       <AuthGuard requiredRole="admin">
         <DashboardLayout userRole="admin">
-        <div className="space-y-6">
+        <div className="space-y-8 p-6">
           {/* Welcome Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-            <h1 className="text-2xl font-bold mb-2">Admin Dashboard</h1>
-            <p className="text-blue-100">Monitor and manage the Varsity-Nest platform</p>
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
+            <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Admin Dashboard</h1>
+            <p className="text-neutral-300 text-lg">Monitor and manage the Varsity-Nest platform</p>
           </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {statsData.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl p-6 shadow-sm border">
+              <div key={index} className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                    <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
+                    <p className="text-sm font-medium text-neutral-400 mb-2">{stat.title}</p>
+                    <p className="text-2xl font-bold text-white mb-1">{stat.value}</p>
+                    <p className="text-sm text-neutral-500">{stat.change}</p>
                   </div>
-                  <div className={`${stat.color} p-3 rounded-lg`}>
+                  <div className={`${stat.color} p-3 rounded-xl shadow-lg`}>
                     <stat.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -221,54 +221,62 @@ export default function AdminDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <button className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-left">
-                <Plus className="w-8 h-8 text-blue-600 mr-3" />
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <button className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-500/20 text-left">
+                <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl mr-4 group-hover:bg-blue-500/20 transition-all duration-300">
+                  <Plus className="w-8 h-8 text-blue-400" />
+                </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">Add Accommodation</h3>
-                  <p className="text-sm text-gray-600">Create new listing</p>
+                  <h3 className="font-semibold text-white text-lg group-hover:text-blue-300 transition-colors">Add Accommodation</h3>
+                  <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Create new listing</p>
                 </div>
               </button>
 
-              <button className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-left">
-                <Users className="w-8 h-8 text-green-600 mr-3" />
+              <button className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-green-500/20 text-left">
+                <div className="p-4 border border-green-500/50 bg-green-500/10 rounded-xl mr-4 group-hover:bg-green-500/20 transition-all duration-300">
+                  <Users className="w-8 h-8 text-green-400" />
+                </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">Manage Providers</h3>
-                  <p className="text-sm text-gray-600">View all providers</p>
+                  <h3 className="font-semibold text-white text-lg group-hover:text-green-300 transition-colors">Manage Providers</h3>
+                  <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">View all providers</p>
                 </div>
               </button>
 
-              <button className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors text-left">
-                <TrendingUp className="w-8 h-8 text-purple-600 mr-3" />
+              <button className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-purple-500/20 text-left">
+                <div className="p-4 border border-purple-500/50 bg-purple-500/10 rounded-xl mr-4 group-hover:bg-purple-500/20 transition-all duration-300">
+                  <TrendingUp className="w-8 h-8 text-purple-400" />
+                </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">View Analytics</h3>
-                  <p className="text-sm text-gray-600">Platform insights</p>
+                  <h3 className="font-semibold text-white text-lg group-hover:text-purple-300 transition-colors">View Analytics</h3>
+                  <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Platform insights</p>
                 </div>
               </button>
 
-              <button className="flex items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors text-left">
-                <AlertTriangle className="w-8 h-8 text-orange-600 mr-3" />
+              <button className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-orange-500/20 text-left">
+                <div className="p-4 border border-orange-500/50 bg-orange-500/10 rounded-xl mr-4 group-hover:bg-orange-500/20 transition-all duration-300">
+                  <AlertTriangle className="w-8 h-8 text-orange-400" />
+                </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">Pending Reviews</h3>
-                  <p className="text-sm text-gray-600">Approve listings</p>
+                  <h3 className="font-semibold text-white text-lg group-hover:text-orange-300 transition-colors">Pending Reviews</h3>
+                  <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Approve listings</p>
                 </div>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Recent Activity */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border">
-              <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-              <div className="space-y-4">
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Recent Activity</h2>
+              <div className="space-y-6">
                 {recentActivity?.map((activity) => activity && (
-                  <div key={activity.id} className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div key={activity.id} className="flex items-start space-x-4">
+                    <div className="w-3 h-3 bg-blue-400 rounded-full mt-2 shadow-lg shadow-blue-500/50"></div>
                     <div className="flex-1">
-                      <p className="text-sm text-gray-900">{activity.message}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
+                      <p className="text-neutral-300">{activity.message}</p>
+                      <p className="text-sm text-neutral-500 mt-1">{activity.time}</p>
                     </div>
                   </div>
                 ))}
@@ -276,17 +284,17 @@ export default function AdminDashboard() {
             </div>
 
             {/* Pending Provider Approvals */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border">
-              <h2 className="text-lg font-semibold mb-4">Pending Provider Approvals</h2>
-              <div className="space-y-4">
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Pending Provider Approvals</h2>
+              <div className="space-y-6">
                 {pendingApprovals?.map((item) => item && (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                  <div key={item.id} className="flex items-center justify-between p-6 border border-yellow-500/50 bg-yellow-500/10 backdrop-blur-xl rounded-xl">
                     <div>
-                      <p className="font-medium text-gray-900">{item.title}</p>
-                      <p className="text-sm text-gray-600">{item.provider}</p>
-                      <div className="mt-2">
+                      <p className="font-semibold text-white text-lg">{item.title}</p>
+                      <p className="text-neutral-400">{item.provider}</p>
+                      <div className="mt-3">
                         <button
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
                           onClick={() => handleViewDocuments(item.id)}
                           disabled={isLoading}
                         >
@@ -294,16 +302,16 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-3">
                       <button
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors shadow-lg"
                         onClick={() => handleApprove(item.id)}
                         disabled={isLoading}
                       >
                         Approve
                       </button>
                       <button
-                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors shadow-lg"
                         onClick={() => handleReject(item.id)}
                         disabled={isLoading}
                       >
@@ -317,21 +325,23 @@ export default function AdminDashboard() {
           </div>
 
           {/* Top Accommodations */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <h2 className="text-lg font-semibold mb-4">Top Performing Accommodations</h2>
-            <div className="space-y-4">
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Top Performing Accommodations</h2>
+            <div className="space-y-6">
               {topAccommodations?.map((accommodation) => accommodation && (
-                <div key={accommodation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
+                <div key={accommodation.id} className="flex items-center justify-between p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+                  <div className="flex items-center space-x-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl border border-white/20 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-lg"></div>
+                    </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">{accommodation.title}</h3>
-                      <p className="text-sm text-gray-600">{accommodation.address}</p>
+                      <h3 className="font-semibold text-white text-lg">{accommodation.title}</h3>
+                      <p className="text-neutral-400">{accommodation.address}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">{formatZar(accommodation.price || 0)}/month</p>
-                    <p className="text-sm text-gray-500">{accommodation.reviewCount} reviews</p>
+                    <p className="font-bold text-green-400 text-lg">{formatZar(accommodation.price || 0)}/month</p>
+                    <p className="text-sm text-neutral-500">{accommodation.reviewCount} reviews</p>
                   </div>
                 </div>
               ))}
