@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/stackauth"
-import { query } from "@/lib/database"
+import { secureDb } from "@/lib/database-secure"
+import { eq } from "drizzle-orm"
+import * as schema from "@/lib/schema"
 
 // GET - Fetch all whitelisted domains
 export async function GET() {
@@ -10,16 +12,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const result = await query`SELECT id, domain, university, created_at, is_active FROM whitelisted_domains ORDER BY created_at DESC`
-    const domains = result.rows.map((row: any) => ({
-      id: row.id,
-      domain: row.domain,
-      university: row.university,
-      createdAt: row.created_at,
-      isActive: row.is_active
-    }))
-
-    return NextResponse.json({ domains })
+    // TODO: whitelisted_domains table doesn't exist in schema
+    // This functionality needs to be implemented properly
+    return NextResponse.json({ 
+      error: 'Whitelisted domains functionality not implemented yet',
+      domains: [] 
+    }, { status: 501 })
   } catch (error) {
     console.error('Error fetching domains:', error)
     return NextResponse.json({ error: 'Failed to fetch domains' }, { status: 500 })
@@ -56,16 +54,17 @@ export async function POST(request: NextRequest) {
       // Update existing domain
       const formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
       
-      await query`UPDATE whitelisted_domains SET domain = ${formattedDomain}, university = ${university} WHERE id = ${domainId}`
-
-      return NextResponse.json({ success: true })
+      // TODO: whitelisted_domains table doesn't exist in schema
+      return NextResponse.json({ 
+        error: 'Whitelisted domains functionality not implemented yet' 
+      }, { status: 501 })
     }
 
     if (action === 'toggle') {
-      // Toggle domain status
-      await query`UPDATE whitelisted_domains SET is_active = ${Boolean(isActive)} WHERE id = ${domainId}`
-
-      return NextResponse.json({ success: true })
+      // TODO: whitelisted_domains table doesn't exist in schema
+      return NextResponse.json({ 
+        error: 'Whitelisted domains functionality not implemented yet' 
+      }, { status: 501 })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -90,9 +89,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Domain ID required' }, { status: 400 })
     }
 
-    await query`DELETE FROM whitelisted_domains WHERE id = ${domainId}`
-
-    return NextResponse.json({ success: true })
+    // TODO: whitelisted_domains table doesn't exist in schema
+    return NextResponse.json({ 
+      error: 'Whitelisted domains functionality not implemented yet' 
+    }, { status: 501 })
   } catch (error) {
     console.error('Error deleting domain:', error)
     return NextResponse.json({ error: 'Failed to delete domain' }, { status: 500 })
