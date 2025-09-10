@@ -3,6 +3,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { uploadDocument } from "@/lib/cloudinary"
+import { providerRegistrationSchema, validateRequest } from "@/lib/validation-schemas"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,41 +12,82 @@ export async function POST(request: NextRequest) {
     if (contentType.includes('multipart/form-data')) {
       // Provider registration documents and DB linkage after client StackAuth signup
       const form = await request.formData()
-      const email = String(form.get('email') || '')
-      const firstName = String(form.get('firstName') || '')
-      const lastName = String(form.get('lastName') || '')
-      const phone = String(form.get('phone') || '')
-      const institution = String(form.get('institution') || '')
-
-      if (!email || !firstName || !lastName) {
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+      
+      // Validate and sanitize form data
+      const formData = {
+        email: String(form.get('email') || ''),
+        firstName: String(form.get('firstName') || ''),
+        lastName: String(form.get('lastName') || ''),
+        phone: String(form.get('phone') || ''),
+        companyName: String(form.get('institution') || ''),
+        address: String(form.get('address') || ''),
+        description: String(form.get('description') || ''),
+        website: String(form.get('website') || '')
       }
 
+      // Validate the form data
+      const validation = validateRequest(providerRegistrationSchema, formData)
+      if (!validation.success) {
+        return NextResponse.json(
+          { error: 'Invalid form data', details: validation.errors },
+          { status: 400 }
+        )
+      }
+
+      const { email, firstName, lastName, phone, companyName, address, description, website } = validation.data
+
       // Get existing user (created by webhook) and update with additional info
-      const userRes = await query`
-        SELECT id FROM users WHERE email = ${email}
-      `
+      const [user] = await secureDb.db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.email, email))
+        .limit(1)
       
-      if (userRes.rows.length === 0) {
+      if (!user) {
         return NextResponse.json({ error: 'User not found. Please complete registration first.' }, { status: 404 })
       }
       
-      const userId = userRes.rows[0].id
+      const userId = user.id
       
       // Update user with additional provider info
-      await query`
-        UPDATE users 
-        SET first_name = ${firstName}, last_name = ${lastName}, phone = ${phone || null}, updated_at = NOW()
-        WHERE id = ${userId}
-      `
+      await secureDb.db
+        .update(schema.users)
+        .set({
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone || null,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.users.id, userId))
 
-      const providerRes = await query`
-        INSERT INTO providers (user_id, business_name, contact_person, contact_email, contact_phone, address, registration_status)
-        VALUES (${userId}, ${institution || 'Provider Business'}, ${firstName + ' ' + lastName}, ${email}, ${phone || null}, ${''}, 'pending')
-        ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()
-        RETURNING id
-      `
-      const providerId = providerRes.rows?.[0]?.id
+      // Create provider record
+      const { randomUUID } = await import('crypto')
+      const providerId = randomUUID()
+      await secureDb.db
+        .insert(schema.providers)
+        .values({
+          id: providerId,
+          userId: userId,
+          companyName: companyName,
+          contactPerson: `${firstName} ${lastName}`,
+          contactEmail: email,
+          contactPhone: phone || null,
+          address: address || '',
+          registrationStatus: 'pending',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .onConflictDoUpdate({
+          target: schema.providers.userId,
+          set: {
+            companyName: companyName,
+            contactPerson: `${firstName} ${lastName}`,
+            contactEmail: email,
+            contactPhone: phone || null,
+            address: address || '',
+            updatedAt: new Date()
+          }
+        })
 
       // Upload up to 2 documents
       const docs = (form.getAll('documents') as unknown as File[]) || []
