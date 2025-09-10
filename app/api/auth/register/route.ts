@@ -89,12 +89,33 @@ export async function POST(request: NextRequest) {
           }
         })
 
-      // Upload up to 2 documents
+      // Upload up to 2 documents securely
       const docs = (form.getAll('documents') as unknown as File[]) || []
       const urls: string[] = []
+      const uploadWarnings: string[] = []
+      
       for (const d of docs.slice(0, 2)) {
-        const result: any = await uploadDocument(d, 'varsity-nest/provider-documents')
-        if (result?.secure_url) urls.push(result.secure_url)
+        try {
+          const { uploadDocumentSecurely } = await import('@/lib/cloudinary')
+          const result = await uploadDocumentSecurely(d, {
+            folder: 'varsity-nest/provider-documents',
+            purpose: 'accreditation',
+            userId: userId
+          })
+          
+          if (result.success && result.result?.secure_url) {
+            urls.push(result.result.secure_url)
+            if (result.warnings) {
+              uploadWarnings.push(...result.warnings)
+            }
+          } else {
+            console.error('Document upload failed:', result.error)
+            // Continue with other documents even if one fails
+          }
+        } catch (error) {
+          console.error('Document upload error:', error)
+          // Continue with other documents even if one fails
+        }
       }
 
       if (urls.length > 0) {
