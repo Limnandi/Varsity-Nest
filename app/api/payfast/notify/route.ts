@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyPayFastSignature, validatePayFastResponse, verifyPayFastITNWithServer } from "@/lib/payfast"
 import { Sentry } from "@/lib/sentry"
-import { query } from "@/lib/database"
+import { secureDb } from "@/lib/database-secure"
+import { eq, count } from "drizzle-orm"
+import * as schema from "@/lib/schema"
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,8 +71,14 @@ export async function POST(request: NextRequest) {
     const paymentDate = new Date()
 
     // Fetch the pending transaction to verify amount and existence (idempotency)
-    const pendingRes = await query`SELECT amount, provider_id FROM payment_transactions WHERE m_payment_id = ${merchantPaymentId} LIMIT 1`
-    const pending = pendingRes.rows?.[0]
+    const [pending] = await secureDb.db
+      .select({ 
+        amount: schema.paymentTransactions.amount, 
+        providerId: schema.paymentTransactions.providerId 
+      })
+      .from(schema.paymentTransactions)
+      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
+      .limit(1)
 
     if (!pending) {
       console.error("No pending transaction for m_payment_id:", merchantPaymentId)
@@ -132,22 +140,50 @@ async function processSuccessfulPayment(
 ) {
   try {
     // Idempotency: mark transaction as completed only once
-    await query`UPDATE payment_transactions SET pf_payment_id = ${transactionId}, status = 'completed', payment_date = ${paymentDate.toISOString()}, gateway_response = ${JSON.stringify(webhookData)}::jsonb WHERE m_payment_id = ${merchantPaymentId} AND status <> 'completed'`
+    await secureDb.db
+      .update(schema.paymentTransactions)
+      .set({
+        pfPaymentId: transactionId,
+        status: 'completed',
+        paymentDate: paymentDate,
+        gatewayResponse: webhookData
+      })
+      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
 
     // Update provider subscription status
-    await query`UPDATE providers SET subscription_status = 'active', last_payment_date = ${paymentDate.toISOString()}, next_payment_date = ${new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()} WHERE id = ${providerId}`
+    await secureDb.db
+      .update(schema.providers)
+      .set({
+        subscriptionStatus: 'active',
+        lastPaymentDate: paymentDate,
+        nextPaymentDate: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+      })
+      .where(eq(schema.providers.id, providerId))
 
     // If merchant requested featured, set it only if featured cap not exceeded (5)
     if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
-      const featuredRes = await query`SELECT COUNT(*) AS c FROM providers WHERE is_featured = true`
-      const featuredCount = Number.parseInt(featuredRes.rows?.[0]?.c ?? '0')
+      const [featuredResult] = await secureDb.db
+        .select({ count: count(schema.providers.id) })
+        .from(schema.providers)
+        .where(eq(schema.providers.isFeatured, true))
+      
+      const featuredCount = Number(featuredResult?.count || 0)
       if (featuredCount < 5) {
-        await query`UPDATE providers SET is_featured = true WHERE id = ${providerId}`
+        await secureDb.db
+          .update(schema.providers)
+          .set({ isFeatured: true })
+          .where(eq(schema.providers.id, providerId))
       }
     }
 
     // Ensure provider_id and amount are set on transaction
-    await query`UPDATE payment_transactions SET provider_id = ${providerId}, amount = ${amount} WHERE m_payment_id = ${merchantPaymentId}`
+    await secureDb.db
+      .update(schema.paymentTransactions)
+      .set({
+        providerId: providerId,
+        amount: amount
+      })
+      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
 
     console.log(`Payment successful for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -165,7 +201,16 @@ async function processPendingPayment(
   webhookData: any
 ) {
   try {
-    await query`UPDATE payment_transactions SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'pending', gateway_response = ${JSON.stringify(webhookData)}::jsonb WHERE m_payment_id = ${merchantPaymentId}`
+    await secureDb.db
+      .update(schema.paymentTransactions)
+      .set({
+        providerId: providerId,
+        amount: amount,
+        pfPaymentId: transactionId,
+        status: 'pending',
+        gatewayResponse: webhookData
+      })
+      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
 
     console.log(`Payment pending for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -183,7 +228,16 @@ async function processFailedPayment(
   webhookData: any
 ) {
   try {
-    await query`UPDATE payment_transactions SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'failed', gateway_response = ${JSON.stringify(webhookData)}::jsonb WHERE m_payment_id = ${merchantPaymentId}`
+    await secureDb.db
+      .update(schema.paymentTransactions)
+      .set({
+        providerId: providerId,
+        amount: amount,
+        pfPaymentId: transactionId,
+        status: 'failed',
+        gatewayResponse: webhookData
+      })
+      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
 
     console.log(`Payment failed for provider ${providerId}: ${transactionId}`)
   } catch (error) {
@@ -201,7 +255,16 @@ async function processCancelledPayment(
   webhookData: any
 ) {
   try {
-    await query`UPDATE payment_transactions SET provider_id = ${providerId}, amount = ${amount}, pf_payment_id = ${transactionId}, status = 'cancelled', gateway_response = ${JSON.stringify(webhookData)}::jsonb WHERE m_payment_id = ${merchantPaymentId}`
+    await secureDb.db
+      .update(schema.paymentTransactions)
+      .set({
+        providerId: providerId,
+        amount: amount,
+        pfPaymentId: transactionId,
+        status: 'cancelled',
+        gatewayResponse: webhookData
+      })
+      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
 
     console.log(`Payment cancelled for provider ${providerId}: ${transactionId}`)
   } catch (error) {
