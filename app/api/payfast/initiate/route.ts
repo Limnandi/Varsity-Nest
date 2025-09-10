@@ -1,91 +1,211 @@
 import { NextResponse } from "next/server"
+import { PaymentInitiationSchema } from "@/lib/schemas/payment"
+import { PaymentSecurityService } from "@/lib/services/payment-security"
+import { PaymentAuditService } from "@/lib/services/payment-audit"
+import { PaymentReconciliationService } from "@/lib/services/payment-reconciliation"
 import { createPayFastPayment } from "@/lib/payfast"
 import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 import { secureDb } from "@/lib/database-secure"
 import { eq, count } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getSession } from "@/lib/stackauth"
+import { Sentry } from "@/lib/sentry"
 
 export async function POST(request: Request) {
   try {
-    // Enforce authenticated provider and bind providerId server-side
+    // Enhanced authentication and authorization
     const session = await getSession()
     if (!session || session.user.role !== 'provider') {
+      Sentry.captureMessage('Unauthorized payment initiation attempt', {
+        level: 'warning',
+        tags: { component: 'payment-initiation' },
+        extra: { 
+          userRole: session?.user?.role,
+          userId: session?.user?.id 
+        }
+      })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Validate request body with Zod schema
     const body = await request.json()
-
-    const { amount, itemName, customData } = body || {}
-
-    if (!itemName) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    const validationResult = PaymentInitiationSchema.safeParse(body)
+    
+    if (!validationResult.success) {
+      Sentry.captureMessage('Invalid payment initiation request', {
+        level: 'warning',
+        tags: { component: 'payment-initiation' },
+        extra: { 
+          errors: validationResult.error.issues,
+          userId: session.user.id 
+        }
+      })
+      return NextResponse.json({ 
+        error: "Invalid request data", 
+        details: validationResult.error.issues 
+      }, { status: 400 })
     }
 
-    // Basic server-side validation
-    let parsedAmount = amount !== undefined ? Number.parseFloat(String(amount)) : NaN
+    const { amount, itemName, customData } = validationResult.data
 
-    if (!process.env.PAYFAST_MERCHANT_ID || !process.env.PAYFAST_MERCHANT_KEY) {
-      return NextResponse.json({ error: "PayFast not configured" }, { status: 500 })
+    // Validate PayFast configuration
+    if (!process.env.PAYFAST_MERCHANT_ID || !process.env.PAYFAST_MERCHANT_KEY || !process.env.PAYFAST_PASSPHRASE) {
+      Sentry.captureMessage('PayFast configuration missing', {
+        level: 'error',
+        tags: { component: 'payment-initiation' }
+      })
+      return NextResponse.json({ error: "Payment system not configured" }, { status: 500 })
     }
 
-    // Compute amount if not valid
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      if (!customData?.providerId) {
-        return NextResponse.json({ error: "Missing providerId for amount calculation" }, { status: 400 })
-      }
-      const [result] = await secureDb.db
-        .select({ count: count(schema.accommodations.id) })
-        .from(schema.accommodations)
-        .where(eq(schema.accommodations.providerId, customData.providerId))
-      const accommodationsCount = Number(result?.count || 0)
-      const wantsFeatured = Boolean(customData?.wantsFeatured)
-      parsedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
-    }
+    // Resolve provider from session (server-side validation)
+    const [providerRow] = await secureDb.db
+      .select({ 
+        id: schema.providers.id,
+        contactEmail: schema.providers.contactEmail,
+        contactPerson: schema.providers.contactPerson,
+        subscriptionStatus: schema.providers.subscriptionStatus
+      })
+      .from(schema.providers)
+      .where(eq(schema.providers.userId, session.user.id))
+      .limit(1)
 
-    // Resolve provider id from session to prevent client tampering
-    const providerRow = await query`
-      SELECT id, contact_email, contact_person FROM providers WHERE user_id = ${session.user.id} LIMIT 1
-    `
-    const providerId: string | null = providerRow.rows?.[0]?.id ?? null
-
-    if (!providerId) {
+    if (!providerRow) {
+      Sentry.captureMessage('Provider account not found for payment initiation', {
+        level: 'error',
+        tags: { component: 'payment-initiation' },
+        extra: { userId: session.user.id }
+      })
       return NextResponse.json({ error: "Provider account not found" }, { status: 403 })
     }
 
-    // Create signed payload (server-generated m_payment_id)
+    const providerId = providerRow.id
+
+    // Calculate amount server-side (prevent client manipulation)
+    let finalAmount: number
+    if (amount && amount > 0) {
+      // Validate provided amount is reasonable
+      if (amount > 100000) { // R100,000 max
+        return NextResponse.json({ error: "Amount too high" }, { status: 400 })
+      }
+      finalAmount = amount
+    } else {
+      // Calculate based on accommodations count
+      const [result] = await secureDb.db
+        .select({ count: count(schema.accommodations.id) })
+        .from(schema.accommodations)
+        .where(eq(schema.accommodations.providerId, providerId))
+      
+      const accommodationsCount = Number(result?.count || 0)
+      const wantsFeatured = Boolean(customData?.wantsFeatured)
+      finalAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+    }
+
+    // Check for duplicate payments
+    const duplicateCheck = await PaymentReconciliationService.detectDuplicatePayments(providerId, finalAmount)
+    if (duplicateCheck.isDuplicate) {
+      Sentry.captureMessage('Duplicate payment attempt detected', {
+        level: 'warning',
+        tags: { component: 'payment-initiation' },
+        extra: { 
+          providerId, 
+          amount: finalAmount,
+          duplicateTransactions: duplicateCheck.duplicateTransactions.map(t => t.id)
+        }
+      })
+      return NextResponse.json({ 
+        error: "Duplicate payment detected. Please wait before retrying." 
+      }, { status: 409 })
+    }
+
+    // Generate secure payment ID
+    const paymentId = PaymentSecurityService.generateSecurePaymentId()
+
+    // Create server-side custom data (prevent client tampering)
     const serverCustomData = {
       ...customData,
       providerId,
-      paymentId: `vn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      paymentId,
+      timestamp: Date.now(),
+      userId: session.user.id
     }
 
-    const effectiveEmail = providerRow.rows?.[0]?.contact_email || session.user.email
-    const effectiveName = providerRow.rows?.[0]?.contact_person || session.user.name || 'Provider'
+    const effectiveEmail = providerRow.contactEmail || session.user.email
+    const effectiveName = providerRow.contactPerson || session.user.name || 'Provider'
 
+    // Create PayFast payment data
     const paymentData = createPayFastPayment(
-      parsedAmount,
+      finalAmount,
       effectiveEmail,
       effectiveName,
       itemName,
       serverCustomData
     )
 
-    // Record a pending transaction for idempotency and amount verification
+    // Record pending transaction with comprehensive validation
     try {
-      await query`
-        INSERT INTO payment_transactions (provider_id, amount, currency, m_payment_id, status, payment_date, gateway_response)
-        VALUES (${providerId}, ${parsedAmount}, 'ZAR', ${paymentData.m_payment_id}, 'pending', ${new Date().toISOString()}, ${JSON.stringify({ initiated_at: new Date().toISOString() })}::jsonb)
-        ON CONFLICT (m_payment_id) DO NOTHING
-      `
-    } catch (e) {
-      console.error("Failed to record pending transaction", e)
-      // Fail closed: do not proceed without DB record in production
+      await secureDb.db.transaction(async (tx: any) => {
+        // Insert payment transaction
+        const [transaction] = await tx
+          .insert(schema.paymentTransactions)
+          .values({
+            providerId,
+            amount: finalAmount.toString(),
+            currency: 'ZAR',
+            mPaymentId: paymentData.m_payment_id,
+            status: 'pending',
+            gatewayResponse: { 
+              initiated_at: new Date().toISOString(),
+              user_agent: request.headers.get('user-agent'),
+              ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+            }
+          })
+          .returning({ id: schema.paymentTransactions.id })
+
+        // Log payment initiation
+        await PaymentAuditService.logAuditEvent(transaction.id, 'created', {
+          amount: finalAmount,
+          providerId,
+          reason: 'Payment initiated via PayFast',
+          metadata: { 
+            itemName,
+            customData: serverCustomData,
+            paymentId
+          }
+        })
+      })
+    } catch (dbError) {
+      Sentry.captureException(dbError, {
+        tags: { component: 'payment-initiation' },
+        extra: { providerId, amount: finalAmount, paymentId }
+      })
       return NextResponse.json({ error: "Unable to create transaction" }, { status: 500 })
     }
 
-    return NextResponse.json({ paymentData })
+    // Log successful payment initiation
+    Sentry.captureMessage('Payment initiated successfully', {
+      level: 'info',
+      tags: { component: 'payment-initiation' },
+      extra: { 
+        providerId, 
+        amount: finalAmount, 
+        paymentId,
+        itemName 
+      }
+    })
+
+    return NextResponse.json({ 
+      paymentData,
+      transactionId: paymentId,
+      amount: finalAmount
+    })
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { component: 'payment-initiation' },
+      extra: { 
+        userId: 'unknown',
+        providerId: 'unknown'
+      }
+    })
     console.error("PayFast initiate error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
