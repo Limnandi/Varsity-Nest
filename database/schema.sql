@@ -211,10 +211,50 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Payment audit logs for comprehensive tracking
+CREATE TABLE IF NOT EXISTS payment_audit_logs (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    transaction_id VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL CHECK (action IN ('created', 'updated', 'completed', 'failed', 'cancelled', 'reconciled')),
+    old_status VARCHAR(20),
+    new_status VARCHAR(20),
+    amount DECIMAL(10,2),
+    provider_id VARCHAR(255) REFERENCES providers(id) ON DELETE SET NULL,
+    admin_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+    reason TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Payment reconciliations for financial accuracy
+CREATE TABLE IF NOT EXISTS payment_reconciliations (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    transaction_id VARCHAR(255) NOT NULL,
+    expected_amount DECIMAL(10,2) NOT NULL,
+    actual_amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('matched', 'mismatch', 'missing', 'duplicate')),
+    reconciliation_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Helpful indexes for payment transactions
 CREATE INDEX IF NOT EXISTS idx_payment_txn_provider ON payment_transactions(provider_id);
 CREATE INDEX IF NOT EXISTS idx_payment_txn_status ON payment_transactions(status);
 CREATE INDEX IF NOT EXISTS idx_payment_txn_created_at ON payment_transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_m_payment_id ON payment_transactions(m_payment_id);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_pf_payment_id ON payment_transactions(pf_payment_id);
+
+-- Indexes for payment audit logs
+CREATE INDEX IF NOT EXISTS idx_payment_audit_transaction ON payment_audit_logs(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_action ON payment_audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_created_at ON payment_audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_provider ON payment_audit_logs(provider_id);
+
+-- Indexes for payment reconciliations
+CREATE INDEX IF NOT EXISTS idx_payment_recon_transaction ON payment_reconciliations(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payment_recon_status ON payment_reconciliations(status);
+CREATE INDEX IF NOT EXISTS idx_payment_recon_date ON payment_reconciliations(reconciliation_date);
 
 -- Trigger for updated_at on payment_transactions
 CREATE TRIGGER update_payment_transactions_updated_at BEFORE UPDATE ON payment_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
