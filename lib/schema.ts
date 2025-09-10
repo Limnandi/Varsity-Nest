@@ -193,3 +193,30 @@ export const paymentTransactions = pgTable("payment_transactions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })
+
+// Payment audit logs table
+export const paymentAuditLogs = pgTable("payment_audit_logs", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  transactionId: varchar("transaction_id", { length: 255 }).notNull(),
+  action: varchar("action", { length: 50 }).notNull().$type<"created" | "updated" | "completed" | "failed" | "cancelled" | "reconciled">(),
+  oldStatus: varchar("old_status", { length: 20 }),
+  newStatus: varchar("new_status", { length: 20 }),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  providerId: varchar("provider_id", { length: 255 }).references(() => providers.id, { onDelete: "set null" }),
+  adminId: varchar("admin_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Payment reconciliations table
+export const paymentReconciliations = pgTable("payment_reconciliations", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  transactionId: varchar("transaction_id", { length: 255 }).notNull(),
+  expectedAmount: decimal("expected_amount", { precision: 10, scale: 2 }).notNull(),
+  actualAmount: decimal("actual_amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().$type<"matched" | "mismatch" | "missing" | "duplicate">(),
+  reconciliationDate: timestamp("reconciliation_date", { withTimezone: true }).defaultNow().notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
