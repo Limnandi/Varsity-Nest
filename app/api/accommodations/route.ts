@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         area: String(form.get('area') || ''),
         distance: form.get('distance') ? Number(form.get('distance')) : undefined,
         amenities: JSON.parse(String(form.get('amenities') || '[]')),
-        accreditation_status: String(form.get('accreditation_status') || 'accredited'),
+        accreditationStatus: String(form.get('accreditation_status') || 'accredited'),
         featured: String(form.get('featured') || 'false') === 'true',
         available_rooms: Number(form.get('available_rooms') || 0),
         total_rooms: Number(form.get('total_rooms') || 0),

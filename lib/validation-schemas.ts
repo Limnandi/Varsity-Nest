@@ -50,12 +50,25 @@ export const providerRegistrationSchema = z.object({
   documents: z.array(z.string().url("Invalid document URL")).max(5, "Too many documents").optional()
 })
 
+// Provider form data schema (for StackAuth users without password)
+export const providerFormDataSchema = z.object({
+  email: emailSchema,
+  firstName: nameSchema,
+  lastName: nameSchema,
+  companyName: z.string().min(1, "Company name required").max(200, "Company name too long"),
+  phone: phoneSchema.optional(),
+  address: z.string().min(5, "Address required").max(500, "Address too long"),
+  description: z.string().min(10, "Description required").max(1000, "Description too long"),
+  website: z.string().url("Invalid website URL").optional(),
+  documents: z.array(z.string().url("Invalid document URL")).max(5, "Too many documents").optional()
+})
+
 // Payment schemas
 export const paymentInitiateSchema = z.object({
   amount: z.number().positive("Amount must be positive").max(999999, "Amount too high"),
   providerId: z.string().uuid("Invalid provider ID"),
   wantsFeatured: z.boolean().optional(),
-  customData: z.record(z.any()).optional()
+  customData: z.record(z.string(), z.any()).optional()
 })
 
 // Admin schemas
@@ -119,7 +132,7 @@ export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { suc
     if (error instanceof z.ZodError) {
       return { 
         success: false, 
-        errors: error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+        errors: error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`)
       }
     }
     return { success: false, errors: ['Validation failed'] }

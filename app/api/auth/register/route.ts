@@ -3,7 +3,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { uploadDocument } from "@/lib/cloudinary"
-import { providerRegistrationSchema, validateRequest } from "@/lib/validation-schemas"
+import { providerFormDataSchema, validateRequest } from "@/lib/validation-schemas"
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate the form data
-      const validation = validateRequest(providerRegistrationSchema, formData)
+      const validation = validateRequest(providerFormDataSchema, formData)
       if (!validation.success) {
         return NextResponse.json(
           { error: 'Invalid form data', details: validation.errors },
