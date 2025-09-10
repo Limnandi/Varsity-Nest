@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, numeric, text as textArray, integer, decimal, jsonb, varchar, check } from "drizzle-orm/pg-core"
+import { pgTable, uuid, text, timestamp, boolean, numeric, text as textArray, integer, decimal, jsonb, varchar, check, bigint } from "drizzle-orm/pg-core"
 
 // Users table - matches actual database schema
 export const users = pgTable("users", {
@@ -219,4 +219,33 @@ export const paymentReconciliations = pgTable("payment_reconciliations", {
   reconciliationDate: timestamp("reconciliation_date", { withTimezone: true }).defaultNow().notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const fileUploadAudits = pgTable("file_upload_audits", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileSize: bigint("file_size", { mode: "number" }).notNull(),
+  fileType: varchar("file_type", { length: 100 }).notNull(),
+  purpose: varchar("purpose", { length: 50 }).notNull().$type<"accommodation" | "document" | "profile" | "accreditation">(),
+  status: varchar("status", { length: 20 }).notNull().$type<"uploaded" | "rejected" | "quarantined" | "deleted">(),
+  reason: text("reason"),
+  securityChecks: jsonb("security_checks").notNull(),
+  cloudinaryId: varchar("cloudinary_id", { length: 255 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const fileQuarantines = pgTable("file_quarantines", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  originalFileName: varchar("original_file_name", { length: 255 }).notNull(),
+  quarantinedFileName: varchar("quarantined_file_name", { length: 255 }).notNull(),
+  reason: text("reason").notNull(),
+  riskScore: integer("risk_score").notNull(),
+  threats: text("threats").array().notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().$type<"quarantined" | "released" | "deleted">(),
 })
