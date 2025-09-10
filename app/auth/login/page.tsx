@@ -35,7 +35,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-      // Step 1: Try StackAuth first
+      // Try StackAuth first for OAuth users
       try {
         const result = await app.signInWithCredential({ email, password })
         if ((result as any)?.error) {
@@ -44,11 +44,10 @@ export default function LoginPage() {
         router.push("/auth/redirect")
         return
       } catch (stackError: any) {
-        // StackAuth failed, try database fallback
-        console.log("StackAuth authentication failed, trying database fallback:", stackError.message)
+        // StackAuth failed, try secure database authentication
+        console.log("StackAuth authentication failed, trying secure database authentication:", stackError.message)
         
-        // Step 2: Fallback to database authentication
-        const fallbackResponse = await fetch('/api/auth/fallback-login', {
+        const secureResponse = await fetch('/api/auth/secure-login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -56,25 +55,15 @@ export default function LoginPage() {
           body: JSON.stringify({ email, password }),
         })
 
-        const fallbackData = await fallbackResponse.json()
+        const secureData = await secureResponse.json()
 
-        if (fallbackResponse.ok && fallbackData.success) {
-          // Database authentication successful
-          // Create a session for the database user
-          const sessionData = {
-            user: fallbackData.user,
-            authMethod: fallbackData.authMethod
-          }
-          
-          // Store session data in localStorage for now
-          // In production, you might want to use httpOnly cookies
-          localStorage.setItem('varsityNestSession', JSON.stringify(sessionData))
-          
+        if (secureResponse.ok && secureData.success) {
+          // Secure authentication successful - session is set via HTTP-only cookie
           router.push("/auth/redirect")
           return
         } else {
-          // Both StackAuth and database authentication failed
-          throw new Error(fallbackData.error || "Invalid email or password")
+          // Both StackAuth and secure authentication failed
+          throw new Error(secureData.error || "Invalid email or password")
         }
       }
     } catch (error: any) {
