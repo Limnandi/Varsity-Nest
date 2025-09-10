@@ -5,6 +5,8 @@ import Layout from "@/components/Layout"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { StackProvider } from "@stackframe/stack"
 import { getStackServerApp } from "@/lib/stack"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { GlobalErrorHandler } from "@/lib/error-handler"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,14 +20,21 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Initialize global error handling
+  if (typeof window !== 'undefined') {
+    GlobalErrorHandler.initialize()
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <StackProvider app={getStackServerApp()}>
-          <TooltipProvider>
-            <Layout>{children}</Layout>
-          </TooltipProvider>
-        </StackProvider>
+        <ErrorBoundary component="root_layout">
+          <StackProvider app={getStackServerApp() as any}>
+            <TooltipProvider>
+              <Layout>{children}</Layout>
+            </TooltipProvider>
+          </StackProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )
