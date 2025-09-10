@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/stackauth'
+import { getCurrentUserFromRequest } from '@/lib/auth-server'
 import { uploadImage } from '@/lib/cloudinary'
 import { fetchAccommodationsByStatus, fetchAccommodationsByProvider, insertAccommodation } from '@/lib/repos/accommodations'
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const user = await getCurrentUserFromRequest(request)
     if (!user || user.role !== 'provider') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
