@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import { createPayFastPayment } from "@/lib/payfast"
 import { calculateProviderSubscriptionPrice } from "@/lib/payments"
-import { query } from "@/lib/database"
+import { secureDb } from "@/lib/database-secure"
+import { eq, count } from "drizzle-orm"
+import * as schema from "@/lib/schema"
 import { getSession } from "@/lib/stackauth"
 
 export async function POST(request: Request) {
@@ -32,8 +34,11 @@ export async function POST(request: Request) {
       if (!customData?.providerId) {
         return NextResponse.json({ error: "Missing providerId for amount calculation" }, { status: 400 })
       }
-      const res = await query`SELECT COUNT(*) AS c FROM accommodations WHERE provider_id = ${customData.providerId}`
-      const accommodationsCount = Number.parseInt(res.rows?.[0]?.c ?? '0') || 0
+      const [result] = await secureDb.db
+        .select({ count: count(schema.accommodations.id) })
+        .from(schema.accommodations)
+        .where(eq(schema.accommodations.providerId, customData.providerId))
+      const accommodationsCount = Number(result?.count || 0)
       const wantsFeatured = Boolean(customData?.wantsFeatured)
       parsedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
     }
