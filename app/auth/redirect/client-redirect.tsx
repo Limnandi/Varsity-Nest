@@ -26,72 +26,31 @@ export default function ClientRedirect() {
   useEffect(() => {
     const handleRedirect = async () => {
       try {
-        // Check StackAuth first (prioritize fresh session)
-        try {
-          const stackUser = await app.getUser({ or: "return-null" })
-          
-          if (stackUser?.id) {
-            console.log(`StackAuth session found: ${stackUser.primaryEmail}`)
-            
-            // Get role from database for StackAuth user
-            const response = await fetch('/api/auth/get-user-role', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ userId: stackUser.id }),
-            })
-
-            if (response.ok) {
-              const { role } = await response.json()
-              console.log(`Role from database: ${role} for ${stackUser.primaryEmail}`)
-              
-              switch (role) {
-                case 'admin':
-                  router.push('/admin/dashboard')
-                  return
-                case 'provider':
-                  router.push('/provider/dashboard')
-                  return
-                case 'student':
-                default:
-                  router.push('/student/dashboard')
-                  return
-              }
-            }
-          }
-        } catch (stackError) {
-          console.log("StackAuth check failed:", stackError)
-        }
-
-        // Fallback to database session if StackAuth fails
-        const sessionData = localStorage.getItem('varsityNestSession')
+        // Get current user session from secure API
+        const response = await fetch('/api/auth/session')
         
-        if (sessionData) {
-          const session: DatabaseSession = JSON.parse(sessionData)
+        if (response.ok) {
+          const userSession = await response.json()
+          console.log(`Secure session found: ${userSession.role} for ${userSession.email}`)
           
-          if (session.user && session.user.role) {
-            console.log(`Database session fallback: ${session.user.role} for ${session.user.email}`)
-            
-            // Redirect based on role
-            switch (session.user.role) {
-              case 'admin':
-                router.push('/admin/dashboard')
-                return
-              case 'provider':
-                router.push('/provider/dashboard')
-                return
-              case 'student':
-              default:
-                router.push('/student/dashboard')
-                return
-            }
+          // Redirect based on role
+          switch (userSession.role) {
+            case 'admin':
+              router.push('/admin/dashboard')
+              return
+            case 'provider':
+              router.push('/provider/dashboard')
+              return
+            case 'student':
+            default:
+              router.push('/student/dashboard')
+              return
           }
+        } else {
+          // No valid session found
+          setError("No valid session found")
+          router.push('/auth/login')
         }
-
-        // No valid session found
-        setError("No valid session found")
-        router.push('/auth/login')
         
       } catch (error) {
         console.error("Redirect error:", error)
@@ -103,7 +62,7 @@ export default function ClientRedirect() {
     }
 
     handleRedirect()
-  }, [router, app])
+  }, [router])
 
   if (isLoading) {
     return (
