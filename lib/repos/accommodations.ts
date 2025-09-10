@@ -1,4 +1,7 @@
-import { query } from "@/lib/database"
+import { secureDb } from "@/lib/database-secure"
+import { eq, and, desc, count } from "drizzle-orm"
+import * as schema from "@/lib/schema"
+import { randomUUID } from "crypto"
 
 export interface DbAccommodation {
   id: string
@@ -25,59 +28,185 @@ export interface DbAccommodation {
 }
 
 export async function fetchFeaturedAccommodations(limit = 9): Promise<DbAccommodation[]> {
-  const res = await query`
-    SELECT id, name, description, address, price, images, amenities,
-           area, distance, rating, review_count, is_open, featured,
-           available_rooms, total_rooms, is_verified
-    FROM accommodations
-    WHERE is_active = true AND featured = true
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `
-  return res.rows
+  const accommodations = await secureDb.db
+    .select({
+      id: schema.accommodations.id,
+      name: schema.accommodations.name,
+      description: schema.accommodations.description,
+      address: schema.accommodations.address,
+      price: schema.accommodations.price,
+      images: schema.accommodations.images,
+      amenities: schema.accommodations.amenities,
+      area: schema.accommodations.area,
+      distance: schema.accommodations.distance,
+      rating: schema.accommodations.rating,
+      reviewCount: schema.accommodations.reviewCount,
+      isOpen: schema.accommodations.isOpen,
+      featured: schema.accommodations.featured,
+      availableRooms: schema.accommodations.availableRooms,
+      totalRooms: schema.accommodations.totalRooms,
+      isVerified: schema.accommodations.isVerified
+    })
+    .from(schema.accommodations)
+    .where(and(
+      eq(schema.accommodations.isActive, true),
+      eq(schema.accommodations.featured, true)
+    ))
+    .orderBy(desc(schema.accommodations.createdAt))
+    .limit(limit)
+  
+  return accommodations.map((acc: any) => ({
+    id: acc.id,
+    name: acc.name,
+    description: acc.description,
+    address: acc.address,
+    price: acc.price,
+    images: acc.images || [],
+    amenities: acc.amenities || [],
+    accreditation_status: 'accredited', // Default value
+    provider_id: null, // Will be populated if needed
+    area: acc.area,
+    distance: acc.distance,
+    rating: acc.rating,
+    review_count: acc.reviewCount,
+    is_open: acc.isOpen,
+    featured: acc.featured,
+    available_rooms: acc.availableRooms,
+    total_rooms: acc.totalRooms,
+    is_verified: acc.isVerified
+  }))
 }
 
 export async function fetchAccommodationsByStatus(status: string, limit = 200, offset = 0): Promise<DbAccommodation[]> {
-  const res = await query`
-    SELECT id, name, description, address, price, images, amenities,
-           area, distance, rating, review_count, is_open, featured,
-           available_rooms, total_rooms, is_verified
-    FROM accommodations
-    WHERE is_active = true AND accreditation_status = ${status}
-    ORDER BY created_at DESC
-    LIMIT ${limit} OFFSET ${offset}
-  `
-  return res.rows
+  const accommodations = await secureDb.db
+    .select({
+      id: schema.accommodations.id,
+      name: schema.accommodations.name,
+      description: schema.accommodations.description,
+      address: schema.accommodations.address,
+      price: schema.accommodations.price,
+      images: schema.accommodations.images,
+      amenities: schema.accommodations.amenities,
+      area: schema.accommodations.area,
+      distance: schema.accommodations.distance,
+      rating: schema.accommodations.rating,
+      reviewCount: schema.accommodations.reviewCount,
+      isOpen: schema.accommodations.isOpen,
+      featured: schema.accommodations.featured,
+      availableRooms: schema.accommodations.availableRooms,
+      totalRooms: schema.accommodations.totalRooms,
+      isVerified: schema.accommodations.isVerified,
+      accreditationStatus: schema.accommodations.accreditationStatus
+    })
+    .from(schema.accommodations)
+    .where(and(
+      eq(schema.accommodations.isActive, true),
+      eq(schema.accommodations.accreditationStatus, status as any)
+    ))
+    .orderBy(desc(schema.accommodations.createdAt))
+    .limit(limit)
+    .offset(offset)
+  
+  return accommodations.map((acc: any) => ({
+    id: acc.id,
+    name: acc.name,
+    description: acc.description,
+    address: acc.address,
+    price: acc.price,
+    images: acc.images || [],
+    amenities: acc.amenities || [],
+    accreditation_status: acc.accreditationStatus,
+    provider_id: null, // Will be populated if needed
+    area: acc.area,
+    distance: acc.distance,
+    rating: acc.rating,
+    review_count: acc.reviewCount,
+    is_open: acc.isOpen,
+    featured: acc.featured,
+    available_rooms: acc.availableRooms,
+    total_rooms: acc.totalRooms,
+    is_verified: acc.isVerified
+  }))
 }
 
 export async function fetchAccommodationByIdWithProvider(id: string) {
-  const res = await query`
-    SELECT a.id, a.name, a.description, a.address, a.price, a.images, a.amenities, a.provider_id,
-           p.business_name as provider_name, p.contact_email as provider_email
-    FROM accommodations a
-    LEFT JOIN providers p ON p.id = a.provider_id
-    WHERE a.id = ${id}
-    LIMIT 1
-  `
-  return res.rows[0] || null
+  const [accommodation] = await secureDb.db
+    .select({
+      id: schema.accommodations.id,
+      name: schema.accommodations.name,
+      description: schema.accommodations.description,
+      address: schema.accommodations.address,
+      price: schema.accommodations.price,
+      images: schema.accommodations.images,
+      amenities: schema.accommodations.amenities,
+      providerId: schema.accommodations.providerId,
+      providerName: schema.providers.businessName,
+      providerEmail: schema.providers.contactEmail
+    })
+    .from(schema.accommodations)
+    .leftJoin(schema.providers, eq(schema.accommodations.providerId, schema.providers.id))
+    .where(eq(schema.accommodations.id, id))
+    .limit(1)
+  
+  return accommodation || null
 }
 
 export async function fetchAccommodationsByProvider(providerId: string, limit = 200): Promise<DbAccommodation[]> {
-  const res = await query`
-    SELECT id, name, description, address, price, images, amenities,
-           area, distance, rating, review_count, is_open, featured,
-           available_rooms, total_rooms, is_verified
-    FROM accommodations
-    WHERE provider_id = ${providerId}
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `
-  return res.rows
+  const accommodations = await secureDb.db
+    .select({
+      id: schema.accommodations.id,
+      name: schema.accommodations.name,
+      description: schema.accommodations.description,
+      address: schema.accommodations.address,
+      price: schema.accommodations.price,
+      images: schema.accommodations.images,
+      amenities: schema.accommodations.amenities,
+      area: schema.accommodations.area,
+      distance: schema.accommodations.distance,
+      rating: schema.accommodations.rating,
+      reviewCount: schema.accommodations.reviewCount,
+      isOpen: schema.accommodations.isOpen,
+      featured: schema.accommodations.featured,
+      availableRooms: schema.accommodations.availableRooms,
+      totalRooms: schema.accommodations.totalRooms,
+      isVerified: schema.accommodations.isVerified,
+      accreditationStatus: schema.accommodations.accreditationStatus,
+      providerId: schema.accommodations.providerId
+    })
+    .from(schema.accommodations)
+    .where(eq(schema.accommodations.providerId, providerId))
+    .orderBy(desc(schema.accommodations.createdAt))
+    .limit(limit)
+  
+  return accommodations.map((acc: any) => ({
+    id: acc.id,
+    name: acc.name,
+    description: acc.description,
+    address: acc.address,
+    price: acc.price,
+    images: acc.images || [],
+    amenities: acc.amenities || [],
+    accreditation_status: acc.accreditationStatus,
+    provider_id: acc.providerId,
+    area: acc.area,
+    distance: acc.distance,
+    rating: acc.rating,
+    review_count: acc.reviewCount,
+    is_open: acc.isOpen,
+    featured: acc.featured,
+    available_rooms: acc.availableRooms,
+    total_rooms: acc.totalRooms,
+    is_verified: acc.isVerified
+  }))
 }
 
 export async function countAccommodationsByProvider(providerId: string): Promise<number> {
-  const res = await query`SELECT COUNT(*) as count FROM accommodations WHERE provider_id = ${providerId}`
-  return Number.parseInt(res.rows?.[0]?.count ?? '0', 10) || 0
+  const [result] = await secureDb.db
+    .select({ count: count(schema.accommodations.id) })
+    .from(schema.accommodations)
+    .where(eq(schema.accommodations.providerId, providerId))
+  
+  return Number(result?.count || 0)
 }
 
 export async function insertAccommodation(payload: {
@@ -96,31 +225,29 @@ export async function insertAccommodation(payload: {
   total_rooms?: number
   is_verified?: boolean
 }) {
-  const res = await query`
-    INSERT INTO accommodations (
-      name, description, address, price, amenities, images,
-      accreditation_status, provider_id, area, distance, featured,
-      available_rooms, total_rooms, is_verified, is_active
-    ) VALUES (
-      ${payload.name},
-      ${payload.description || null},
-      ${payload.address},
-      ${payload.price},
-      ${JSON.stringify(payload.amenities || [])}::jsonb,
-      ${JSON.stringify(payload.images || [])}::jsonb,
-      ${payload.accreditation_status || 'accredited'},
-      ${payload.provider_id || null},
-      ${payload.area || null},
-      ${payload.distance || null},
-      ${payload.featured ?? false},
-      ${payload.available_rooms ?? 0},
-      ${payload.total_rooms ?? 0},
-      ${payload.is_verified ?? false},
-      true
-    )
-    RETURNING *
-  `
-  return res.rows?.[0]
+  const [accommodation] = await secureDb.db
+    .insert(schema.accommodations)
+    .values({
+      id: randomUUID(),
+      name: payload.name,
+      description: payload.description || null,
+      address: payload.address,
+      price: payload.price,
+      amenities: payload.amenities || [],
+      images: payload.images || [],
+      accreditationStatus: (payload.accreditation_status as any) || 'accredited',
+      providerId: payload.provider_id || null,
+      area: payload.area || null,
+      distance: payload.distance || null,
+      featured: payload.featured ?? false,
+      availableRooms: payload.available_rooms ?? 0,
+      totalRooms: payload.total_rooms ?? 0,
+      isVerified: payload.is_verified ?? false,
+      isActive: true
+    })
+    .returning()
+  
+  return accommodation
 }
 
 
