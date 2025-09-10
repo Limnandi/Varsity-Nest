@@ -8,6 +8,7 @@ import { Building, Users, Star, TrendingUp, Calendar, DollarSign, CheckCircle, C
 import { formatZar } from "@/lib/utils"
 
 export default function ProviderDashboard() {
+  const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     totalAccommodations: 0,
     activeBookings: 0,
@@ -19,54 +20,74 @@ export default function ProviderDashboard() {
 
   useEffect(() => {
     const load = async () => {
-      // Check for database session first
-      const sessionData = localStorage.getItem('varsityNestSession')
-      let user = null
-      
-      if (sessionData) {
-        const session = JSON.parse(sessionData)
-        user = session.user
-      } else {
-        // Fallback to StackAuth
-        user = await getCurrentUser()
-      }
-      
-      if (!user) {
-        // Redirect to login if no user found
-        window.location.href = '/auth/login'
-        return
-      }
-      
       try {
-        // Fetch stats from server-side API
-        const response = await fetch(`/api/provider/stats?providerId=${user.id}`)
+        // Get current user from secure session API
+        const response = await fetch('/api/auth/session')
         
         if (response.ok) {
-          const data = await response.json()
-          setStats(data.stats)
+          const userSession = await response.json()
+          const user = {
+            id: userSession.userId,
+            email: userSession.email,
+            firstName: userSession.firstName,
+            lastName: userSession.lastName,
+            role: userSession.role,
+            phone: userSession.phone,
+            studentNumber: userSession.studentNumber,
+            institution: userSession.institution,
+            isActive: userSession.isActive,
+            emailVerified: userSession.emailVerified,
+            createdAt: new Date(userSession.createdAt),
+            updatedAt: new Date(userSession.updatedAt),
+            university: userSession.university,
+            yearOfStudy: userSession.yearOfStudy,
+            course: userSession.course,
+            emergencyContactName: userSession.emergencyContactName,
+            emergencyContactPhone: userSession.emergencyContactPhone,
+          }
+          
+          try {
+            // Fetch stats from server-side API
+            const statsResponse = await fetch(`/api/provider/stats?providerId=${user.id}`)
+            
+            if (statsResponse.ok) {
+              const data = await statsResponse.json()
+              setStats(data.stats)
+            } else {
+              console.error('Failed to fetch provider stats:', statsResponse.statusText)
+              // Set default stats on error
+              setStats({
+                totalAccommodations: 0,
+                activeBookings: 0,
+                totalRevenue: 0,
+                averageRating: 0,
+                pendingReviews: 0,
+                upcomingMaintenance: 0
+              })
+            }
+          } catch (error) {
+            console.error('Error fetching provider stats:', error)
+            // Set default stats on error
+            setStats({
+              totalAccommodations: 0,
+              activeBookings: 0,
+              totalRevenue: 0,
+              averageRating: 0,
+              pendingReviews: 0,
+              upcomingMaintenance: 0
+            })
+          }
         } else {
-          console.error('Failed to fetch provider stats:', response.statusText)
-          // Set default stats on error
-          setStats({
-            totalAccommodations: 0,
-            activeBookings: 0,
-            totalRevenue: 0,
-            averageRating: 0,
-            pendingReviews: 0,
-            upcomingMaintenance: 0
-          })
+          // No valid session, redirect to login
+          window.location.href = '/auth/login'
+          return
         }
       } catch (error) {
-        console.error('Error fetching provider stats:', error)
-        // Set default stats on error
-        setStats({
-          totalAccommodations: 0,
-          activeBookings: 0,
-          totalRevenue: 0,
-          averageRating: 0,
-          pendingReviews: 0,
-          upcomingMaintenance: 0
-        })
+        console.error('Error loading user:', error)
+        window.location.href = '/auth/login'
+        return
+      } finally {
+        setIsLoading(false)
       }
     }
     load()
