@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@stackframe/stack'
 import LoadingSpinner from './LoadingSpinner'
 
 interface AuthGuardProps {
@@ -37,7 +36,6 @@ export default function AuthGuard({
   requiredRole, 
   fallback 
 }: AuthGuardProps) {
-  const user = useUser({ or: 'return-null' }) as any
   const [authorized, setAuthorized] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -45,20 +43,23 @@ export default function AuthGuard({
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (!user) {
-        setAuthorized(false)
-        setIsLoading(false)
-        router.push('/auth/login')
-        return
-      }
-
       try {
-        // Get user role from database via API
+        // Get user session from secure API
         const response = await fetch('/api/auth/session')
+        
         if (response.ok) {
           const userSession: UserSession = await response.json()
           setUserRole(userSession.role)
           
+          // Check if user is active
+          if (!userSession.isActive) {
+            setAuthorized(false)
+            setIsLoading(false)
+            router.push('/auth/login?error=account-deactivated')
+            return
+          }
+          
+          // Check role permissions
           if (requiredRole && userSession.role !== requiredRole) {
             setAuthorized(false)
             setIsLoading(false)
@@ -81,7 +82,7 @@ export default function AuthGuard({
     }
 
     checkAuth()
-  }, [requiredRole, user, router])
+  }, [requiredRole, router])
 
   if (isLoading) return fallback || <LoadingSpinner />
   if (!authorized) return fallback || <LoadingSpinner />
