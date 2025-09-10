@@ -102,7 +102,7 @@ export async function authenticateUser(email: string, password: string) {
     // Use secureDb for user authentication
     const { secureDb } = await import('./database-secure')
     const { eq, and } = await import('drizzle-orm')
-    const { schema } = await import('./schema')
+    const schema = await import('./schema')
     
     const [user] = await secureDb.db
       .select({
