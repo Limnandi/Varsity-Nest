@@ -229,28 +229,34 @@ export class StudentAuthService {
   static async registerStudent(email: string, name: string, password: string): Promise<StudentUser> {
     const { university } = this.isEmailWhitelisted(email)
 
-    const student: StudentUser = {
-      id: Date.now().toString(),
-      email,
-      name,
-      university: university!,
-      isVerified: true,
-      createdAt: new Date().toISOString(),
-      isBlocked: false,
+    // Call secure registration API instead of localStorage
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          firstName: name.split(' ')[0],
+          lastName: name.split(' ').slice(1).join(' ') || '',
+          password,
+          role: 'student',
+          university: university!
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        return result.user
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Registration failed')
+      }
+    } catch (error) {
+      console.error('Registration error:', error)
+      throw error
     }
-
-    // Store student
-    const students = this.getStudents()
-    students.push(student)
-    localStorage.setItem("students", JSON.stringify(students))
-
-    // Store password (in production, hash this!)
-    localStorage.setItem(`password_${email}`, password)
-
-    // Set current student
-    localStorage.setItem("currentStudent", JSON.stringify(student))
-
-    return student
   }
 
   static async resetPassword(email: string, newPassword: string): Promise<boolean> {
@@ -278,35 +284,42 @@ export class StudentAuthService {
     return stored ? JSON.parse(stored) : null
   }
 
-  static loginStudent(email: string, password?: string): { success: boolean; student?: StudentUser; error?: string } {
-    const students = this.getStudents()
-    const student = students.find((s) => s.email === email)
+  static async loginStudent(email: string, password?: string): Promise<{ success: boolean; student?: StudentUser; error?: string }> {
+    try {
+      // Use secure login API instead of localStorage
+      const response = await fetch('/api/auth/secure-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-    if (!student) {
-      return { success: false, error: "No account found with this email" }
-    }
-
-    if (student.isBlocked) {
-      return {
-        success: false,
-        error: `Your account has been suspended${student.blockedReason ? ` for: ${student.blockedReason}` : ""}. Please contact support.`,
+      if (response.ok) {
+        const result = await response.json()
+        return { success: true, student: result.user }
+      } else {
+        const error = await response.json()
+        return { success: false, error: error.error || "Login failed" }
       }
+    } catch (error) {
+      console.error('Login error:', error)
+      return { success: false, error: "Login failed. Please try again." }
     }
-
-    // Check password if provided (for regular login)
-    if (password) {
-      const storedPassword = localStorage.getItem(`password_${email}`)
-      if (storedPassword !== password) {
-        return { success: false, error: "Invalid password" }
-      }
-    }
-
-    localStorage.setItem("currentStudent", JSON.stringify(student))
-    return { success: true, student }
   }
 
-  static logoutStudent(): void {
-    localStorage.removeItem("currentStudent")
+  static async logoutStudent(): Promise<void> {
+    try {
+      // Call secure logout API
+      await fetch('/api/auth/secure-logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   static blockStudent(studentId: string, reason: string): boolean {
