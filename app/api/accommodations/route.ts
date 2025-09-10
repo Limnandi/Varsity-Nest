@@ -96,25 +96,30 @@ export async function POST(request: NextRequest) {
       
       payload = validation.data
       
-      const files = (form.getAll('images') as unknown as File[]) || []
-      // Validate images: max 10, max 10MB each, allowed types
-      const MAX_FILES = 10
-      const MAX_SIZE = 10 * 1024 * 1024
-      const ALLOWED = ['image/jpeg','image/png','image/webp']
-      if (files.length > MAX_FILES) {
-        return NextResponse.json({ error: `Max ${MAX_FILES} images allowed` }, { status: 400 })
+      // Use secure file upload middleware
+      const { FileUploadMiddleware } = await import('@/lib/middleware/file-upload')
+      const fileResult = await FileUploadMiddleware.processFileUploads(request, {
+        purpose: 'accommodation',
+        maxFiles: 10
+      })
+
+      if (fileResult.errors.length > 0) {
+        return NextResponse.json({ 
+          error: 'File upload validation failed', 
+          details: fileResult.errors,
+          warnings: fileResult.warnings 
+        }, { status: 400 })
       }
-      for (const f of files) {
-        const type = (f as any).type as string | undefined
-        const size = (f as any).size as number | undefined
-        if (!type || !ALLOWED.includes(type)) {
-          return NextResponse.json({ error: 'Only JPEG, PNG, WEBP images allowed' }, { status: 400 })
-        }
-        if (!size || size > MAX_SIZE) {
-          return NextResponse.json({ error: 'Each image must be <= 10MB' }, { status: 400 })
-        }
+
+      if (fileResult.quarantinedFiles.length > 0) {
+        return NextResponse.json({ 
+          error: 'Some files were quarantined for security reasons', 
+          quarantined: fileResult.quarantinedFiles,
+          warnings: fileResult.warnings 
+        }, { status: 400 })
       }
-      imagesToUpload = files
+
+      imagesToUpload = fileResult.files
     } else {
       const jsonData = await request.json()
       
@@ -132,9 +137,32 @@ export async function POST(request: NextRequest) {
     }
 
     const uploadedImages: string[] = []
+    const uploadWarnings: string[] = []
+    
     for (const file of imagesToUpload) {
-      const result: any = await uploadImage(file, 'varsity-nest/accommodations')
-      if (result?.secure_url) uploadedImages.push(result.secure_url)
+      try {
+        const { uploadImageSecurely } = await import('@/lib/cloudinary')
+        const result = await uploadImageSecurely(file, {
+          folder: 'varsity-nest/accommodations',
+          purpose: 'accommodation',
+          userId: 'unknown', // This should be extracted from session
+          generateThumbnails: true,
+          compressImages: true
+        })
+        
+        if (result.success && result.result?.secure_url) {
+          uploadedImages.push(result.result.secure_url)
+          if (result.warnings) {
+            uploadWarnings.push(...result.warnings)
+          }
+        } else {
+          console.error('Image upload failed:', result.error)
+          // Continue with other images even if one fails
+        }
+      } catch (error) {
+        console.error('Image upload error:', error)
+        // Continue with other images even if one fails
+      }
     }
 
     const record = await insertAccommodation({
