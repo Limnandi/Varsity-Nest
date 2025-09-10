@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/stackauth'
-import { query } from '@/lib/database'
+import { secureDb } from '@/lib/database-secure'
+import { eq } from 'drizzle-orm'
+import * as schema from '@/lib/schema'
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -51,12 +53,19 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     }
 
     const id = params.id
-    const owner = await query`SELECT provider_id FROM accommodations WHERE id = ${id} LIMIT 1`
-    if (!owner.rows?.[0] || owner.rows[0].provider_id !== user.id) {
+    const [owner] = await secureDb.db
+      .select({ providerId: schema.accommodations.providerId })
+      .from(schema.accommodations)
+      .where(eq(schema.accommodations.id, id))
+      .limit(1)
+    
+    if (!owner || owner.providerId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    await query`DELETE FROM accommodations WHERE id = ${id}`
+    await secureDb.db
+      .delete(schema.accommodations)
+      .where(eq(schema.accommodations.id, id))
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete accommodation error:', error)
