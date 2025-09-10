@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/database"
+import { secureDb } from "@/lib/database-secure"
+import { eq } from "drizzle-orm"
+import * as schema from "@/lib/schema"
 import { uploadDocument } from "@/lib/cloudinary"
 
 export async function POST(request: NextRequest) {
@@ -54,7 +56,10 @@ export async function POST(request: NextRequest) {
       }
 
       if (urls.length > 0) {
-        await query`UPDATE providers SET documents = ${JSON.stringify(urls)}::jsonb WHERE id = ${providerId}`
+        await secureDb.db
+          .update(schema.providers)
+          .set({ documents: urls })
+          .where(eq(schema.providers.id, providerId))
       }
 
       return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
