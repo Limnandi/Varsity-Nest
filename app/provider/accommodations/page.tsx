@@ -18,44 +18,56 @@ export default function ProviderAccommodations() {
 
   useEffect(() => {
     async function loadUser() {
-      // Check for database session first
-      const sessionData = localStorage.getItem('varsityNestSession')
-      let currentUser = null
-      
-      if (sessionData) {
-        const session = JSON.parse(sessionData)
-        currentUser = session.user
-      } else {
-        // Fallback to StackAuth
-        try {
-          currentUser = await getCurrentUser()
-        } catch (error) {
-          console.error('StackAuth error:', error)
-          // If StackAuth fails, redirect to login
+      try {
+        // Get current user from secure session API
+        const response = await fetch('/api/auth/session')
+        
+        if (response.ok) {
+          const userSession = await response.json()
+          const currentUser = {
+            id: userSession.userId,
+            email: userSession.email,
+            firstName: userSession.firstName,
+            lastName: userSession.lastName,
+            role: userSession.role,
+            phone: userSession.phone,
+            studentNumber: userSession.studentNumber,
+            institution: userSession.institution,
+            isActive: userSession.isActive,
+            emailVerified: userSession.emailVerified,
+            createdAt: new Date(userSession.createdAt),
+            updatedAt: new Date(userSession.updatedAt),
+            university: userSession.university,
+            yearOfStudy: userSession.yearOfStudy,
+            course: userSession.course,
+            emergencyContactName: userSession.emergencyContactName,
+            emergencyContactPhone: userSession.emergencyContactPhone,
+          }
+          
+          setUser(currentUser)
+          
+          // Fetch accommodations from server-side API
+          const accommodationsResponse = await fetch(`/api/provider/accommodations?providerId=${currentUser.id}&limit=200`)
+          
+          if (accommodationsResponse.ok) {
+            const data = await accommodationsResponse.json()
+            setUserAccommodations(data.accommodations || [])
+          } else {
+            console.error('Failed to fetch accommodations:', accommodationsResponse.statusText)
+            setUserAccommodations([])
+          }
+        } else {
+          // No valid session, redirect to login
           window.location.href = '/auth/login'
           return
         }
+      } catch (error) {
+        console.error('Error loading user:', error)
+        window.location.href = '/auth/login'
+        return
+      } finally {
+        setIsLoading(false)
       }
-      
-      setUser(currentUser)
-      if (currentUser) {
-        try {
-          // Fetch accommodations from server-side API
-          const response = await fetch(`/api/provider/accommodations?providerId=${currentUser.id}&limit=200`)
-          
-          if (response.ok) {
-            const data = await response.json()
-            setUserAccommodations(data.accommodations || [])
-          } else {
-            console.error('Failed to fetch accommodations:', response.statusText)
-            setUserAccommodations([])
-          }
-        } catch (error) {
-          console.error('Error fetching accommodations:', error)
-          setUserAccommodations([])
-        }
-      }
-      setIsLoading(false)
     }
     loadUser()
   }, [])
