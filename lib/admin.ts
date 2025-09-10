@@ -6,11 +6,22 @@ if (typeof window !== 'undefined') {
   )
 }
 
-import { query } from "./database"
+import { secureDb } from "./database-secure"
+import { eq, and, desc, count, sum, sql } from "drizzle-orm"
+import * as schema from "./schema"
 
 export async function approveProvider(providerId: string) {
   try {
-    await query`UPDATE providers SET is_verified = true, is_active = true WHERE id = ${providerId}`
+    await secureDb.db
+      .update(schema.providers)
+      .set({ 
+        isVerified: true, 
+        isActive: true,
+        registrationStatus: 'approved',
+        updatedAt: new Date()
+      })
+      .where(eq(schema.providers.id, providerId))
+    
     return { success: true }
   } catch (error) {
     console.error("Failed to approve provider:", error)
@@ -20,7 +31,16 @@ export async function approveProvider(providerId: string) {
 
 export async function rejectProvider(providerId: string) {
   try {
-    await query`UPDATE providers SET is_active = false, rejection_reason = 'Manual rejection by admin' WHERE id = ${providerId}`
+    await secureDb.db
+      .update(schema.providers)
+      .set({ 
+        isActive: false, 
+        rejectionReason: 'Manual rejection by admin',
+        registrationStatus: 'rejected',
+        updatedAt: new Date()
+      })
+      .where(eq(schema.providers.id, providerId))
+    
     return { success: true }
   } catch (error) {
     console.error("Failed to reject provider:", error)
@@ -30,8 +50,13 @@ export async function rejectProvider(providerId: string) {
 
 export async function viewProviderDocuments(providerId: string) {
   try {
-    const res = await query`SELECT documents FROM providers WHERE id = ${providerId} LIMIT 1`
-    return res.rows?.[0]?.documents || []
+    const [provider] = await secureDb.db
+      .select({ documents: schema.providers.documents })
+      .from(schema.providers)
+      .where(eq(schema.providers.id, providerId))
+      .limit(1)
+    
+    return provider?.documents || []
   } catch (error) {
     console.error("Failed to fetch provider documents:", error)
     return []
@@ -54,26 +79,39 @@ export async function getPendingProviders() {
 
 export async function getAllProviders() {
   try {
-    const res = await query`
-      SELECT p.id, p.business_name, p.contact_person, p.contact_email, p.contact_phone, 
-             p.address, p.registration_status, p.created_at, p.is_active, p.is_verified, p.documents,
-             u.first_name, u.last_name, u.email
-      FROM providers p
-      JOIN users u ON p.user_id = u.id
-      WHERE u.role = 'provider'
-      ORDER BY p.created_at DESC
-    `
-    return res.rows.map((row: any) => ({
+    const providers = await secureDb.db
+      .select({
+        id: schema.providers.id,
+        businessName: schema.providers.businessName,
+        contactPerson: schema.providers.contactPerson,
+        contactEmail: schema.providers.contactEmail,
+        contactPhone: schema.providers.contactPhone,
+        address: schema.providers.address,
+        registrationStatus: schema.providers.registrationStatus,
+        createdAt: schema.providers.createdAt,
+        isActive: schema.providers.isActive,
+        isVerified: schema.providers.isVerified,
+        documents: schema.providers.documents,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        email: schema.users.email
+      })
+      .from(schema.providers)
+      .innerJoin(schema.users, eq(schema.providers.userId, schema.users.id))
+      .where(eq(schema.users.role, 'provider'))
+      .orderBy(desc(schema.providers.createdAt))
+    
+    return providers.map((row: any) => ({
       id: row.id,
-      name: `${row.first_name} ${row.last_name}`,
-      email: row.contact_email,
-      companyName: row.business_name,
-      submittedAt: row.created_at,
-      status: row.registration_status || 'pending',
-      phone: row.contact_phone,
+      name: `${row.firstName} ${row.lastName}`,
+      email: row.contactEmail,
+      companyName: row.businessName,
+      submittedAt: row.createdAt,
+      status: row.registrationStatus || 'pending',
+      phone: row.contactPhone,
       address: row.address,
-      isActive: row.is_active,
-      isVerified: row.is_verified,
+      isActive: row.isActive,
+      isVerified: row.isVerified,
       documents: row.documents || []
     }))
   } catch (error) {
@@ -98,19 +136,25 @@ export async function getCurrentProviders() {
 
 export async function deleteProvider(providerId: string) {
   try {
-    // First get the user_id to delete the user as well
-    const providerRes = await query`SELECT user_id FROM providers WHERE id = ${providerId}`
-    if (providerRes.rows.length === 0) {
-      return { success: false, error: "Provider not found" }
-    }
-    
-    const userId = providerRes.rows[0].user_id
-    
-    // Delete provider and user (cascade should handle this, but being explicit)
-    await query`DELETE FROM providers WHERE id = ${providerId}`
-    await query`DELETE FROM users WHERE id = ${userId}`
-    
-    return { success: true }
+    // Use transaction to ensure atomicity
+    return await secureDb.withTransaction(async (tx) => {
+      // First get the user_id to delete the user as well
+      const [provider] = await tx.db
+        .select({ userId: schema.providers.userId })
+        .from(schema.providers)
+        .where(eq(schema.providers.id, providerId))
+        .limit(1)
+      
+      if (!provider) {
+        return { success: false, error: "Provider not found" }
+      }
+      
+      // Delete provider and user (cascade should handle this, but being explicit)
+      await tx.db.delete(schema.providers).where(eq(schema.providers.id, providerId))
+      await tx.db.delete(schema.users).where(eq(schema.users.id, provider.userId))
+      
+      return { success: true }
+    })
   } catch (error) {
     console.error("Failed to delete provider:", error)
     return { success: false, error: "Failed to delete provider" }
@@ -119,25 +163,46 @@ export async function deleteProvider(providerId: string) {
 
 export async function getDashboardStats() {
   try {
-    const [totalAccommodations, totalProviders, totalRevenue, totalViews, totalAccommodations30, totalProviders30, totalRevenue30, totalViews30] = await Promise.all([
-      (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM accommodations`).rows[0].c))(),
-      (async () => Number.parseInt((await query`SELECT COUNT(DISTINCT provider_id) AS c FROM accommodations WHERE provider_id IS NOT NULL`).rows[0].c))(),
-      Promise.resolve(0),
-      (async () => Number.parseInt((await query`SELECT COALESCE(SUM(view_count), 0) AS c FROM accommodations`).rows[0].c))(),
-      (async () => Number.parseInt((await query`SELECT COUNT(*) AS c FROM accommodations WHERE created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))(),
-      (async () => Number.parseInt((await query`SELECT COUNT(DISTINCT provider_id) AS c FROM accommodations WHERE provider_id IS NOT NULL AND created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))(),
-      Promise.resolve(0),
-      (async () => Number.parseInt((await query`SELECT COALESCE(SUM(view_count), 0) AS c FROM accommodations WHERE created_at >= ${new Date(Date.now() - 30*24*60*60*1000).toISOString()}`).rows[0].c))()
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    
+    const [totalStats, recentStats] = await Promise.all([
+      // Total stats
+      secureDb.db
+        .select({
+          totalAccommodations: count(schema.accommodations.id),
+          totalProviders: count(schema.providers.id),
+          totalViews: sum(schema.accommodations.viewCount)
+        })
+        .from(schema.accommodations)
+        .leftJoin(schema.providers, eq(schema.accommodations.providerId, schema.providers.id)),
+      
+      // Recent stats (last 30 days)
+      secureDb.db
+        .select({
+          totalAccommodations: count(schema.accommodations.id),
+          totalProviders: count(schema.providers.id),
+          totalViews: sum(schema.accommodations.viewCount)
+        })
+        .from(schema.accommodations)
+        .leftJoin(schema.providers, eq(schema.accommodations.providerId, schema.providers.id))
+        .where(sql`${schema.accommodations.createdAt} >= ${thirtyDaysAgo}`)
     ])
+
+    const totalAccommodations = Number(totalStats[0]?.totalAccommodations || 0)
+    const totalProviders = Number(totalStats[0]?.totalProviders || 0)
+    const totalViews = Number(totalStats[0]?.totalViews || 0)
+    const totalAccommodations30 = Number(recentStats[0]?.totalAccommodations || 0)
+    const totalProviders30 = Number(recentStats[0]?.totalProviders || 0)
+    const totalViews30 = Number(recentStats[0]?.totalViews || 0)
 
     return {
       totalAccommodations,
       totalProviders,
-      totalRevenue,
+      totalRevenue: 0, // TODO: Implement revenue calculation
       totalViews,
       accommodationsChange: calculateChange(totalAccommodations, totalAccommodations30),
       providersChange: calculateChange(totalProviders, totalProviders30),
-      revenueChange: calculateChange(totalRevenue, totalRevenue30),
+      revenueChange: 0, // TODO: Implement revenue change calculation
       viewsChange: calculateChange(totalViews, totalViews30)
     }
   } catch (error) {
@@ -187,8 +252,23 @@ interface PendingApproval {
 
 export async function getRecentActivity(): Promise<Activity[]> {
   try {
-    const res = await query`SELECT id, activity_type, message, created_at FROM admin_activities ORDER BY created_at DESC LIMIT 5`
-    return res.rows.map((row: any) => ({ id: row.id, type: row.activity_type, message: row.message, time: formatTimeAgo(row.created_at) }))
+    const activities = await secureDb.db
+      .select({
+        id: schema.adminActivities.id,
+        activityType: schema.adminActivities.activityType,
+        message: schema.adminActivities.message,
+        createdAt: schema.adminActivities.createdAt
+      })
+      .from(schema.adminActivities)
+      .orderBy(desc(schema.adminActivities.createdAt))
+      .limit(5)
+    
+    return activities.map((row: any) => ({ 
+      id: row.id, 
+      type: row.activityType, 
+      message: row.message, 
+      time: formatTimeAgo(row.createdAt.toISOString()) 
+    }))
   } catch (error) {
     console.error("Failed to get recent activity:", error)
     return []
@@ -197,8 +277,23 @@ export async function getRecentActivity(): Promise<Activity[]> {
 
 export async function getPendingApprovals() {
   try {
-    const res = await query`SELECT id, business_name, registration_status FROM providers WHERE registration_status = 'pending' LIMIT 100`
-    return res.rows.map((r: any) => ({ id: r.id, type: 'provider', title: r.business_name, provider: r.business_name, status: 'pending' as const }))
+    const providers = await secureDb.db
+      .select({
+        id: schema.providers.id,
+        businessName: schema.providers.businessName,
+        registrationStatus: schema.providers.registrationStatus
+      })
+      .from(schema.providers)
+      .where(eq(schema.providers.registrationStatus, 'pending'))
+      .limit(100)
+    
+    return providers.map((r: any) => ({ 
+      id: r.id, 
+      type: 'provider' as const, 
+      title: r.businessName, 
+      provider: r.businessName, 
+      status: 'pending' as const 
+    }))
   } catch (error) {
     console.error("Failed to get pending approvals:", error)
     return []
