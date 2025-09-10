@@ -4,6 +4,8 @@ import { uploadImage } from '@/lib/cloudinary'
 import { fetchAccommodationsByStatus, fetchAccommodationsByProvider, insertAccommodation } from '@/lib/repos/accommodations'
 import { searchSchema, accommodationCreateSchema, validateRequest } from '@/lib/validation-schemas'
 import { createSecurityMiddleware } from '@/lib/validation-middleware'
+import { ApiErrorResponseBuilder, ErrorCodes } from '@/lib/api-error-response'
+import { GlobalErrorHandler } from '@/lib/error-handler'
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,10 +49,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(accommodations)
   } catch (error) {
-    console.error('Error fetching accommodations:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch accommodations' },
-      { status: 500 }
+    return ApiErrorResponseBuilder.createDatabaseErrorResponse(
+      error instanceof Error ? error : new Error(String(error)),
+      request,
+      { component: 'accommodations_get' }
     )
   }
 }
@@ -184,10 +186,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(record, { status: 201 })
   } catch (error) {
-    console.error('Error creating accommodation:', error)
-    return NextResponse.json(
-      { error: 'Failed to create accommodation' },
-      { status: 500 }
+    return ApiErrorResponseBuilder.createDatabaseErrorResponse(
+      error instanceof Error ? error : new Error(String(error)),
+      request,
+      { component: 'accommodations_post' }
     )
   }
 }
