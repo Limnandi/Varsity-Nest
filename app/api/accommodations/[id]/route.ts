@@ -15,30 +15,41 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
 
     // Ensure ownership
-    const owner = await query`SELECT provider_id FROM accommodations WHERE id = ${id} LIMIT 1`
-    if (!owner.rows?.[0] || owner.rows[0].provider_id !== user.id) {
+    const [owner] = await secureDb.db
+      .select({ providerId: schema.accommodations.providerId })
+      .from(schema.accommodations)
+      .where(eq(schema.accommodations.id, id))
+      .limit(1)
+    
+    if (!owner || owner.providerId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Build dynamic update set
-    const fields: string[] = []
-    const values: any[] = []
     const allowed = ['name','description','address','price','amenities','images','area','distance','featured','available_rooms','total_rooms','is_verified','is_open']
+    const updateData: any = {}
+    
     for (const key of allowed) {
       if (key in body) {
-        fields.push(`${key} = $${fields.length + 1}`)
-        if (key === 'amenities' || key === 'images') values.push(JSON.stringify(body[key]))
-        else values.push(body[key])
+        if (key === 'amenities' || key === 'images') {
+          updateData[key] = body[key]
+        } else {
+          updateData[key] = body[key]
+        }
       }
     }
 
-    if (fields.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const text = `UPDATE accommodations SET ${fields.join(', ')} WHERE id = $${fields.length + 1} RETURNING *`
-    const res = await query([text] as any, ...values, id)
-    return NextResponse.json(res.rows?.[0] || null)
+    const [updated] = await secureDb.db
+      .update(schema.accommodations)
+      .set(updateData)
+      .where(eq(schema.accommodations.id, id))
+      .returning()
+    
+    return NextResponse.json(updated || null)
   } catch (error) {
     console.error('Update accommodation error:', error)
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
