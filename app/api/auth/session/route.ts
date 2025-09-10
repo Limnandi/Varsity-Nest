@@ -1,51 +1,43 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getStackServerApp } from "@/lib/stack"
-import { query } from "@/lib/database"
+import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 
 export async function GET(request: NextRequest) {
   try {
-    const app = getStackServerApp()
-    const user = await app.getUser({ or: "return-null" })
+    // Try secure JWT session first
+    let user = await getCurrentUserFromRequest(request)
     
-    if (!user?.id) {
+    // Fallback to StackAuth if no JWT session
+    if (!user) {
+      user = await getCurrentUserFromStackAuth()
+    }
+    
+    if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    // Get user data from database
-    const userResult = await query`
-      SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.student_number, u.institution, 
-             u.is_active, u.email_verified, u.created_at, u.updated_at,
-             s.university, s.year_of_study, s.course, s.emergency_contact_name, s.emergency_contact_phone
-      FROM users u
-      LEFT JOIN students s ON u.id = s.user_id
-      WHERE u.id = ${user.id}
-    `
-    
-    if (userResult.rows.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    if (!user.isActive) {
+      return NextResponse.json({ error: "Account deactivated" }, { status: 403 })
     }
     
-    const userData = userResult.rows[0]
-    
     return NextResponse.json({
-      userId: userData.id,
-      email: userData.email,
-      firstName: userData.first_name,
-      lastName: userData.last_name,
-      name: `${userData.first_name} ${userData.last_name}`.trim(),
-      role: userData.role,
-      phone: userData.phone,
-      studentNumber: userData.student_number,
-      institution: userData.institution,
-      isActive: userData.is_active,
-      emailVerified: userData.email_verified,
-      createdAt: userData.created_at,
-      updatedAt: userData.updated_at,
-      university: userData.university,
-      yearOfStudy: userData.year_of_study,
-      course: userData.course,
-      emergencyContactName: userData.emergency_contact_name,
-      emergencyContactPhone: userData.emergency_contact_phone,
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      role: user.role,
+      phone: user.phone,
+      studentNumber: user.studentNumber,
+      institution: user.institution,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      university: user.university,
+      yearOfStudy: user.yearOfStudy,
+      course: user.course,
+      emergencyContactName: user.emergencyContactName,
+      emergencyContactPhone: user.emergencyContactPhone,
     })
   } catch (error) {
     console.error("Session API error:", error)
