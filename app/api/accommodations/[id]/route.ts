@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/stackauth'
 import { secureDb } from '@/lib/database-secure'
 import { eq } from 'drizzle-orm'
 import * as schema from '@/lib/schema'
+import { accommodationUpdateSchema, validateRequest } from '@/lib/validation-schemas'
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -13,6 +14,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const id = params.id
     const body = await request.json()
+
+    // Validate the update data
+    const validation = validateRequest(accommodationUpdateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid update data', details: validation.errors },
+        { status: 400 }
+      )
+    }
 
     // Ensure ownership
     const [owner] = await secureDb.db
@@ -25,19 +35,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Build dynamic update set
-    const allowed = ['name','description','address','price','amenities','images','area','distance','featured','available_rooms','total_rooms','is_verified','is_open']
-    const updateData: any = {}
-    
-    for (const key of allowed) {
-      if (key in body) {
-        if (key === 'amenities' || key === 'images') {
-          updateData[key] = body[key]
-        } else {
-          updateData[key] = body[key]
-        }
-      }
-    }
+    const updateData = validation.data
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
