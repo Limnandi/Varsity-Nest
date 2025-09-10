@@ -238,6 +238,37 @@ CREATE TABLE IF NOT EXISTS payment_reconciliations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- File upload audit logs table
+CREATE TABLE IF NOT EXISTS file_upload_audits (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    purpose VARCHAR(50) NOT NULL CHECK (purpose IN ('accommodation', 'document', 'profile', 'accreditation')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('uploaded', 'rejected', 'quarantined', 'deleted')),
+    reason TEXT,
+    security_checks JSONB NOT NULL,
+    cloudinary_id VARCHAR(255),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- File quarantine table
+CREATE TABLE IF NOT EXISTS file_quarantines (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    original_file_name VARCHAR(255) NOT NULL,
+    quarantined_file_name VARCHAR(255) NOT NULL,
+    reason TEXT NOT NULL,
+    risk_score INTEGER NOT NULL CHECK (risk_score >= 0 AND risk_score <= 100),
+    threats TEXT[] NOT NULL,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('quarantined', 'released', 'deleted'))
+);
+
 -- Helpful indexes for payment transactions
 CREATE INDEX IF NOT EXISTS idx_payment_txn_provider ON payment_transactions(provider_id);
 CREATE INDEX IF NOT EXISTS idx_payment_txn_status ON payment_transactions(status);
@@ -267,6 +298,19 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Indexes for file upload audits
+CREATE INDEX IF NOT EXISTS idx_file_audit_user ON file_upload_audits(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_audit_purpose ON file_upload_audits(purpose);
+CREATE INDEX IF NOT EXISTS idx_file_audit_status ON file_upload_audits(status);
+CREATE INDEX IF NOT EXISTS idx_file_audit_created_at ON file_upload_audits(created_at);
+CREATE INDEX IF NOT EXISTS idx_file_audit_cloudinary_id ON file_upload_audits(cloudinary_id);
+
+-- Indexes for file quarantine
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_user ON file_quarantines(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_status ON file_quarantines(status);
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_expires ON file_quarantines(expires_at);
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_risk_score ON file_quarantines(risk_score);
 
 -- Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
