@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server"
 import crypto from "crypto"
-import { query } from "@/lib/database"
+import { secureDb } from "@/lib/database-secure"
+import { eq } from "drizzle-orm"
+import * as schema from "@/lib/schema"
 
 function verifySignature(rawBody: string, secret: string, signature: string | null): boolean {
   if (!signature) return false
@@ -30,11 +32,20 @@ export async function POST(request: NextRequest) {
     // Idempotency: skip if already processed
     const eventId: string | undefined = event?.id || event?.data?.id || undefined
     if (eventId) {
-      const existing = await query`SELECT id FROM webhook_events WHERE id = ${eventId} LIMIT 1`
-      if (existing.rows?.[0]) {
+      const [existing] = await secureDb.db
+        .select({ id: schema.webhookEvents.id })
+        .from(schema.webhookEvents)
+        .where(eq(schema.webhookEvents.id, eventId))
+        .limit(1)
+      
+      if (existing) {
         return new Response('OK', { status: 200, headers: { 'Content-Type': 'text/plain' } })
       }
-      await query`INSERT INTO webhook_events (id) VALUES (${eventId}) ON CONFLICT (id) DO NOTHING`
+      
+      await secureDb.db
+        .insert(schema.webhookEvents)
+        .values({ id: eventId })
+        .onConflictDoNothing()
     }
 
     switch (event.type) {
@@ -67,16 +78,28 @@ export async function POST(request: NextRequest) {
           }
           
           // Insert user with proper column names and required fields
-          await query`
-            INSERT INTO users (id, email, password, first_name, last_name, role, email_verified, is_active, created_at, updated_at)
-            VALUES (${id}, ${primaryEmail}, ${'stackauth'}, ${firstName || ''}, ${lastName || ''}, ${role}, false, true, NOW(), NOW())
-            ON CONFLICT (id) DO UPDATE SET
-              email = EXCLUDED.email,
-              first_name = EXCLUDED.first_name,
-              last_name = EXCLUDED.last_name,
-              role = EXCLUDED.role,
-              updated_at = NOW()
-          `
+          await secureDb.db
+            .insert(schema.users)
+            .values({
+              id,
+              email: primaryEmail,
+              password: 'stackauth', // Placeholder for StackAuth users
+              firstName: firstName || '',
+              lastName: lastName || '',
+              role: role as any,
+              emailVerified: false,
+              isActive: true
+            })
+            .onConflictDoUpdate({
+              target: schema.users.id,
+              set: {
+                email: primaryEmail,
+                firstName: firstName || '',
+                lastName: lastName || '',
+                role: role as any,
+                updatedAt: new Date()
+              }
+            })
           
           console.log(` User synced to database: ${id} (${primaryEmail}) with role: ${role}`)
         } catch (error) {
@@ -90,7 +113,13 @@ export async function POST(request: NextRequest) {
         const { id, primaryEmail } = event.data || {}
         if (id && primaryEmail) {
           try {
-            await query`UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = ${id}`
+            await secureDb.db
+              .update(schema.users)
+              .set({ 
+                emailVerified: true, 
+                updatedAt: new Date() 
+              })
+              .where(eq(schema.users.id, id))
             console.log(` User email verified: ${id} (${primaryEmail})`)
           } catch (error) {
             console.error(' Failed to update email verification:', error)
@@ -103,17 +132,33 @@ export async function POST(request: NextRequest) {
         if (id && primaryEmail) {
           try {
             // Update basic user info
-            await query`UPDATE users SET first_name = ${firstName || ''}, last_name = ${lastName || ''}, updated_at = NOW() WHERE id = ${id}`
+            await secureDb.db
+              .update(schema.users)
+              .set({ 
+                firstName: firstName || '', 
+                lastName: lastName || '', 
+                updatedAt: new Date() 
+              })
+              .where(eq(schema.users.id, id))
             
             // Check if email verification status changed
             if (primaryEmailVerified === true) {
-              await query`UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = ${id}`
+              await secureDb.db
+                .update(schema.users)
+                .set({ 
+                  emailVerified: true, 
+                  updatedAt: new Date() 
+                })
+                .where(eq(schema.users.id, id))
               
               // Log the verification event
-              await query`
-                INSERT INTO admin_activities (activity_type, message, admin_id)
-                VALUES ('email_verification_webhook', ${`User ${primaryEmail} verified their email address via webhook`}, ${id})
-              `
+              await secureDb.db
+                .insert(schema.adminActivities)
+                .values({
+                  activityType: 'email_verification_webhook',
+                  message: `User ${primaryEmail} verified their email address via webhook`,
+                  adminId: id
+                })
               
               console.log(`User email verified via webhook: ${id} (${primaryEmail})`)
             }

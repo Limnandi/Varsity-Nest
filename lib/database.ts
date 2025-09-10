@@ -3,6 +3,8 @@ import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
 import bcrypt from "bcryptjs"
 
+// For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added deprecation warnings and basic injection protection to existing query function.
+
 let _sql: any;
 let _db: any;
 

@@ -7,6 +7,8 @@ import DashboardLayout from "@/components/DashboardLayout"
 import { Building, Users, Star, TrendingUp, Calendar, DollarSign, CheckCircle, Clock, AlertTriangle } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 
+// For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added missing isLoading state to fix undefined variable error
+
 export default function ProviderDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
