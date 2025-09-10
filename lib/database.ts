@@ -86,8 +86,10 @@ export async function tableExists(tableName: string): Promise<boolean> {
 // Helper function to get table row count
 export async function getTableRowCount(tableName: string): Promise<number> {
   try {
-    const result = await query`SELECT COUNT(*) as count FROM ${tableName}`
-    return Number.parseInt(result.rows[0].count)
+    // Use secureDb for table row count
+    const { secureDb } = await import('./database-secure')
+    const result = await secureDb.executeRawQuery(`SELECT COUNT(*) as count FROM ${tableName}`)
+    return Number.parseInt(result[0]?.count || '0')
   } catch (error) {
     console.error(`Error getting row count for table ${tableName}:`, error)
     return 0
@@ -97,20 +99,33 @@ export async function getTableRowCount(tableName: string): Promise<number> {
 // Authentication function for database fallback
 export async function authenticateUser(email: string, password: string) {
   try {
-    // First, get the user by email
-    const userResult = await query`
-      SELECT id, email, password, first_name, last_name, role, is_active, email_verified, created_at, updated_at
-      FROM users 
-      WHERE email = ${email.toLowerCase()}
-    `
+    // Use secureDb for user authentication
+    const { secureDb } = await import('./database-secure')
+    const { eq, and } = await import('drizzle-orm')
+    const { schema } = await import('./schema')
     
-    if (userResult.rows.length === 0) {
+    const [user] = await secureDb.db
+      .select({
+        id: schema.users.id,
+        email: schema.users.email,
+        password: schema.users.password,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        role: schema.users.role,
+        isActive: schema.users.isActive,
+        emailVerified: schema.users.emailVerified,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt
+      })
+      .from(schema.users)
+      .where(eq(schema.users.email, email.toLowerCase()))
+      .limit(1)
+    
+    if (!user) {
       // Log security event for monitoring
       console.warn(`Authentication attempt failed: User not found for email: ${email}`)
       return null
     }
-    
-    const user = userResult.rows[0]
     
     // Verify password using bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password)
@@ -120,7 +135,7 @@ export async function authenticateUser(email: string, password: string) {
       return null
     }
     
-    if (!user.is_active) {
+    if (!user.isActive) {
       // Log security event for monitoring
       console.warn(`Authentication attempt failed: Inactive account for email: ${email}`)
       return null
@@ -129,14 +144,14 @@ export async function authenticateUser(email: string, password: string) {
     return {
       id: user.id,
       email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      name: `${user.first_name} ${user.last_name}`.trim(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: `${user.firstName} ${user.lastName}`.trim(),
       role: user.role,
-      isActive: user.is_active,
-      emailVerified: user.email_verified || false,
-      createdAt: user.created_at,
-      updatedAt: user.updated_at
+      isActive: user.isActive,
+      emailVerified: user.emailVerified || false,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
     }
   } catch (error) {
     console.error("Authentication error:", error)
