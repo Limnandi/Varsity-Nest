@@ -139,8 +139,8 @@ export class StudentAuthService {
 
     // For password reset, check if user exists
     if (type === "password_reset") {
-      const students = this.getStudents()
-      const existingStudent = students.find((s) => s.email === email)
+      const students = await this.getStudents()
+      const existingStudent = students.find((s: StudentUser) => s.email === email)
       if (!existingStudent) {
         return { success: false, error: "No account found with this email address" }
       }
@@ -260,28 +260,61 @@ export class StudentAuthService {
   }
 
   static async resetPassword(email: string, newPassword: string): Promise<boolean> {
-    const students = this.getStudents()
-    const student = students.find((s) => s.email === email)
+    try {
+      // Call secure password reset API
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, newPassword }),
+      })
 
-    if (!student || student.isBlocked) {
+      return response.ok
+    } catch (error) {
+      console.error('Password reset error:', error)
       return false
     }
-
-    // Update password (in production, hash this!)
-    localStorage.setItem(`password_${email}`, newPassword)
-    return true
   }
 
-  static getStudents(): StudentUser[] {
-    if (typeof window === "undefined") return []
-    const stored = localStorage.getItem("students")
-    return stored ? JSON.parse(stored) : []
+  static async getStudents(): Promise<StudentUser[]> {
+    try {
+      // Call secure API to get students
+      const response = await fetch('/api/admin/students')
+      if (response.ok) {
+        const data = await response.json()
+        return data.students || []
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching students:', error)
+      return []
+    }
   }
 
-  static getCurrentStudent(): StudentUser | null {
-    if (typeof window === "undefined") return null
-    const stored = localStorage.getItem("currentStudent")
-    return stored ? JSON.parse(stored) : null
+  static async getCurrentStudent(): Promise<StudentUser | null> {
+    try {
+      // Call secure session API
+      const response = await fetch('/api/auth/session')
+      if (response.ok) {
+        const userSession = await response.json()
+        return {
+          id: userSession.userId,
+          email: userSession.email,
+          name: userSession.name,
+          university: userSession.university || 'UFS',
+          isVerified: userSession.emailVerified,
+          createdAt: userSession.createdAt,
+          isBlocked: !userSession.isActive,
+          blockedAt: userSession.isActive ? undefined : userSession.updatedAt,
+          blockedReason: userSession.isActive ? undefined : 'Account deactivated'
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching current student:', error)
+      return null
+    }
   }
 
   static async loginStudent(email: string, password?: string): Promise<{ success: boolean; student?: StudentUser; error?: string }> {
@@ -322,38 +355,47 @@ export class StudentAuthService {
     }
   }
 
-  static blockStudent(studentId: string, reason: string): boolean {
-    const students = this.getStudents()
-    const index = students.findIndex((s) => s.id === studentId)
+  static async blockStudent(studentId: string, reason: string): Promise<boolean> {
+    try {
+      // Call secure API to block student
+      const response = await fetch('/api/admin/students/toggle-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          studentId, 
+          isActive: false, 
+          reason 
+        }),
+      })
 
-    if (index === -1) return false
-
-    students[index] = {
-      ...students[index],
-      isBlocked: true,
-      blockedAt: new Date().toISOString(),
-      blockedReason: reason,
+      return response.ok
+    } catch (error) {
+      console.error('Error blocking student:', error)
+      return false
     }
-
-    localStorage.setItem("students", JSON.stringify(students))
-    return true
   }
 
-  static unblockStudent(studentId: string): boolean {
-    const students = this.getStudents()
-    const index = students.findIndex((s) => s.id === studentId)
+  static async unblockStudent(studentId: string): Promise<boolean> {
+    try {
+      // Call secure API to unblock student
+      const response = await fetch('/api/admin/students/toggle-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          studentId, 
+          isActive: true 
+        }),
+      })
 
-    if (index === -1) return false
-
-    students[index] = {
-      ...students[index],
-      isBlocked: false,
-      blockedAt: undefined,
-      blockedReason: undefined,
+      return response.ok
+    } catch (error) {
+      console.error('Error unblocking student:', error)
+      return false
     }
-
-    localStorage.setItem("students", JSON.stringify(students))
-    return true
   }
 
   // Report Management
