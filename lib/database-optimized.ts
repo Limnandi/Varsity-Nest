@@ -5,6 +5,11 @@ import * as schema from "./schema"
 import { eq, and, desc, count, sql, inArray } from "drizzle-orm"
 import { redis } from "./redis"
 
+// Ensure this module only runs on the server
+if (typeof window !== 'undefined') {
+  throw new Error('This module can only be used on the server side')
+}
+
 // Connection pool configuration
 const poolConfig = {
   max: 20,
