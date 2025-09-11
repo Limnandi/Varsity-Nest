@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUserFromRequest } from '@/lib/auth-server'
 import { uploadImage } from '@/lib/cloudinary'
 import { fetchAccommodationsByStatus, fetchAccommodationsByProvider, insertAccommodation } from '@/lib/repos/accommodations'
+import { OptimizedAccommodationRepository } from '@/lib/database-optimized'
 import { searchSchema, accommodationCreateSchema, validateRequest } from '@/lib/validation-schemas'
 import { createSecurityMiddleware } from '@/lib/validation-middleware'
 import { ApiErrorResponseBuilder, ErrorCodes } from '@/lib/api-error-response'
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const searchData = {
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
       offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined,
-      status: searchParams.get('accreditation_status') || undefined,
+      status: searchParams.get('accreditation_status') || searchParams.get('status') || undefined,
       featured: searchParams.get('featured') === 'true' ? true : searchParams.get('featured') === 'false' ? false : undefined,
       providerId: searchParams.get('provider_id') || undefined,
       query: searchParams.get('query') || undefined,
@@ -39,12 +40,11 @@ export async function GET(request: NextRequest) {
     if (providerId) {
       accommodations = await fetchAccommodationsByProvider(providerId, limit || 50)
     } else if (status) {
-      accommodations = await fetchAccommodationsByStatus(status, limit || 50, offset || 0)
+      accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus(status, limit || 50, offset || 0)
     } else if (featured === true) {
-      const { fetchFeaturedAccommodations } = await import('@/lib/repos/accommodations')
-      accommodations = await fetchFeaturedAccommodations(limit || 50)
+      accommodations = await OptimizedAccommodationRepository.getFeaturedAccommodations(limit || 50)
     } else {
-      accommodations = await fetchAccommodationsByStatus('accredited', limit || 50, offset || 0)
+      accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus('accredited', limit || 50, offset || 0)
     }
 
     return NextResponse.json(accommodations)
