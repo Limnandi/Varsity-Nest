@@ -1,11 +1,10 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react"
-import { OptimizedAccommodationRepository } from "@/lib/database-optimized"
-import { CacheManager } from "@/lib/cache"
 import { SlidersHorizontal } from "lucide-react"
 import SkeletonCard from "@/components/SkeletonCard"
 import AccommodationCard from "@/components/AccommodationCard"
+import { CacheManager } from "@/lib/cache"
 
 // Lazy load heavy components
 const SearchBar = lazy(() => import("@/components/SearchBar"))
@@ -23,22 +22,47 @@ export default function AccreditedAccommodations() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Try cache first
-        let accs = await CacheManager.getCachedAccommodationsByStatus('accredited', 200, 0)
+        // Try client-side cache first
+        let accommodations = CacheManager.getCachedAccommodationsByStatusClient('accredited', 100, 0)
         
-        if (!accs) {
-          // Fallback to database
-          accs = await OptimizedAccommodationRepository.getAccommodationsByStatus('accredited', 200, 0)
+        if (!accommodations || !Array.isArray(accommodations)) {
+          // Fetch from existing API endpoint
+          const response = await fetch('/api/accommodations?accreditation_status=accredited&limit=100&offset=0')
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            console.error('API Error:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorData
+            })
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || response.statusText}`)
+          }
+          
+          const data = await response.json()
+          
+          // Ensure data is an array
+          accommodations = Array.isArray(data) ? data : []
+          
+          // Cache the result
+          if (accommodations && accommodations.length > 0) {
+            CacheManager.cacheAccommodationsByStatusClient('accredited', 100, 0, accommodations)
+          }
         }
         
-        const accommodations = accs || []
-        setAllAccs(accommodations as any[])
-        setFilteredAccommodations(accommodations as any[])
+        // Ensure we always have an array
+        const accommodationsList = Array.isArray(accommodations) ? accommodations : []
+        setAllAccs(accommodationsList as any[])
+        setFilteredAccommodations(accommodationsList as any[])
         
         // Enable virtualization for large lists
-        if (accommodations.length > 50) {
+        if (accommodationsList.length > 50) {
           setUseVirtualization(true)
         }
+      } catch (error) {
+        console.error('Failed to load accommodations:', error)
+        setAllAccs([])
+        setFilteredAccommodations([])
       } finally {
         setIsLoading(false)
       }
@@ -47,6 +71,12 @@ export default function AccreditedAccommodations() {
   }, [])
 
   const handleSort = useCallback((accommodations: typeof filteredAccommodations) => {
+    // Ensure accommodations is an array
+    if (!Array.isArray(accommodations)) {
+      console.warn('handleSort received non-array:', accommodations)
+      return []
+    }
+    
     const sorted = [...accommodations].sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
@@ -70,7 +100,13 @@ export default function AccreditedAccommodations() {
   )
 
   const handleFilterChange = useCallback((newFiltered: any[]) => {
-    setFilteredAccommodations(newFiltered)
+    // Ensure newFiltered is an array
+    if (Array.isArray(newFiltered)) {
+      setFilteredAccommodations(newFiltered)
+    } else {
+      console.warn('handleFilterChange received non-array:', newFiltered)
+      setFilteredAccommodations([])
+    }
   }, [])
 
   const handleSortChange = useCallback((newSortBy: typeof sortBy) => {
@@ -203,7 +239,7 @@ export default function AccreditedAccommodations() {
               <p className="text-gray-600 mb-6">Try adjusting your search criteria or filters</p>
               <button
                 onClick={() => {
-                  setFilteredAccommodations(allAccs)
+                  setFilteredAccommodations(Array.isArray(allAccs) ? allAccs : [])
                   setSortBy("price-desc")
                 }}
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
