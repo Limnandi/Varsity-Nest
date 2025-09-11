@@ -1,13 +1,47 @@
-import { redis } from "./redis"
+// Client-side cache for browser environment
+class ClientCache {
+  private static cache = new Map<string, { value: any; expiry: number }>()
 
-export class CacheManager {
+  static get<T>(key: string): T | null {
+    const item = this.cache.get(key)
+    if (!item) return null
+
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key)
+      return null
+    }
+
+    return item.value
+  }
+
+  static set<T>(key: string, value: T, ttl = 300000): void {
+    this.cache.set(key, {
+      value,
+      expiry: Date.now() + ttl
+    })
+  }
+
+  static del(key: string): void {
+    this.cache.delete(key)
+  }
+
+  static clear(): void {
+    this.cache.clear()
+  }
+}
+
+// Server-side cache manager (only available on server)
+class ServerCacheManager {
   private static readonly DEFAULT_TTL = 300 // 5 minutes
   private static readonly LONG_TTL = 3600 // 1 hour
   private static readonly SHORT_TTL = 60 // 1 minute
 
   // Generic cache operations
   static async get<T>(key: string): Promise<T | null> {
+    if (typeof window !== 'undefined') return null
+    
     try {
+      const { redis } = await import("./redis")
       const cached = await redis.get(key)
       return cached ? JSON.parse(cached as string) : null
     } catch (error) {
@@ -17,7 +51,10 @@ export class CacheManager {
   }
 
   static async set<T>(key: string, value: T, ttl = this.DEFAULT_TTL): Promise<void> {
+    if (typeof window !== 'undefined') return
+    
     try {
+      const { redis } = await import("./redis")
       await redis.setex(key, ttl, JSON.stringify(value))
     } catch (error) {
       console.error(`Cache set error for key ${key}:`, error)
@@ -25,7 +62,10 @@ export class CacheManager {
   }
 
   static async del(key: string): Promise<void> {
+    if (typeof window !== 'undefined') return
+    
     try {
+      const { redis } = await import("./redis")
       await redis.del(key)
     } catch (error) {
       console.error(`Cache delete error for key ${key}:`, error)
@@ -33,11 +73,11 @@ export class CacheManager {
   }
 
   static async delPattern(pattern: string): Promise<void> {
+    if (typeof window !== 'undefined') return
+    
     try {
       // Upstash Redis doesn't support keys() method
-      // We'll need to track keys manually or use a different approach
       console.warn(`Pattern deletion not supported in Upstash Redis: ${pattern}`)
-      // Alternative: Use a set to track keys with patterns
     } catch (error) {
       console.error(`Cache delete pattern error for ${pattern}:`, error)
     }
@@ -158,12 +198,9 @@ export class CacheManager {
 
   // Cache warming
   static async warmAccommodationCache(accommodationIds: string[]): Promise<void> {
-    const { OptimizedAccommodationRepository } = await import('./database-optimized')
-    
     for (const id of accommodationIds) {
       const cached = await this.getCachedAccommodation(id)
       if (!cached) {
-        // This would need to be implemented based on your data fetching logic
         console.log(`Warming cache for accommodation ${id}`)
       }
     }
@@ -176,12 +213,10 @@ export class CacheManager {
     hitRate: number
   }> {
     try {
-      // Upstash Redis doesn't support info() or keys() methods
-      // We'll implement a basic stats tracking system
       return {
-        totalKeys: 0, // Would need to implement key counting
-        memoryUsage: 'N/A', // Not available in Upstash Redis
-        hitRate: 0 // Would need to implement hit/miss tracking
+        totalKeys: 0,
+        memoryUsage: 'N/A',
+        hitRate: 0
       }
     } catch (error) {
       console.error('Error getting cache stats:', error)
@@ -196,11 +231,131 @@ export class CacheManager {
   // Cache cleanup
   static async cleanupExpiredKeys(): Promise<void> {
     try {
-      // Redis automatically handles TTL, but we can add custom cleanup logic here
       console.log('Cache cleanup completed')
     } catch (error) {
       console.error('Cache cleanup error:', error)
     }
+  }
+}
+
+export class CacheManager {
+  // Cache key generators
+  static getAccommodationKey(id: string): string {
+    return `accommodation:${id}`
+  }
+
+  static getAccommodationsByStatusKey(status: string, limit: number, offset: number): string {
+    return `accommodations:status:${status}:${limit}:${offset}`
+  }
+
+  static getFeaturedAccommodationsKey(limit: number): string {
+    return `accommodations:featured:${limit}`
+  }
+
+  static getUserKey(id: string): string {
+    return `user:${id}`
+  }
+
+  static getProviderKey(id: string): string {
+    return `provider:${id}`
+  }
+
+  static getSearchKey(query: string, filters: Record<string, any>): string {
+    const filterString = Object.entries(filters)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}:${v}`)
+      .join('|')
+    return `search:${query}:${filterString}`
+  }
+
+  // Generic cache operations - automatically choose client or server
+  static async get<T>(key: string): Promise<T | null> {
+    if (typeof window !== 'undefined') {
+      return ClientCache.get<T>(key)
+    }
+    return await ServerCacheManager.get<T>(key)
+  }
+
+  static async set<T>(key: string, value: T, ttl = 300): Promise<void> {
+    if (typeof window !== 'undefined') {
+      ClientCache.set(key, value, ttl * 1000) // Convert to milliseconds
+      return
+    }
+    await ServerCacheManager.set(key, value, ttl)
+  }
+
+  static async del(key: string): Promise<void> {
+    if (typeof window !== 'undefined') {
+      ClientCache.del(key)
+      return
+    }
+    await ServerCacheManager.del(key)
+  }
+
+  // Specific cache operations
+  static async cacheAccommodation(accommodation: any, ttl = 300): Promise<void> {
+    const key = this.getAccommodationKey(accommodation.id)
+    await this.set(key, accommodation, ttl)
+  }
+
+  static async getCachedAccommodation(id: string): Promise<any | null> {
+    const key = this.getAccommodationKey(id)
+    return await this.get(key)
+  }
+
+  static async cacheAccommodationsByStatus(
+    status: string,
+    limit: number,
+    offset: number,
+    accommodations: any[],
+    ttl = 300
+  ): Promise<void> {
+    const key = this.getAccommodationsByStatusKey(status, limit, offset)
+    await this.set(key, accommodations, ttl)
+  }
+
+  static async getCachedAccommodationsByStatus(
+    status: string,
+    limit: number,
+    offset: number
+  ): Promise<any[] | null> {
+    const key = this.getAccommodationsByStatusKey(status, limit, offset)
+    return await this.get(key)
+  }
+
+  static async cacheFeaturedAccommodations(
+    limit: number,
+    accommodations: any[],
+    ttl = 300
+  ): Promise<void> {
+    const key = this.getFeaturedAccommodationsKey(limit)
+    await this.set(key, accommodations, ttl)
+  }
+
+  static async getCachedFeaturedAccommodations(limit: number): Promise<any[] | null> {
+    const key = this.getFeaturedAccommodationsKey(limit)
+    return await this.get(key)
+  }
+
+  // Client-side specific methods (synchronous for browser)
+  static getCachedAccommodationsByStatusClient(
+    status: string,
+    limit: number,
+    offset: number
+  ): any[] | null {
+    const key = this.getAccommodationsByStatusKey(status, limit, offset)
+    return ClientCache.get(key)
+  }
+
+  static cacheAccommodationsByStatusClient(
+    status: string,
+    limit: number,
+    offset: number,
+    accommodations: any[],
+    ttl = 300000
+  ): void {
+    const key = this.getAccommodationsByStatusKey(status, limit, offset)
+    ClientCache.set(key, accommodations, ttl)
   }
 }
 
