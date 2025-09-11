@@ -1,26 +1,44 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import AccommodationCard from "@/components/AccommodationCard"
-import SearchBar from "@/components/SearchBar"
-import TabFilter from "@/components/TabFilter"
-import AdvancedFilters from "@/components/AdvancedFilters"
-import SkeletonCard from "@/components/SkeletonCard"
-import { fetchAccommodationsByStatus } from "@/lib/repos/accommodations"
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react"
+import { OptimizedAccommodationRepository } from "@/lib/database-optimized"
+import { CacheManager } from "@/lib/cache"
 import { SlidersHorizontal } from "lucide-react"
+import SkeletonCard from "@/components/SkeletonCard"
+import AccommodationCard from "@/components/AccommodationCard"
+
+// Lazy load heavy components
+const SearchBar = lazy(() => import("@/components/SearchBar"))
+const TabFilter = lazy(() => import("@/components/TabFilter"))
+const AdvancedFilters = lazy(() => import("@/components/AdvancedFilters"))
+const VirtualizedAccommodationList = lazy(() => import("@/components/VirtualizedAccommodationList"))
 
 export default function AccreditedAccommodations() {
   const [allAccs, setAllAccs] = useState<any[]>([])
   const [filteredAccommodations, setFilteredAccommodations] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "rating" | "reviews">("price-desc")
+  const [useVirtualization, setUseVirtualization] = useState(false)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const accs = await fetchAccommodationsByStatus('accredited', 200)
-        setAllAccs(accs as any[])
-        setFilteredAccommodations(accs as any[])
+        // Try cache first
+        let accs = await CacheManager.getCachedAccommodationsByStatus('accredited', 200, 0)
+        
+        if (!accs) {
+          // Fallback to database
+          accs = await OptimizedAccommodationRepository.getAccommodationsByStatus('accredited', 200, 0)
+        }
+        
+        const accommodations = accs || []
+        setAllAccs(accommodations as any[])
+        setFilteredAccommodations(accommodations as any[])
+        
+        // Enable virtualization for large lists
+        if (accommodations.length > 50) {
+          setUseVirtualization(true)
+        }
       } finally {
         setIsLoading(false)
       }
@@ -28,7 +46,7 @@ export default function AccreditedAccommodations() {
     load()
   }, [])
 
-  const handleSort = (accommodations: typeof filteredAccommodations) => {
+  const handleSort = useCallback((accommodations: typeof filteredAccommodations) => {
     const sorted = [...accommodations].sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
@@ -44,9 +62,20 @@ export default function AccreditedAccommodations() {
       }
     })
     return sorted
-  }
+  }, [sortBy])
 
-  const sortedAccommodations = handleSort(filteredAccommodations)
+  const sortedAccommodations = useMemo(() => 
+    handleSort(filteredAccommodations), 
+    [handleSort, filteredAccommodations]
+  )
+
+  const handleFilterChange = useCallback((newFiltered: any[]) => {
+    setFilteredAccommodations(newFiltered)
+  }, [])
+
+  const handleSortChange = useCallback((newSortBy: typeof sortBy) => {
+    setSortBy(newSortBy)
+  }, [])
 
   return (
     <div className="pt-36 pb-20 px-4">
@@ -76,19 +105,25 @@ export default function AccreditedAccommodations() {
         <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-lg">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1">
-              <SearchBar accommodations={allAccs} onFilter={setFilteredAccommodations} />
+              <Suspense fallback={<div className="h-12 bg-gray-200 rounded animate-pulse"></div>}>
+                <SearchBar accommodations={allAccs} onFilter={handleFilterChange} />
+              </Suspense>
             </div>
-            <AdvancedFilters accommodations={allAccs} onFilter={setFilteredAccommodations} />
+            <Suspense fallback={<div className="h-12 bg-gray-200 rounded animate-pulse"></div>}>
+              <AdvancedFilters accommodations={allAccs} onFilter={handleFilterChange} />
+            </Suspense>
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabFilter accommodations={allAccs} onFilter={setFilteredAccommodations} />
+            <Suspense fallback={<div className="h-8 bg-gray-200 rounded animate-pulse"></div>}>
+              <TabFilter accommodations={allAccs} onFilter={handleFilterChange} />
+            </Suspense>
 
             <div className="flex items-center space-x-2">
               <SlidersHorizontal className="w-4 h-4 text-gray-600" />
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                onChange={(e) => handleSortChange(e.target.value as typeof sortBy)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="price-desc">Price: High to Low</option>
@@ -114,6 +149,29 @@ export default function AccreditedAccommodations() {
               <SkeletonCard key={i} />
             ))}
           </div>
+        ) : useVirtualization ? (
+          <Suspense fallback={<div className="h-96 bg-gray-200 rounded animate-pulse"></div>}>
+            <VirtualizedAccommodationList
+              accommodations={sortedAccommodations.map(acc => ({
+                id: acc.id,
+                name: acc.name,
+                address: acc.address,
+                rating: acc.rating ?? 0,
+                reviewCount: acc.review_count ?? 0,
+                price: Number(acc.price) || 0,
+                isOpen: acc.is_open ?? true,
+                image: (acc.images && acc.images[0]) || "/placeholder.svg",
+                amenities: acc.amenities || [],
+                distance: acc.distance || "",
+                verified: acc.is_verified ?? false,
+                featured: acc.featured ?? false,
+                availableRooms: acc.available_rooms ?? 0,
+                totalRooms: acc.total_rooms ?? 0,
+              }))}
+              height={600}
+              itemHeight={400}
+            />
+          </Suspense>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {sortedAccommodations.map((acc) => (
@@ -145,7 +203,7 @@ export default function AccreditedAccommodations() {
               <p className="text-gray-600 mb-6">Try adjusting your search criteria or filters</p>
               <button
                 onClick={() => {
-                  setFilteredAccommodations(accommodations)
+                  setFilteredAccommodations(allAccs)
                   setSortBy("price-desc")
                 }}
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
