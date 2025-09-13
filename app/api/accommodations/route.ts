@@ -7,55 +7,71 @@ import { searchSchema, accommodationCreateSchema, validateRequest } from '@/lib/
 import { createSecurityMiddleware } from '@/lib/validation-middleware'
 import { ApiErrorResponseBuilder, ErrorCodes } from '@/lib/api-error-response'
 import { GlobalErrorHandler } from '@/lib/error-handler'
+import { ApiMiddleware } from '@/lib/api-middleware'
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    
-    // Validate search parameters
-    const searchData = {
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
-      offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined,
-      status: searchParams.get('accreditation_status') || searchParams.get('status') || undefined,
-      featured: searchParams.get('featured') === 'true' ? true : searchParams.get('featured') === 'false' ? false : undefined,
-      providerId: searchParams.get('provider_id') || undefined,
-      query: searchParams.get('query') || undefined,
-      minPrice: searchParams.get('minPrice') ? parseFloat(searchParams.get('minPrice')!) : undefined,
-      maxPrice: searchParams.get('maxPrice') ? parseFloat(searchParams.get('maxPrice')!) : undefined,
-      area: searchParams.get('area') || undefined,
-      amenities: searchParams.get('amenities') ? searchParams.get('amenities')!.split(',') : undefined
-    }
-    
-    const validation = validateRequest(searchSchema, searchData)
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid search parameters', details: validation.errors },
-        { status: 400 }
+export const GET = ApiMiddleware.withMiddleware(
+  async (request: NextRequest) => {
+    try {
+      const { searchParams } = new URL(request.url)
+      
+      // Validate search parameters
+      const searchData = {
+        limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
+        offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined,
+        status: searchParams.get('accreditation_status') || searchParams.get('status') || undefined,
+        featured: searchParams.get('featured') === 'true' ? true : searchParams.get('featured') === 'false' ? false : undefined,
+        providerId: searchParams.get('provider_id') || undefined,
+        query: searchParams.get('query') || undefined,
+        minPrice: searchParams.get('minPrice') ? parseFloat(searchParams.get('minPrice')!) : undefined,
+        maxPrice: searchParams.get('maxPrice') ? parseFloat(searchParams.get('maxPrice')!) : undefined,
+        area: searchParams.get('area') || undefined,
+        amenities: searchParams.get('amenities') ? searchParams.get('amenities')!.split(',') : undefined
+      }
+      
+      const validation = validateRequest(searchSchema, searchData)
+      if (!validation.success) {
+        return await ApiErrorResponseBuilder.createValidationErrorResponse(
+          validation.errors,
+          request,
+          { component: 'accommodations_get' }
+        )
+      }
+      
+      const { limit, offset, status, featured, providerId } = validation.data
+
+      let accommodations
+      if (providerId) {
+        accommodations = await fetchAccommodationsByProvider(providerId, limit || 50)
+      } else if (status) {
+        accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus(status, limit || 50, offset || 0)
+      } else if (featured === true) {
+        accommodations = await OptimizedAccommodationRepository.getFeaturedAccommodations(limit || 50)
+      } else {
+        accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus('accredited', limit || 50, offset || 0)
+      }
+
+      return ApiMiddleware.createResponse(
+        accommodations,
+        "Accommodations retrieved successfully"
+      )
+    } catch (error) {
+      return await ApiErrorResponseBuilder.createDatabaseErrorResponse(
+        error instanceof Error ? error : new Error(String(error)),
+        request,
+        { component: 'accommodations_get' }
       )
     }
-    
-    const { limit, offset, status, featured, providerId } = validation.data
-
-    let accommodations
-    if (providerId) {
-      accommodations = await fetchAccommodationsByProvider(providerId, limit || 50)
-    } else if (status) {
-      accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus(status, limit || 50, offset || 0)
-    } else if (featured === true) {
-      accommodations = await OptimizedAccommodationRepository.getFeaturedAccommodations(limit || 50)
-    } else {
-      accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus('accredited', limit || 50, offset || 0)
-    }
-
-    return NextResponse.json(accommodations)
-  } catch (error) {
-    return ApiErrorResponseBuilder.createDatabaseErrorResponse(
-      error instanceof Error ? error : new Error(String(error)),
-      request,
-      { component: 'accommodations_get' }
-    )
+  },
+  {
+    rateLimit: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100 // 100 requests per window
+    },
+    cors: true,
+    requestSizeCheck: false, // GET request
+    validation: searchSchema
   }
-}
+)
 
 export async function POST(request: NextRequest) {
   try {
