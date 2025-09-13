@@ -1,6 +1,6 @@
 import AccommodationCard from "@/components/AccommodationCard"
 import HeroSection from "@/components/HeroSection"
-import TestimonialsSection from "@/components/TestimonialsSection"
+import TrustedBy from "@/components/TrustedBy"
 import StatsSection from "@/components/StatsSection"
 import { fetchFeaturedAccommodations } from "@/lib/repos/accommodations"
 import Link from "next/link"
@@ -58,7 +58,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <TestimonialsSection />
+      <TrustedBy />
     </>
   )
 }
