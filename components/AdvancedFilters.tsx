@@ -55,10 +55,10 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
   }
 
   return (
-    <div className="relative">
+    <div className="relative z-[9999]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        className="flex items-center space-x-2 px-4 py-2 bg-black/20 border border-white/10 rounded-lg hover:bg-white/10 transition-all duration-300 text-white backdrop-blur-sm"
       >
         <Filter className="w-5 h-5" />
         <span>Filters</span>
@@ -70,17 +70,17 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-20 p-6">
+        <div className="absolute top-full left-0 mt-2 w-80 bg-black/20 border border-white/10 rounded-2xl shadow-2xl shadow-blue-500/10 z-[9999] p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Filters</h3>
-            <button onClick={() => setIsOpen(false)}>
+            <h3 className="font-semibold text-white">Filters</h3>
+            <button onClick={() => setIsOpen(false)} className="text-neutral-300 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Price Range */}
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Price Range</label>
+            <label className="block text-sm font-medium mb-2 text-neutral-300">Price Range</label>
             <div className="flex items-center space-x-2">
               <input
                 type="number"
@@ -91,10 +91,10 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
                     priceRange: [Number(e.target.value), prev.priceRange[1]],
                   }))
                 }
-                className="w-20 px-2 py-1 border rounded text-sm"
+                className="w-20 px-2 py-1 border border-white/10 rounded text-sm bg-black/20 text-white placeholder-neutral-400"
                 placeholder="Min"
               />
-              <span>-</span>
+              <span className="text-neutral-300">-</span>
               <input
                 type="number"
                 value={filters.priceRange[1]}
@@ -104,7 +104,7 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
                     priceRange: [prev.priceRange[0], Number(e.target.value)],
                   }))
                 }
-                className="w-20 px-2 py-1 border rounded text-sm"
+                className="w-20 px-2 py-1 border border-white/10 rounded text-sm bg-black/20 text-white placeholder-neutral-400"
                 placeholder="Max"
               />
             </div>
@@ -112,16 +112,16 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
 
           {/* Amenities */}
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Amenities</label>
+            <label className="block text-sm font-medium mb-2 text-neutral-300">Amenities</label>
             <div className="flex flex-wrap gap-2">
               {allAmenities.map((amenity) => (
                 <button
                   key={amenity}
                   onClick={() => toggleAmenity(amenity)}
-                  className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                  className={`px-3 py-1 rounded-full text-sm transition-all duration-300 ${
                     filters.amenities.includes(amenity)
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-white/10 text-neutral-300 hover:bg-white/20 hover:text-white border border-white/10"
                   }`}
                 >
                   {amenity}
@@ -137,18 +137,18 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
                 type="checkbox"
                 checked={filters.verified}
                 onChange={(e) => setFilters((prev) => ({ ...prev, verified: e.target.checked }))}
-                className="mr-2"
+                className="mr-2 accent-blue-500"
               />
-              <span className="text-sm">Verified properties only</span>
+              <span className="text-sm text-neutral-300">Verified properties only</span>
             </label>
             <label className="flex items-center">
               <input
                 type="checkbox"
                 checked={filters.available}
                 onChange={(e) => setFilters((prev) => ({ ...prev, available: e.target.checked }))}
-                className="mr-2"
+                className="mr-2 accent-blue-500"
               />
-              <span className="text-sm">Available now</span>
+              <span className="text-sm text-neutral-300">Available now</span>
             </label>
           </div>
 
@@ -156,13 +156,13 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
           <div className="flex space-x-2">
             <button
               onClick={applyFilters}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20"
             >
               Apply Filters
             </button>
             <button
               onClick={clearFilters}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-white/10 rounded-lg hover:bg-white/10 transition-all duration-300 text-neutral-300 hover:text-white"
             >
               Clear
             </button>
