@@ -92,16 +92,15 @@ export class ApiDocumentation {
   }
 
   /**
-   * Generate OpenAPI/Swagger documentation
+   * Generate API specification in JSON format
    */
-  static generateOpenAPISpec(): any {
+  static generateApiSpec(): any {
     const endpoints = this.getAllEndpoints()
     const versions = Array.from(new Set(endpoints.map(ep => ep.version)))
 
     const spec = {
-      openapi: '3.0.0',
-      info: {
-        title: 'Varsity Nest API',
+      api: {
+        name: 'Varsity Nest API',
         description: 'Student accommodation platform API',
         version: '1.0.0',
         contact: {
@@ -117,93 +116,58 @@ export class ApiDocumentation {
           description: process.env.NODE_ENV === 'production' ? 'Production' : 'Development'
         }
       ],
-      security: [
-        {
-          BearerAuth: []
-        }
-      ],
-      components: {
-        securitySchemes: {
-          BearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT'
-          }
-        },
-        schemas: this.generateSchemas()
+      authentication: {
+        type: 'Bearer Token',
+        description: 'JWT token required for protected endpoints'
       },
-      paths: this.generatePaths(endpoints)
+      schemas: this.generateSchemas(),
+      endpoints: this.generateEndpointsDocumentation(endpoints)
     }
 
     return spec
   }
 
   /**
-   * Generate API paths documentation
+   * Generate endpoints documentation
    */
-  private static generatePaths(endpoints: ApiEndpoint[]): any {
-    const paths: any = {}
-
-    endpoints.forEach(endpoint => {
-      const pathKey = endpoint.path.replace(/\/api\/v\d+\//, '/')
-      
-      if (!paths[pathKey]) {
-        paths[pathKey] = {}
-      }
-
-      const operation: any = {
-        summary: endpoint.description,
-        tags: [endpoint.version],
-        parameters: endpoint.parameters?.map(param => ({
-          name: param.name,
-          in: param.location,
-          required: param.required,
-          description: param.description,
-          schema: { type: param.type },
-          example: param.example
-        })) || [],
-        responses: this.generateResponses(endpoint.responses),
-        security: endpoint.authentication?.required ? [{ BearerAuth: [] }] : []
-      }
-
-      if (endpoint.requestBody) {
-        operation.requestBody = {
-          required: endpoint.requestBody.required,
-          content: {
-            [endpoint.requestBody.contentType]: {
-              schema: endpoint.requestBody.schema,
-              example: endpoint.requestBody.example
-            }
-          }
-        }
-      }
-
-      paths[pathKey][endpoint.method.toLowerCase()] = operation
-    })
-
-    return paths
-  }
-
-  /**
-   * Generate response schemas
-   */
-  private static generateResponses(responses: ApiResponse[]): any {
-    const responseObj: any = {}
-
-    responses.forEach(response => {
-      responseObj[response.status] = {
+  private static generateEndpointsDocumentation(endpoints: ApiEndpoint[]): any {
+    return endpoints.map(endpoint => ({
+      method: endpoint.method,
+      path: endpoint.path,
+      version: endpoint.version,
+      description: endpoint.description,
+      parameters: endpoint.parameters?.map(param => ({
+        name: param.name,
+        location: param.location,
+        type: param.type,
+        required: param.required,
+        description: param.description,
+        example: param.example
+      })) || [],
+      requestBody: endpoint.requestBody ? {
+        contentType: endpoint.requestBody.contentType,
+        required: endpoint.requestBody.required,
+        description: endpoint.requestBody.description,
+        schema: endpoint.requestBody.schema,
+        example: endpoint.requestBody.example
+      } : undefined,
+      responses: endpoint.responses.map(response => ({
+        status: response.status,
         description: response.description,
-        content: {
-          'application/json': {
-            schema: response.schema,
-            example: response.example
-          }
-        }
-      }
-    })
-
-    return responseObj
+        schema: response.schema,
+        example: response.example
+      })),
+      authentication: endpoint.authentication ? {
+        required: endpoint.authentication.required,
+        roles: endpoint.authentication.roles || []
+      } : undefined,
+      rateLimit: endpoint.rateLimit ? {
+        windowMs: endpoint.rateLimit.windowMs,
+        max: endpoint.rateLimit.max
+      } : undefined
+    }))
   }
+
 
   /**
    * Generate common schemas
@@ -535,7 +499,7 @@ export class ApiDocumentation {
 
     // Documentation endpoint
     this.createEndpointDoc('GET', '/api/docs', 'v1', 'Get API documentation')
-      .addParameter({ name: 'format', type: 'string', required: false, description: 'Documentation format', location: 'query' })
+      .addParameter({ name: 'format', type: 'string', required: false, description: 'Documentation format (spec, endpoints)', location: 'query' })
       .addParameter({ name: 'version', type: 'string', required: false, description: 'API version filter', location: 'query' })
       .addResponse({ status: 200, description: 'API documentation', schema: { type: 'object' } })
       .setRateLimit(15 * 60 * 1000, 50)
