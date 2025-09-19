@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-
+// in prod or development, add to the url /api/docs?format=endpoints to see the documentation
 export interface ApiEndpoint {
   path: string
   method: string
