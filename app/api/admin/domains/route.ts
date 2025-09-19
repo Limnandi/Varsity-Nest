@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/stackauth"
 import { secureDb } from "@/lib/database-secure"
+import { query } from "@/lib/database"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 

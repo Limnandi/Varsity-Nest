@@ -27,14 +27,14 @@ export default function TermsPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">1. Acceptance of Terms</h2>
                 <p className="text-neutral-300 leading-relaxed">
-                  By using the Varsity Nest platform, including any related websites, mobile applications, services, or features (collectively referred to as "the Service"), you agree to these Terms of Service. If you do not agree to these terms, you must immediately discontinue use of the Service.
+                  By using the Varsity Nest platform, including any related websites, mobile applications, services, or features (collectively referred to as &quot;the Service&quot;), you agree to these Terms of Service. If you do not agree to these terms, you must immediately discontinue use of the Service.
                 </p>
               </section>
 
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">2. Changes to Terms</h2>
                 <p className="text-neutral-300 leading-relaxed">
-                  Varsity Nest reserves the right to modify, amend, or update these Terms of Service at any time. All changes will be posted on this page, and the "Last Updated" date will reflect the date of the most recent changes. It is your responsibility to review these terms periodically.
+                  Varsity Nest reserves the right to modify, amend, or update these Terms of Service at any time. All changes will be posted on this page, and the &quot;Last Updated&quot; date will reflect the date of the most recent changes. It is your responsibility to review these terms periodically.
                 </p>
               </section>
 
@@ -91,7 +91,7 @@ export default function TermsPage() {
                 <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-red-400 mb-2">No Refund Policy:</h3>
                   <p className="text-neutral-300">
-                    <strong>ALL SALES ARE FINAL.</strong> By clicking "Accept" or "Agree" to any service or payment, you acknowledge that no refunds will be provided under any circumstances. Refunds will only be considered in cases of technical errors resulting in duplicate or unauthorized charges, which must be reported within 24 hours of the transaction.
+                    <strong>ALL SALES ARE FINAL.</strong> By clicking &quot;Accept&quot; or &quot;Agree&quot; to any service or payment, you acknowledge that no refunds will be provided under any circumstances. Refunds will only be considered in cases of technical errors resulting in duplicate or unauthorized charges, which must be reported within 24 hours of the transaction.
                   </p>
                 </div>
               </section>
@@ -132,7 +132,7 @@ export default function TermsPage() {
                 <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 mb-4">
                   <h3 className="text-lg font-semibold text-yellow-400 mb-2">No Warranties:</h3>
                   <p className="text-neutral-300">
-                    The Service is provided "as is" without any warranties or guarantees. Varsity Nest does not guarantee that the Service will be error-free, uninterrupted, or secure.
+                    The Service is provided &quot;as is&quot; without any warranties or guarantees. Varsity Nest does not guarantee that the Service will be error-free, uninterrupted, or secure.
                   </p>
                 </div>
                 <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">

@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
       LIMIT 5
     `
 
-    const performers = []
+    const performers: any[] = []
 
     // Add top accommodations
-    topAccommodations.rows.forEach((row, index) => {
+    topAccommodations.rows.forEach((row: any, index: number) => {
       performers.push({
         id: `accommodation-${row.id}`,
         name: row.name,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Add top providers
-    topProviders.rows.forEach((row, index) => {
+    topProviders.rows.forEach((row: any, index: number) => {
       performers.push({
         id: `provider-${row.id}`,
         name: row.name,

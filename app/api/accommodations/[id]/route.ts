@@ -5,14 +5,14 @@ import { eq } from 'drizzle-orm'
 import * as schema from '@/lib/schema'
 import { accommodationUpdateSchema, validateRequest } from '@/lib/validation-schemas'
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser()
     if (!user || user.role !== 'provider') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const id = params.id
+    const { id } = await params
     const body = await request.json()
 
     // Validate the update data
@@ -54,14 +54,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser()
     if (!user || user.role !== 'provider') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const id = params.id
+    const { id } = await params
     const [owner] = await secureDb.db
       .select({ providerId: schema.accommodations.providerId })
       .from(schema.accommodations)

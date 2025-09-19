@@ -40,7 +40,7 @@ export default function Contact() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-2xl tracking-tight">Contact Us</h1>
           <p className="text-xl text-neutral-300 drop-shadow-lg">
-            We're here to help you find your perfect student accommodation
+            We&apos;re here to help you find your perfect student accommodation
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export default function Contact() {
                   <a href="mailto:info@massiveoperations.co.za" className="text-blue-400 hover:text-blue-300 transition-colors">
                     info@massiveoperations.co.za
                   </a>
-                  <p className="text-sm text-neutral-500">We'll respond within 24 hours</p>
+                  <p className="text-sm text-neutral-500">We&apos;ll respond within 24 hours</p>
                 </div>
               </div>
 

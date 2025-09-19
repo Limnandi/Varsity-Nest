@@ -43,7 +43,7 @@ export default function PrivacyPage() {
                   The information we collect is used for the following purposes:
                 </p>
                 <ul className="text-neutral-300 leading-relaxed space-y-2 ml-4">
-                  <li>• <strong>To Provide Our Services:</strong> We use your information to create and manage your account, facilitate your access to listings and services, and allow you to engage with the platform's features.</li>
+                  <li>• <strong>To Provide Our Services:</strong> We use your information to create and manage your account, facilitate your access to listings and services, and allow you to engage with the platform&apos;s features.</li>
                   <li>• <strong>To Communicate with You:</strong> We may send you updates, notifications, newsletters, and promotional materials related to Varsity Nest. You can opt out of these communications at any time.</li>
                   <li>• <strong>To Process Payments:</strong> If applicable, we use your payment information to process transactions related to our paid services.</li>
                   <li>• <strong>To Improve the Platform:</strong> We analyze usage data to improve the performance and functionality of Varsity Nest, fix bugs, and ensure a better user experience.</li>
@@ -136,7 +136,7 @@ export default function PrivacyPage() {
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">8. Children's Privacy</h2>
+                <h2 className="text-2xl font-semibold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">8. Children&apos;s Privacy</h2>
                 <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
                   <p className="text-neutral-300">
                     Varsity Nest does not knowingly collect personal information from children under the age of 18. If you believe we have inadvertently collected personal information from a child, please contact us immediately so we can take appropriate action.
@@ -161,7 +161,7 @@ export default function PrivacyPage() {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">11. Changes to This Privacy Policy</h2>
                 <p className="text-neutral-300 leading-relaxed">
-                  We may update this Privacy Policy from time to time. When we do, we will post the updated version on this page and update the "Last Updated" date. Please review this policy regularly to stay informed about how we protect your information.
+                  We may update this Privacy Policy from time to time. When we do, we will post the updated version on this page and update the &quot;Last Updated&quot; date. Please review this policy regularly to stay informed about how we protect your information.
                 </p>
               </section>
 

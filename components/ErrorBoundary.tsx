@@ -109,7 +109,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </h1>
             
             <p className="text-neutral-300 mb-6">
-              We encountered an unexpected error. Don't worry, our team has been notified.
+              We encountered an unexpected error. Don&apos;t worry, our team has been notified.
             </p>
 
             {errorId && (

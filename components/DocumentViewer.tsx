@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Download, X } from "lucide-react"
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 
 // Dynamically import react-pdf components to prevent SSR issues
 const Document = dynamic(
@@ -74,9 +75,11 @@ export function DocumentViewer({
                 </div>
                 <div className="flex space-x-2">
                   {doc.type.startsWith('image/') ? (
-                    <img
+                    <Image
                       src={doc.url}
                       alt={doc.name}
+                      width={200}
+                      height={160}
                       className="max-h-40 max-w-full object-contain"
                     />
                   ) : doc.type === 'application/pdf' ? (

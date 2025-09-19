@@ -25,7 +25,7 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
       const priceMatch = acc.price >= filters.priceRange[0] && acc.price <= filters.priceRange[1]
       const amenityMatch =
         filters.amenities.length === 0 || filters.amenities.every((amenity) => acc.amenities.includes(amenity))
-      const verifiedMatch = !filters.verified || acc.verified
+      const verifiedMatch = !filters.verified || acc.isVerified
       const availableMatch = !filters.available || acc.isOpen
 
       return priceMatch && amenityMatch && verifiedMatch && availableMatch

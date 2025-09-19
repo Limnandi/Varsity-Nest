@@ -150,7 +150,7 @@ export default function AdminSettings() {
                 <div className="flex-1">
                   <h3 className="font-medium text-white mb-1 text-lg">Provisionally-Accredited Accommodations</h3>
                   <p className="text-sm text-neutral-300">
-                    Show/hide the "Provisionally-Accredited" option in the navigation dropdown
+                    Show/hide the &quot;Provisionally-Accredited&quot; option in the navigation dropdown
                   </p>
                 </div>
                 <button
@@ -179,7 +179,7 @@ export default function AdminSettings() {
                 <div className="flex-1">
                   <h3 className="font-medium text-white mb-1 text-lg">Non-Accredited Accommodations</h3>
                   <p className="text-sm text-neutral-300">
-                    Show/hide the "Non-Accredited" option in the navigation dropdown
+                    Show/hide the &quot;Non-Accredited&quot; option in the navigation dropdown
                   </p>
                 </div>
                 <button

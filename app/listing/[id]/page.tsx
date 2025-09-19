@@ -1,4 +1,3 @@
-"use client"
 import ImageCarousel from "@/components/ImageCarousel"
 import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { notFound } from "next/navigation"
@@ -18,8 +17,9 @@ async function getListing(id: string) {
   }
 }
 
-export default async function ListingPage({ params }: { params: { id: string } }) {
-  const listing = await getListing(params.id)
+export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const listing = await getListing(id)
 
   if (!listing) {
     notFound()

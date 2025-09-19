@@ -50,7 +50,7 @@ export default function TestimonialsSection() {
                 ))}
               </div>
 
-              <p className="text-neutral-300 leading-relaxed mb-6 italic text-lg">"{testimonial.text}"</p>
+              <p className="text-neutral-300 leading-relaxed mb-6 italic text-lg">&quot;{testimonial.text}&quot;</p>
 
               <div className="flex items-center">
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full mr-4 flex items-center justify-center border border-white/20 shadow-lg">

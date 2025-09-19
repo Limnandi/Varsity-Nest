@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { Users, Search, UserCheck, UserX, Trash2, GraduationCap, Mail, Calendar } from "lucide-react"
@@ -22,11 +22,7 @@ export default function StudentsPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all")
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchStudents()
-  }, [])
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/students")
       if (response.ok) {
@@ -42,7 +38,11 @@ export default function StudentsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchStudents()
+  }, [fetchStudents])
 
   const toggleStudentStatus = async (studentId: string, currentStatus: boolean) => {
     try {

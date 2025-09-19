@@ -8,6 +8,7 @@ import type { SessionUser } from "@/lib/stackauth"
 // Removed direct database import - using API endpoint instead
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { Building } from "lucide-react" // Import Building component
 import { formatZar } from "@/lib/utils"
 
@@ -151,7 +152,12 @@ export default function ProviderAccommodations() {
               {userAccommodations.map((accommodation) => (
                 <div key={accommodation.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
                   <div className="relative h-48">
-                    <img src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} alt="Property" className="w-full h-full object-cover" />
+                    <Image 
+                      src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} 
+                      alt="Property" 
+                      fill
+                      className="object-cover" 
+                    />
                     <div className="absolute top-3 right-3">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${

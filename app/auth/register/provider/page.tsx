@@ -292,7 +292,7 @@ export default function ProviderRegistrationPage() {
                     onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
                     className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20"
                   />
-                  <span className="text-white">No, but I'm working towards accreditation</span>
+                  <span className="text-white">No, but I&apos;m working towards accreditation</span>
                 </label>
               </div>
             </div>

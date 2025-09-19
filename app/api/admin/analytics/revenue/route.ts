@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
       
       // Find revenue for this date
-      const dayRevenue = revenueData.rows.find(row => {
+      const dayRevenue = revenueData.rows.find((row: any) => {
         const rowDate = new Date(row.date)
         return rowDate.toDateString() === date.toDateString()
       })

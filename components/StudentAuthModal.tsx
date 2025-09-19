@@ -43,7 +43,8 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
         }
       } else {
         // Login/Register flow
-        const existingStudent = StudentAuthService.getStudents().find((s) => s.email === email)
+        const existingList = await StudentAuthService.getStudents()
+        const existingStudent = existingList.find((s: any) => s.email === email)
 
         if (existingStudent) {
           if (mode === "register") {
@@ -80,7 +81,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
     setError("")
 
     try {
-      const result = StudentAuthService.loginStudent(email, password)
+      const result = await StudentAuthService.loginStudent(email, password)
       if (result.success && result.student) {
         onSuccess(result.student)
         onClose()

@@ -24,7 +24,7 @@ export default function SearchBar({ accommodations, onFilter }: SearchBarProps) 
       return
     }
 
-    const filtered = accommodations.filter((acc) => acc.title.toLowerCase().includes(term.toLowerCase()))
+    const filtered = accommodations.filter((acc) => acc.name.toLowerCase().includes(term.toLowerCase()))
 
     setSuggestions(filtered)
     setShowSuggestions(true)
@@ -32,7 +32,7 @@ export default function SearchBar({ accommodations, onFilter }: SearchBarProps) 
   }
 
   const selectSuggestion = (accommodation: Accommodation) => {
-    setSearchTerm(accommodation.title)
+    setSearchTerm(accommodation.name)
     setShowSuggestions(false)
     onFilter([accommodation])
   }
@@ -52,13 +52,13 @@ export default function SearchBar({ accommodations, onFilter }: SearchBarProps) 
 
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-          {suggestions.map((suggestion) => (
+              {suggestions.map((suggestion) => (
             <button
               key={suggestion.id}
               onClick={() => selectSuggestion(suggestion)}
               className="w-full text-left px-4 py-2 hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg"
             >
-              {suggestion.title}
+                  {suggestion.name}
             </button>
           ))}
         </div>

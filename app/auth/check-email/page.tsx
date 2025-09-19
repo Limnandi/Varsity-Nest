@@ -80,7 +80,7 @@ export default function CheckEmailPage() {
           </div>
           <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">Check Your Email</h1>
           <p className="text-neutral-300 text-lg">
-            We've sent a verification link to <strong className="text-blue-400">{user.primaryEmail}</strong>
+            We&apos;ve sent a verification link to <strong className="text-blue-400">{user.primaryEmail}</strong>
           </p>
         </div>
         
@@ -136,7 +136,7 @@ export default function CheckEmailPage() {
           </div>
 
           <div className="text-center text-xs text-neutral-500">
-            <p>Didn't receive the email? Check your spam folder or contact support.</p>
+            <p>Didn&apos;t receive the email? Check your spam folder or contact support.</p>
           </div>
         </div>
       </div>

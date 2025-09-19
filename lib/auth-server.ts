@@ -41,8 +41,6 @@ export async function createSecureSession(user: SecureUser): Promise<string> {
     sessionId,
     role: user.role,
     email: user.email,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(expiresAt.getTime() / 1000)
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -114,7 +112,7 @@ export async function verifySecureSession(token: string): Promise<SecureSession 
       },
       sessionId,
       expiresAt: new Date(sessionData.expires_at),
-      iat: Math.floor(sessionData.created_at.getTime() / 1000)
+      iat: Math.floor(new Date(sessionData.created_at).getTime() / 1000)
     }
   } catch (error) {
     console.error('JWT verification failed:', error)

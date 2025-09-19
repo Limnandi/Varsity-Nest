@@ -94,7 +94,7 @@ export default function AccommodationCard({
       <div className="p-5">
         <div className="flex items-start justify-between mb-2">
           <h3 className="font-bold text-lg mb-1 group-hover:text-blue-600 transition-colors">{title}</h3>
-          {verified && <Shield className="w-5 h-5 text-green-500 flex-shrink-0" title="Verified Property" />}
+          {verified && <Shield className="w-5 h-5 text-green-500 flex-shrink-0" />}
         </div>
 
         <div className="flex items-center text-gray-600 text-sm mb-2">

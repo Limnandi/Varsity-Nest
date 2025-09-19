@@ -18,7 +18,7 @@ export default function PaymentCancelPage() {
 
   return (
     <AuthGuard requiredRole="provider">
-      <DashboardLayout>
+      <DashboardLayout userRole="provider">
         <div className="max-w-2xl mx-auto py-8">
           <Card className="text-center border-red-200">
             <CardHeader>

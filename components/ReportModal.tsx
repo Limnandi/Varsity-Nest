@@ -102,7 +102,7 @@ export default function ReportModal({
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Report Submitted</h3>
               <p className="text-gray-600">
-                Thank you for helping keep our community safe. We'll review this report and take appropriate action.
+                Thank you for helping keep our community safe. We&apos;ll review this report and take appropriate action.
               </p>
             </div>
           ) : (

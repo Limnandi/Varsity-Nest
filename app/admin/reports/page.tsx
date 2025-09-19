@@ -28,7 +28,7 @@ export default function ReportsPage() {
     return report.status === filter
   })
 
-  const handleAction = (reportId: string, action: ReviewReport["action"], status: ReviewReport["status"]) => {
+  const handleAction = async (reportId: string, action: ReviewReport["action"], status: ReviewReport["status"]) => {
     const success = StudentAuthService.updateReportStatus(reportId, status, action, "Admin")
 
     if (success) {
@@ -37,7 +37,7 @@ export default function ReportsPage() {
         const report = reports.find((r) => r.id === reportId)
         if (report) {
           // Find the student who wrote the review and block them
-          const students = StudentAuthService.getStudents()
+          const students = await StudentAuthService.getStudents()
           const reviewAuthor = students.find((s) => s.name === getReviewAuthor(report.reviewId))
           if (reviewAuthor) {
             StudentAuthService.blockStudent(reviewAuthor.id, `Reported for: ${report.reason}`)
@@ -51,7 +51,7 @@ export default function ReportsPage() {
   }
 
   const getReviewAuthor = (reviewId: number): string => {
-    // This would normally fetch from your reviews data
+    // This would normally fetch from existing reviews data
     // For demo, we'll return a placeholder
     return "Review Author"
   }

@@ -58,7 +58,7 @@ export default function PaymentSuccessPage() {
   if (isLoading) {
     return (
       <AuthGuard requiredRole="provider">
-        <DashboardLayout>
+        <DashboardLayout userRole="provider">
           <div className="flex items-center justify-center min-h-screen">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600"></div>
           </div>
@@ -70,7 +70,7 @@ export default function PaymentSuccessPage() {
   if (!paymentDetails) {
     return (
       <AuthGuard requiredRole="provider">
-        <DashboardLayout>
+        <DashboardLayout userRole="provider">
           <div className="max-w-2xl mx-auto py-8">
             <Card className="text-center">
               <CardHeader>
@@ -93,7 +93,7 @@ export default function PaymentSuccessPage() {
 
   return (
     <AuthGuard requiredRole="provider">
-      <DashboardLayout>
+      <DashboardLayout userRole="provider">
         <div className="max-w-2xl mx-auto py-8">
           <Card className="text-center border-green-200">
             <CardHeader>
@@ -135,7 +135,7 @@ export default function PaymentSuccessPage() {
 
               {/* Next Steps */}
               <div className="bg-blue-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-blue-800 mb-4">What's Next?</h3>
+                <h3 className="font-semibold text-blue-800 mb-4">What&apos;s Next?</h3>
                 <div className="text-left space-y-2 text-sm text-blue-700">
                   <p>✅ Your subscription is now active</p>
                   <p>✅ You can now list and manage accommodations</p>

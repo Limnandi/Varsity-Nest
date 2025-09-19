@@ -40,7 +40,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 
 export async function updateProductionMode(isProduction: boolean) {
   const session = await getSession()
-  if (session?.role !== "admin") {
+  if (session?.user.role !== "admin") {
     return { success: false, message: "Unauthorized" }
   }
 

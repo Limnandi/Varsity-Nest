@@ -40,11 +40,11 @@ export async function POST(request: NextRequest) {
       Sentry.captureMessage('Invalid PayFast webhook data structure', {
         level: 'error',
         tags: { component: 'payfast-webhook' },
-        extra: { errors: validationResult.error.errors, pfPaymentId: rawData.pf_payment_id }
+        extra: { errors: validationResult.error.issues, pfPaymentId: rawData.pf_payment_id }
       })
       return NextResponse.json({ 
         error: "Invalid webhook data structure", 
-        details: validationResult.error.errors 
+        details: validationResult.error.issues 
       }, { status: 400 })
     }
 
@@ -249,7 +249,7 @@ async function processSuccessfulPayment(
 ) {
   try {
     // Start transaction for atomicity
-    await secureDb.db.transaction(async (tx) => {
+    await secureDb.db.transaction(async (tx: any) => {
       // Update payment transaction
       await tx
         .update(schema.paymentTransactions)

@@ -54,8 +54,23 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        Chevron: ({ disabled, direction, ...props }: any) => (
+          <button
+            disabled={disabled}
+            {...props}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+              direction === "left" ? "absolute left-1" : "absolute right-1"
+            )}
+          >
+            {direction === "left" ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        ),
       }}
       {...props}
     />

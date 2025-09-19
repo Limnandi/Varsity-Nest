@@ -70,7 +70,7 @@ export default function RegisterPage() {
                 <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
               </div>
               <div className="text-left">
-                <h2 className="text-xl font-semibold text-white group-hover:text-blue-300 transition-colors">I'm a Student</h2>
+                <h2 className="text-xl font-semibold text-white group-hover:text-blue-300 transition-colors">I&apos;m a Student</h2>
                 <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Looking for accommodation</p>
               </div>
             </div>
@@ -86,7 +86,7 @@ export default function RegisterPage() {
                 <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"></div>
               </div>
               <div className="text-left">
-                <h2 className="text-xl font-semibold text-white group-hover:text-purple-300 transition-colors">I'm a Service Provider</h2>
+                <h2 className="text-xl font-semibold text-white group-hover:text-purple-300 transition-colors">I&apos;m a Service Provider</h2>
                 <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Listing accommodation</p>
               </div>
             </div>

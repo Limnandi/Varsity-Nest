@@ -197,7 +197,7 @@ export default function AdminAnalytics() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Analytics Dashboard</h1>
-              <p className="text-neutral-300">Track your platform's performance and growth</p>
+              <p className="text-neutral-300">Track your platform&apos;s performance and growth</p>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <Popover>

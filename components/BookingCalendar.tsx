@@ -89,7 +89,7 @@ export default function BookingCalendar({ accommodationId, price }: BookingCalen
           Request Booking
         </button>
 
-        <p className="text-xs text-gray-500 text-center">You won't be charged yet. This is just a booking request.</p>
+        <p className="text-xs text-gray-500 text-center">You won&apos;t be charged yet. This is just a booking request.</p>
       </div>
     </div>
   )

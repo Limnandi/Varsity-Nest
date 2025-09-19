@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       LIMIT ${Number.parseInt(limit)}
     `
 
-    const accommodations = accommodationsResult.rows.map(acc => ({
+    const accommodations = accommodationsResult.rows.map((acc: any) => ({
       id: acc.id,
       name: acc.name,
       description: acc.description,
