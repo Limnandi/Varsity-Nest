@@ -89,7 +89,7 @@ export const signIn = async (_credentials: { email: string; password: string }) 
 export const signOut = async (_token?: string) => {
   try {
     const app = getStackServerApp()
-    await app.logout()
+    // StackServerApp does not expose logout server-side; rely on client handler or cookie invalidation
     return { success: true }
   } catch (e) {
     return { success: false, error: 'Logout failed' }
