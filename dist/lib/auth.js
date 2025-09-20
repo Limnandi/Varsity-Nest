@@ -45,7 +45,7 @@ exports.verifyPassword = verifyPassword;
 exports.authenticateUser = authenticateUser;
 exports.createSession = createSession;
 exports.getSession = getSession;
-exports.getSessionUser = getSessionUser;
+exports.getCurrentUser = getCurrentUser;
 exports.deleteSession = deleteSession;
 exports.login = login;
 exports.createUser = createUser;
@@ -53,13 +53,14 @@ exports.getUserByEmail = getUserByEmail;
 exports.getAllStudents = getAllStudents;
 exports.toggleUserStatus = toggleUserStatus;
 exports.deleteUser = deleteUser;
-exports.isValidStudentEmail = isValidStudentEmail;
+exports.getAdminSettings = getAdminSettings;
+exports.updateAdminSettings = updateAdminSettings;
+exports.verifyToken = verifyToken;
 var bcryptjs_1 = __importDefault(require("bcryptjs"));
 var jose_1 = require("jose");
 var headers_1 = require("next/headers");
 var database_1 = require("./database");
-var secretKey = process.env.NEXTAUTH_SECRET;
-var encodedKey = new TextEncoder().encode(secretKey);
+var auth_constants_1 = require("./auth-constants");
 function hashPassword(password) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
@@ -129,14 +130,20 @@ function authenticateUser(email, password) {
         });
     });
 }
-function createSession(userId, role) {
+function createSession(user) {
     return __awaiter(this, void 0, void 0, function () {
         var expiresAt, session, cookieStore;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-                    return [4 /*yield*/, encrypt({ userId: userId, role: role, expiresAt: expiresAt })];
+                    return [4 /*yield*/, encrypt({
+                            id: user.id,
+                            email: user.email,
+                            name: "".concat(user.firstName, " ").concat(user.lastName),
+                            role: user.role,
+                            expiresAt: expiresAt
+                        })];
                 case 1:
                     session = _a.sent();
                     return [4 /*yield*/, (0, headers_1.cookies)()];
@@ -172,7 +179,7 @@ function getSession() {
         });
     });
 }
-function getSessionUser() {
+function getCurrentUser() {
     return __awaiter(this, void 0, void 0, function () {
         var session, result, user, error_2;
         return __generator(this, function (_a) {
@@ -180,12 +187,12 @@ function getSessionUser() {
                 case 0: return [4 /*yield*/, getSession()];
                 case 1:
                     session = _a.sent();
-                    if (!(session === null || session === void 0 ? void 0 : session.userId))
+                    if (!(session === null || session === void 0 ? void 0 : session.id))
                         return [2 /*return*/, null];
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
-                    return [4 /*yield*/, (0, database_1.query)("SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active, u.email_verified, u.created_at, s.university\n       FROM users u\n       LEFT JOIN students s ON u.id = s.user_id\n       WHERE u.id = $1", [session.userId])];
+                    return [4 /*yield*/, (0, database_1.query)("SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active, u.email_verified, u.created_at, s.university\n       FROM users u\n       LEFT JOIN students s ON u.id = s.user_id\n       WHERE u.id = $1", [session.id])];
                 case 3:
                     result = _a.sent();
                     if (!result.rows || result.rows.length === 0)
@@ -228,18 +235,26 @@ function deleteSession() {
 }
 function login(email, password) {
     return __awaiter(this, void 0, void 0, function () {
-        var user;
+        "use server";
+        var user, error_3;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, authenticateUser(email, password)];
+                case 0:
+                    _a.trys.push([0, 4, , 5]);
+                    return [4 /*yield*/, authenticateUser(email, password)];
                 case 1:
                     user = _a.sent();
                     if (!user) return [3 /*break*/, 3];
-                    return [4 /*yield*/, createSession(user.id, user.role)];
+                    return [4 /*yield*/, createSession(user)];
                 case 2:
                     _a.sent();
                     return [2 /*return*/, { success: true, user: user }];
                 case 3: return [2 /*return*/, { success: false, error: "Invalid credentials" }];
+                case 4:
+                    error_3 = _a.sent();
+                    console.error("Login error:", error_3);
+                    return [2 /*return*/, { success: false, error: "Login failed" }];
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -251,13 +266,13 @@ function encrypt(payload) {
                     .setProtectedHeader({ alg: "HS256" })
                     .setIssuedAt()
                     .setExpirationTime("7d")
-                    .sign(encodedKey)];
+                    .sign(auth_constants_1.encodedKey)];
         });
     });
 }
 function decrypt() {
     return __awaiter(this, arguments, void 0, function (session) {
-        var payload, error_3;
+        var payload, error_4;
         if (session === void 0) { session = ""; }
         return __generator(this, function (_a) {
             switch (_a.label) {
@@ -267,15 +282,15 @@ function decrypt() {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, jose_1.jwtVerify)(session, encodedKey, {
+                    return [4 /*yield*/, (0, jose_1.jwtVerify)(session, auth_constants_1.encodedKey, {
                             algorithms: ["HS256"],
                         })];
                 case 2:
                     payload = (_a.sent()).payload;
                     return [2 /*return*/, payload];
                 case 3:
-                    error_3 = _a.sent();
-                    console.error("Failed to verify session:", error_3);
+                    error_4 = _a.sent();
+                    console.error("Failed to verify session:", error_4);
                     return [2 /*return*/, null];
                 case 4: return [2 /*return*/];
             }
@@ -284,7 +299,7 @@ function decrypt() {
 }
 function createUser(userData) {
     return __awaiter(this, void 0, void 0, function () {
-        var hashedPassword, result, user, error_4;
+        var hashedPassword, result, user, error_5;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -320,8 +335,8 @@ function createUser(userData) {
                             institution: user.institution,
                         }];
                 case 3:
-                    error_4 = _a.sent();
-                    console.error("Error creating user:", error_4);
+                    error_5 = _a.sent();
+                    console.error("Error creating user:", error_5);
                     return [2 /*return*/, null];
                 case 4: return [2 /*return*/];
             }
@@ -330,7 +345,7 @@ function createUser(userData) {
 }
 function getUserByEmail(email) {
     return __awaiter(this, void 0, void 0, function () {
-        var result, user, error_5;
+        var result, user, error_6;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -354,8 +369,8 @@ function getUserByEmail(email) {
                             university: user.university,
                         }];
                 case 2:
-                    error_5 = _a.sent();
-                    console.error("Error getting user by email:", error_5);
+                    error_6 = _a.sent();
+                    console.error("Error getting user by email:", error_6);
                     return [2 /*return*/, null];
                 case 3: return [2 /*return*/];
             }
@@ -364,7 +379,7 @@ function getUserByEmail(email) {
 }
 function getAllStudents() {
     return __awaiter(this, void 0, void 0, function () {
-        var result, error_6;
+        var result, error_7;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -387,8 +402,8 @@ function getAllStudents() {
                             university: row.university,
                         }); })];
                 case 2:
-                    error_6 = _a.sent();
-                    console.error("Error getting all students:", error_6);
+                    error_7 = _a.sent();
+                    console.error("Error getting all students:", error_7);
                     return [2 /*return*/, []];
                 case 3: return [2 /*return*/];
             }
@@ -397,7 +412,7 @@ function getAllStudents() {
 }
 function toggleUserStatus(userId, isActive) {
     return __awaiter(this, void 0, void 0, function () {
-        var error_7;
+        var error_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -407,8 +422,8 @@ function toggleUserStatus(userId, isActive) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 2:
-                    error_7 = _a.sent();
-                    console.error("Error toggling user status:", error_7);
+                    error_8 = _a.sent();
+                    console.error("Error toggling user status:", error_8);
                     return [2 /*return*/, false];
                 case 3: return [2 /*return*/];
             }
@@ -417,7 +432,7 @@ function toggleUserStatus(userId, isActive) {
 }
 function deleteUser(userId) {
     return __awaiter(this, void 0, void 0, function () {
-        var error_8;
+        var error_9;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -427,20 +442,73 @@ function deleteUser(userId) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 2:
-                    error_8 = _a.sent();
-                    console.error("Error deleting user:", error_8);
+                    error_9 = _a.sent();
+                    console.error("Error deleting user:", error_9);
                     return [2 /*return*/, false];
                 case 3: return [2 /*return*/];
             }
         });
     });
 }
-function isValidStudentEmail(email) {
-    var studentEmailPatterns = [
-        /@ufs\.ac\.za$/,
-        /@student\.ufs\.ac\.za$/,
-        /@kovsies\.ac\.za$/,
-        /@student\.kovsies\.ac\.za$/,
-    ];
-    return studentEmailPatterns.some(function (pattern) { return pattern.test(email.toLowerCase()); });
+function getAdminSettings() {
+    return __awaiter(this, void 0, void 0, function () {
+        var result, error_10;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, (0, database_1.query)("SELECT * FROM admin_settings LIMIT 1")];
+                case 1:
+                    result = _a.sent();
+                    return [2 /*return*/, result.rows[0] || null];
+                case 2:
+                    error_10 = _a.sent();
+                    console.error("Error getting admin settings:", error_10);
+                    return [2 /*return*/, null];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+function updateAdminSettings(settings) {
+    return __awaiter(this, void 0, void 0, function () {
+        var error_11;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, (0, database_1.query)("INSERT INTO admin_settings (maintenance_mode, registration_enabled, payments_enabled)\n       VALUES ($1, $2, $3)\n       ON CONFLICT (id) DO UPDATE SET\n         maintenance_mode = EXCLUDED.maintenance_mode,\n         registration_enabled = EXCLUDED.registration_enabled,\n         payments_enabled = EXCLUDED.payments_enabled", [settings.maintenanceMode, settings.registrationEnabled, settings.paymentsEnabled])];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/, true];
+                case 2:
+                    error_11 = _a.sent();
+                    console.error("Error updating admin settings:", error_11);
+                    return [2 /*return*/, false];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+function verifyToken(token) {
+    return __awaiter(this, void 0, void 0, function () {
+        "use server";
+        var payload, error_12;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, (0, jose_1.jwtVerify)(token, auth_constants_1.encodedKey, {
+                            algorithms: ["HS256"],
+                        })];
+                case 1:
+                    payload = (_a.sent()).payload;
+                    return [2 /*return*/, payload];
+                case 2:
+                    error_12 = _a.sent();
+                    return [2 /*return*/, null];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
 }

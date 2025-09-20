@@ -1,92 +1,171 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import AccommodationCard from "@/components/AccommodationCard"
-import SearchBar from "@/components/SearchBar"
-import TabFilter from "@/components/TabFilter"
-import AdvancedFilters from "@/components/AdvancedFilters"
-import SkeletonCard from "@/components/SkeletonCard"
-import { accommodations } from "@/lib/data"
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react"
 import { SlidersHorizontal } from "lucide-react"
+import SkeletonCard from "@/components/SkeletonCard"
+import AccommodationCard from "@/components/AccommodationCard"
+import { CacheManager } from "@/lib/cache"
+
+// Lazy load heavy components
+const SearchBar = lazy(() => import("@/components/SearchBar"))
+const TabFilter = lazy(() => import("@/components/TabFilter"))
+const AdvancedFilters = lazy(() => import("@/components/AdvancedFilters"))
+const VirtualizedAccommodationList = lazy(() => import("@/components/VirtualizedAccommodationList"))
 
 export default function AccreditedAccommodations() {
-  const [filteredAccommodations, setFilteredAccommodations] = useState(accommodations)
+  const [allAccs, setAllAccs] = useState<any[]>([])
+  const [filteredAccommodations, setFilteredAccommodations] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "rating" | "reviews">("price-desc")
+  const [useVirtualization, setUseVirtualization] = useState(false)
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setIsLoading(false), 1000)
-    return () => clearTimeout(timer)
+    const load = async () => {
+      try {
+        // Try client-side cache first
+        let accommodations = CacheManager.getCachedAccommodationsByStatusClient('accredited', 100, 0)
+        
+        if (!accommodations || !Array.isArray(accommodations)) {
+          // Fetch from existing API endpoint
+          const response = await fetch('/api/accommodations?accreditation_status=accredited&limit=100&offset=0')
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            console.error('API Error:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorData
+            })
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || response.statusText}`)
+          }
+          
+          const data = await response.json()
+          
+          // Ensure data is an array
+          accommodations = Array.isArray(data) ? data : []
+          
+          // Cache the result
+          if (accommodations && accommodations.length > 0) {
+            CacheManager.cacheAccommodationsByStatusClient('accredited', 100, 0, accommodations)
+          }
+        }
+        
+        // Ensure we always have an array
+        const accommodationsList = Array.isArray(accommodations) ? accommodations : []
+        setAllAccs(accommodationsList as any[])
+        setFilteredAccommodations(accommodationsList as any[])
+        
+        // Enable virtualization for large lists
+        if (accommodationsList.length > 50) {
+          setUseVirtualization(true)
+        }
+      } catch (error) {
+        console.error('Failed to load accommodations:', error)
+        setAllAccs([])
+        setFilteredAccommodations([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    load()
   }, [])
 
-  const handleSort = (accommodations: typeof filteredAccommodations) => {
+  const handleSort = useCallback((accommodations: typeof filteredAccommodations) => {
+    // Ensure accommodations is an array
+    if (!Array.isArray(accommodations)) {
+      console.warn('handleSort received non-array:', accommodations)
+      return []
+    }
+    
     const sorted = [...accommodations].sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
-          return a.price - b.price
+          return Number(a.price) - Number(b.price)
         case "price-desc":
-          return b.price - a.price
+          return Number(b.price) - Number(a.price)
         case "rating":
-          return b.rating - a.rating
+          return (b.rating ?? 0) - (a.rating ?? 0)
         case "reviews":
-          return b.reviewCount - a.reviewCount
+          return (b.review_count ?? 0) - (a.review_count ?? 0)
         default:
           return 0
       }
     })
     return sorted
-  }
+  }, [sortBy])
 
-  const sortedAccommodations = handleSort(filteredAccommodations)
+  const sortedAccommodations = useMemo(() => 
+    handleSort(filteredAccommodations), 
+    [handleSort, filteredAccommodations]
+  )
+
+  const handleFilterChange = useCallback((newFiltered: any[]) => {
+    // Ensure newFiltered is an array
+    if (Array.isArray(newFiltered)) {
+      setFilteredAccommodations(newFiltered)
+    } else {
+      console.warn('handleFilterChange received non-array:', newFiltered)
+      setFilteredAccommodations([])
+    }
+  }, [])
+
+  const handleSortChange = useCallback((newSortBy: typeof sortBy) => {
+    setSortBy(newSortBy)
+  }, [])
 
   return (
-    <div className="pt-36 pb-20 px-4">
+    <div className="pt-36 pb-20 px-4 bg-gradient-to-b from-[#040945] to-[#02042b] min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Intro Banner */}
-        <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl p-8 mb-8 shadow-lg">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-white mb-6 drop-shadow-2xl tracking-tight">
             Accredited Accommodations
           </h1>
-          <p className="text-lg text-gray-700 mb-4">
+          <p className="text-xl text-neutral-300 drop-shadow-lg mb-8 max-w-3xl mx-auto leading-relaxed">
             Discover our premium selection of fully accredited student accommodations in Bloemfontein. These properties
             meet the highest standards for safety, comfort, and student living.
           </p>
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
+          <div className="flex items-center justify-center space-x-8 text-sm text-neutral-300">
             <span className="flex items-center">
               <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-              {accommodations.filter((acc) => acc.isOpen).length} Available Now
+              {allAccs.filter((acc) => acc.is_open).length} Available Now
             </span>
             <span className="flex items-center">
               <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
-              {accommodations.filter((acc) => acc.verified).length} Verified Properties
+              {allAccs.filter((acc) => acc.is_verified).length} Verified Properties
             </span>
           </div>
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-lg">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 mb-8 text-white shadow-2xl shadow-blue-500/10">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1">
-              <SearchBar accommodations={accommodations} onFilter={setFilteredAccommodations} />
+              <Suspense fallback={<div className="h-12 bg-black/20 border border-white/10 rounded-lg animate-pulse"></div>}>
+                <SearchBar accommodations={allAccs} onFilter={handleFilterChange} />
+              </Suspense>
             </div>
-            <AdvancedFilters accommodations={accommodations} onFilter={setFilteredAccommodations} />
+            <Suspense fallback={<div className="h-12 bg-black/20 border border-white/10 rounded-lg animate-pulse"></div>}>
+              <AdvancedFilters accommodations={allAccs} onFilter={handleFilterChange} />
+            </Suspense>
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabFilter accommodations={accommodations} onFilter={setFilteredAccommodations} />
+            <Suspense fallback={<div className="h-8 bg-black/20 border border-white/10 rounded-lg animate-pulse"></div>}>
+              <TabFilter accommodations={allAccs} onFilter={handleFilterChange} />
+            </Suspense>
 
             <div className="flex items-center space-x-2">
-              <SlidersHorizontal className="w-4 h-4 text-gray-600" />
+              <SlidersHorizontal className="w-4 h-4 text-neutral-300" />
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => handleSortChange(e.target.value as typeof sortBy)}
+                className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-neutral-300 backdrop-blur-sm"
               >
-                <option value="price-desc">Price: High to Low</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="rating">Highest Rated</option>
-                <option value="reviews">Most Reviews</option>
+                <option value="price-desc" className="bg-gray-800 text-white">Price: High to Low</option>
+                <option value="price-asc" className="bg-gray-800 text-white">Price: Low to High</option>
+                <option value="rating" className="bg-gray-800 text-white">Highest Rated</option>
+                <option value="reviews" className="bg-gray-800 text-white">Most Reviews</option>
               </select>
             </div>
           </div>
@@ -94,8 +173,8 @@ export default function AccreditedAccommodations() {
 
         {/* Results Summary */}
         <div className="mb-6">
-          <p className="text-white drop-shadow-lg">
-            Showing {sortedAccommodations.length} of {accommodations.length} accommodations
+          <p className="text-white drop-shadow-lg text-lg">
+            Showing {sortedAccommodations.length} of {allAccs.length} accommodations
           </p>
         </div>
 
@@ -106,27 +185,67 @@ export default function AccreditedAccommodations() {
               <SkeletonCard key={i} />
             ))}
           </div>
+        ) : useVirtualization ? (
+          <Suspense fallback={<div className="h-96 bg-gray-200 rounded animate-pulse"></div>}>
+            <VirtualizedAccommodationList
+              accommodations={sortedAccommodations.map(acc => ({
+                id: acc.id,
+                name: acc.name,
+                address: acc.address,
+                rating: acc.rating ?? 0,
+                reviewCount: acc.review_count ?? 0,
+                price: Number(acc.price) || 0,
+                isOpen: acc.is_open ?? true,
+                image: (acc.images && acc.images[0]) || "/placeholder.svg",
+                amenities: acc.amenities || [],
+                distance: acc.distance || "",
+                verified: acc.is_verified ?? false,
+                featured: acc.featured ?? false,
+                availableRooms: acc.available_rooms ?? 0,
+                totalRooms: acc.total_rooms ?? 0,
+              }))}
+              height={600}
+              itemHeight={400}
+            />
+          </Suspense>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sortedAccommodations.map((accommodation) => (
-              <AccommodationCard key={accommodation.id} {...accommodation} />
+            {sortedAccommodations.map((acc) => (
+              <AccommodationCard
+                key={acc.id}
+                id={acc.id}
+                title={acc.name}
+                address={acc.address}
+                rating={acc.rating ?? 0}
+                reviewCount={acc.review_count ?? 0}
+                price={Number(acc.price) || 0}
+                isOpen={acc.is_open ?? true}
+                image={(acc.images && acc.images[0]) || "/placeholder.svg"}
+                amenities={acc.amenities || []}
+                distance={acc.distance || ""}
+                verified={acc.is_verified ?? false}
+                featured={acc.featured ?? false}
+                availableRooms={acc.available_rooms ?? 0}
+                totalRooms={acc.total_rooms ?? 0}
+              />
             ))}
           </div>
         )}
 
         {!isLoading && sortedAccommodations.length === 0 && (
           <div className="text-center py-12">
-            <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl p-8">
-              <h3 className="text-2xl font-semibold mb-4">No accommodations found</h3>
-              <p className="text-gray-600 mb-6">Try adjusting your search criteria or filters</p>
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+              <h3 className="text-2xl font-semibold mb-4 text-white">No accommodations found</h3>
+              <p className="text-neutral-300 mb-6">Try adjusting your search criteria or filters</p>
               <button
                 onClick={() => {
-                  setFilteredAccommodations(accommodations)
+                  setFilteredAccommodations(Array.isArray(allAccs) ? allAccs : [])
                   setSortBy("price-desc")
                 }}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] hover:shadow-blue-500/40 active:scale-[0.98]"
               >
-                Reset Search
+                <span className="relative z-10">Reset Search</span>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
             </div>
           </div>

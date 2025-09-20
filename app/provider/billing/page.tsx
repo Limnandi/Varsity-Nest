@@ -5,18 +5,17 @@ import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser, type ServiceProvider } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/stackauth"
 import { CreditCard, Download } from "lucide-react"
 import Link from "next/link"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 
 export default function ProviderBilling() {
-  const [user, setUser] = useState<ServiceProvider | null>(null)
+  const [user, setUser] = useState<any | null>(null)
 
   useEffect(() => {
-    const currentUser = getCurrentUser() as ServiceProvider
-    setUser(currentUser)
+    getCurrentUser().then(setUser)
   }, [])
 
   const exportInvoice = (invoiceId: string, date: string, amount: number) => {

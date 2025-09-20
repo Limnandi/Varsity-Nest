@@ -1,21 +1,19 @@
-import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Layout from "@/components/Layout"
-import { Toaster } from "@/components/ui/toaster"
-import GoogleAnalytics from "@/components/GoogleAnalytics"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { ReactQueryProvider } from "@/lib/query-client"
+import { StackProvider } from "@stackframe/stack"
+import { getStackServerApp } from "@/lib/stack"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { GlobalErrorHandler } from "@/lib/error-handler"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: {
-    default: "Varsity Nest | Student Accommodation Platform",
-    template: "%s | Varsity Nest",
-  },
-  description:
-    "Find quality, verified student accommodation in Bloemfontein. Safe, comfortable, and close to UFS and CUT campuses. Browse accredited properties with 24/7 support.",
-    generator: 'v0.dev'
+  title: "Varsity Nest - Student Accommodation",
+  description: "Find your perfect student home in Bloemfontein",
 }
 
 export default function RootLayout({
@@ -23,15 +21,23 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const gaId = process.env.NEXT_PUBLIC_GA_ID
+  // Initialize global error handling
+  if (typeof window !== 'undefined') {
+    GlobalErrorHandler.initialize()
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
-      {gaId && <GoogleAnalytics gaId={gaId} />}
       <body className={inter.className}>
-        <Layout>{children}</Layout>
-        <Toaster />
+        <ErrorBoundary component="root_layout">
+          <StackProvider app={getStackServerApp() as any}>
+            <ReactQueryProvider>
+              <TooltipProvider>
+                <Layout>{children}</Layout>
+              </TooltipProvider>
+            </ReactQueryProvider>
+          </StackProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

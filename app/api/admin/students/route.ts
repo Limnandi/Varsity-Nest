@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getAllStudents } from "@/lib/auth"
-import { getSession } from "@/lib/session"
+import { getAllStudents } from "@/lib/stackauth"
+import { getSession } from "@/lib/stackauth"
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
 
-    if (!session || session.role !== "admin") {
+    if (!session || session.user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

@@ -1,92 +1,138 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { getUserByEmail } from "@/lib/auth"
-import { generateOTP, storeOTP } from "@/lib/otp"
-import { query } from "@/lib/database"
-import { Sentry } from "@/lib/sentry"
+import { NextRequest, NextResponse } from "next/server"
+import { secureDb } from "@/lib/database-secure"
+import { eq } from "drizzle-orm"
+import * as schema from "@/lib/schema"
+import { uploadDocument } from "@/lib/cloudinary"
+import { providerFormDataSchema, validateRequest } from "@/lib/validation-schemas"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, role, companyName, contactNumber, address } = await request.json()
+    const contentType = request.headers.get('content-type') || ''
 
-    // Check if user already exists
-    const existingUser = await getUserByEmail(email)
-    if (existingUser) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 })
-    }
+    if (contentType.includes('multipart/form-data')) {
+      // Provider registration documents and DB linkage after client StackAuth signup
+      const form = await request.formData()
+      
+      // Validate and sanitize form data
+      const formData = {
+        email: String(form.get('email') || ''),
+        firstName: String(form.get('firstName') || ''),
+        lastName: String(form.get('lastName') || ''),
+        phone: String(form.get('phone') || ''),
+        companyName: String(form.get('institution') || ''),
+        address: String(form.get('address') || ''),
+        description: String(form.get('description') || ''),
+        website: String(form.get('website') || '')
+      }
 
-    // For providers, verify against accredited list
-    if (role === "provider") {
-      const accreditedResult = await query(
-        "SELECT id FROM accredited_providers WHERE email = $1 AND is_active = true",
-        [email],
-      )
-
-      if (accreditedResult.rows.length === 0) {
+      // Validate the form data
+      const validation = validateRequest(providerFormDataSchema, formData)
+      if (!validation.success) {
         return NextResponse.json(
-          {
-            error: "Email not found in accredited providers list. Please contact support.",
-          },
-          { status: 400 },
+          { error: 'Invalid form data', details: validation.errors },
+          { status: 400 }
         )
       }
-    }
 
-    // For students, verify email domain
-    if (role === "student") {
-      const allowedDomains = ["ufs4life.ac.za", "cut.ac.za"]
-      const emailDomain = email.split("@")[1]
+      const { email, firstName, lastName, phone, companyName, address, description, website } = validation.data
 
-      if (!allowedDomains.includes(emailDomain)) {
-        return NextResponse.json(
-          {
-            error: "Please use your university email address",
-          },
-          { status: 400 },
-        )
+      // Get existing user (created by webhook) and update with additional info
+      const [user] = await secureDb.db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.email, email))
+        .limit(1)
+      
+      if (!user) {
+        return NextResponse.json({ error: 'User not found. Please complete registration first.' }, { status: 404 })
       }
+      
+      const userId = user.id
+      
+      // Update user with additional provider info
+      await secureDb.db
+        .update(schema.users)
+        .set({
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone || null,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.users.id, userId))
+
+      // Create provider record
+      const { randomUUID } = await import('crypto')
+      const providerId = randomUUID()
+      await secureDb.db
+        .insert(schema.providers)
+        .values({
+          id: providerId,
+          userId: userId,
+          companyName: companyName,
+          contactPerson: `${firstName} ${lastName}`,
+          contactEmail: email,
+          contactPhone: phone || null,
+          address: address || '',
+          registrationStatus: 'pending',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .onConflictDoUpdate({
+          target: schema.providers.userId,
+          set: {
+            companyName: companyName,
+            contactPerson: `${firstName} ${lastName}`,
+            contactEmail: email,
+            contactPhone: phone || null,
+            address: address || '',
+            updatedAt: new Date()
+          }
+        })
+
+      // Upload up to 2 documents securely
+      const docs = (form.getAll('documents') as unknown as File[]) || []
+      const urls: string[] = []
+      const uploadWarnings: string[] = []
+      
+      for (const d of docs.slice(0, 2)) {
+        try {
+          const { uploadDocumentSecurely } = await import('@/lib/cloudinary')
+          const result = await uploadDocumentSecurely(d, {
+            folder: 'varsity-nest/provider-documents',
+            purpose: 'accreditation',
+            userId: userId
+          })
+          
+          if (result.success && result.result?.secure_url) {
+            urls.push(result.result.secure_url)
+            if (result.warnings) {
+              uploadWarnings.push(...result.warnings)
+            }
+          } else {
+            console.error('Document upload failed:', result.error)
+            // Continue with other documents even if one fails
+          }
+        } catch (error) {
+          console.error('Document upload error:', error)
+          // Continue with other documents even if one fails
+        }
+      }
+
+      if (urls.length > 0) {
+        await secureDb.db
+          .update(schema.providers)
+          .set({ documents: urls })
+          .where(eq(schema.providers.id, providerId))
+      }
+
+      return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
     }
 
-    // Generate and send OTP
-    const otp = generateOTP()
-    await storeOTP(email, otp, "registration")
+    // Unsupported content type to avoid server-side StackAuth sign-up
+    return NextResponse.json({ error: 'Unsupported content type' }, { status: 415 })
 
-    // Send OTP email
-    const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        otp,
-        type: "registration",
-        name,
-        role,
-      }),
-    })
-
-    if (!emailResponse.ok) {
-      throw new Error("Failed to send OTP email")
-    }
-
-    // Store registration data temporarily (you might want to use Redis for this)
-    const registrationData = {
-      email,
-      password,
-      name,
-      role,
-      companyName,
-      contactNumber,
-      address,
-      timestamp: Date.now(),
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "OTP sent to your email",
-      registrationId: Buffer.from(JSON.stringify(registrationData)).toString("base64"),
-    })
   } catch (error) {
-    Sentry.captureException(error)
     console.error("Registration error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Registration failed" }, { status: 500 })
   }
 }

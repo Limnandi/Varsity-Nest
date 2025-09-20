@@ -1,6 +1,5 @@
-"use client"
 import ImageCarousel from "@/components/ImageCarousel"
-import { sql } from "@/lib/database"
+import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,26 +8,18 @@ import { MapPin, Bath, Wifi, Car } from "lucide-react"
 
 async function getListing(id: string) {
   try {
-    const listingResult = await sql`
-      SELECT 
-        a.id, a.name, a.description, a.address, a.price_per_month, a.images, a.amenities,
-        u.name as provider_name, u.email as provider_email
-      FROM accommodations a
-      JOIN users u ON a.provider_id = u.id
-      WHERE a.id = ${id}
-    `
-    if (listingResult.length === 0) {
-      return null
-    }
-    return listingResult[0]
+    const row = await fetchAccommodationByIdWithProvider(id)
+    if (!row) return null
+    return row
   } catch (error) {
     console.error("Failed to fetch listing:", error)
     return null
   }
 }
 
-export default async function ListingPage({ params }: { params: { id: string } }) {
-  const listing = await getListing(params.id)
+export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const listing = await getListing(id)
 
   if (!listing) {
     notFound()
@@ -78,7 +69,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
               <div className="md:col-span-1">
                 <Card className="sticky top-24">
                   <CardHeader>
-                    <CardTitle className="text-2xl">R{listing.price_per_month} / month</CardTitle>
+                    <CardTitle className="text-2xl">R{listing.price} / month</CardTitle>
                     <CardDescription>Contact provider for availability</CardDescription>
                   </CardHeader>
                   <CardContent>

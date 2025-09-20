@@ -12,6 +12,16 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+// Deterministic ZAR formatter (avoids SSR/CSR locale differences)
+export function formatZar(amount: number, withCents: boolean = false): string {
+  const formatted = new Intl.NumberFormat("en-US", {
+    useGrouping: true,
+    minimumFractionDigits: withCents ? 2 : 0,
+    maximumFractionDigits: withCents ? 2 : 0,
+  }).format(amount)
+  return `R${formatted}`
+}
+
 export function formatDate(date: Date | string): string {
   const dateObj = typeof date === "string" ? new Date(date) : date
   return new Intl.DateTimeFormat("en-ZA", {

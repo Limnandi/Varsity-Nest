@@ -4,9 +4,10 @@ import Image from "next/image"
 import Link from "next/link"
 import { Star, MapPin, Users, Shield, Heart } from "lucide-react"
 import { useState } from "react"
+import { formatZar } from "@/lib/utils"
 
 interface AccommodationCardProps {
-  id: number
+  id: string | number
   title: string
   address: string
   rating: number
@@ -45,7 +46,7 @@ export default function AccommodationCard({
     <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
       <div className="relative h-48 overflow-hidden">
         <Image
-          src={image || "/placeholder.svg"}
+          src={image || "/placeholder.jpg"}
           alt={title}
           fill
           className={`object-cover transition-all duration-300 group-hover:scale-105 ${
@@ -93,7 +94,7 @@ export default function AccommodationCard({
       <div className="p-5">
         <div className="flex items-start justify-between mb-2">
           <h3 className="font-bold text-lg mb-1 group-hover:text-blue-600 transition-colors">{title}</h3>
-          {verified && <Shield className="w-5 h-5 text-green-500 flex-shrink-0" title="Verified Property" />}
+          {verified && <Shield className="w-5 h-5 text-green-500 flex-shrink-0" />}
         </div>
 
         <div className="flex items-center text-gray-600 text-sm mb-2">
@@ -131,7 +132,7 @@ export default function AccommodationCard({
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold text-green-600">R{price.toLocaleString()}</span>
+            <span className="text-2xl font-bold text-green-600">{formatZar(price)}</span>
             <span className="text-gray-500 text-sm">/month</span>
           </div>
           <Link

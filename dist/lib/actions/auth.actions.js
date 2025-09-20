@@ -92,7 +92,7 @@ function login(prevState, formData) {
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 5, , 6]);
-                    return [4 /*yield*/, (0, database_1.query)("SELECT id, password_hash, role, is_active FROM users WHERE email = $1", [
+                    return [4 /*yield*/, (0, database_1.query)("SELECT id, email, first_name, last_name, password, role, is_active, email_verified, created_at FROM users WHERE email = $1", [
                             email.toLowerCase(),
                         ])];
                 case 2:
@@ -104,13 +104,23 @@ function login(prevState, formData) {
                     if (!user.is_active) {
                         return [2 /*return*/, { message: "Your account has been deactivated. Please contact support." }];
                     }
-                    return [4 /*yield*/, bcryptjs_1.default.compare(password, user.password_hash)];
+                    return [4 /*yield*/, bcryptjs_1.default.compare(password, user.password)];
                 case 3:
                     passwordsMatch = _b.sent();
                     if (!passwordsMatch) {
                         return [2 /*return*/, { message: "Invalid email or password." }];
                     }
-                    return [4 /*yield*/, (0, auth_1.createSession)(user.id, user.role)];
+                    return [4 /*yield*/, (0, auth_1.createSession)({
+                            id: user.id,
+                            email: user.email,
+                            name: "".concat(user.first_name || '', " ").concat(user.last_name || '').trim(),
+                            role: user.role,
+                            isVerified: user.email_verified || false,
+                            isActive: user.is_active,
+                            createdAt: user.created_at,
+                            firstName: user.first_name || '',
+                            lastName: user.last_name || ''
+                        })];
                 case 4:
                     _b.sent();
                     return [3 /*break*/, 6];
@@ -158,7 +168,7 @@ function registerStudent(prevState, formData) {
                     return [4 /*yield*/, bcryptjs_1.default.hash(password, 12)];
                 case 4:
                     hashedPassword = _b.sent();
-                    return [4 /*yield*/, (0, database_1.query)("INSERT INTO users (name, email, password_hash, role, is_verified) VALUES ($1, $2, $3, 'student', true) RETURNING id", [name, lowerCaseEmail, hashedPassword])];
+                    return [4 /*yield*/, (0, database_1.query)("INSERT INTO users (email, password, first_name, last_name, role, email_verified) VALUES ($1, $2, $3, $4, 'student', true) RETURNING id, email, first_name, last_name", [lowerCaseEmail, hashedPassword, '', ''])];
                 case 5:
                     userResult = _b.sent();
                     newUser = userResult.rows[0];
@@ -169,7 +179,17 @@ function registerStudent(prevState, formData) {
                         ])];
                 case 6:
                     _b.sent();
-                    return [4 /*yield*/, (0, auth_1.createSession)(newUser.id, "student")];
+                    return [4 /*yield*/, (0, auth_1.createSession)({
+                            id: newUser.id,
+                            email: newUser.email,
+                            name: "".concat(newUser.first_name || '', " ").concat(newUser.last_name || '').trim() || 'Student',
+                            role: "student",
+                            isVerified: true,
+                            isActive: true,
+                            createdAt: new Date(),
+                            firstName: newUser.first_name || '',
+                            lastName: newUser.last_name || ''
+                        })];
                 case 7:
                     _b.sent();
                     return [3 /*break*/, 9];
@@ -209,7 +229,7 @@ function registerProvider(prevState, formData) {
                     return [4 /*yield*/, bcryptjs_1.default.hash(password, 12)];
                 case 3:
                     hashedPassword = _b.sent();
-                    return [4 /*yield*/, (0, database_1.query)("INSERT INTO users (name, email, password_hash, role, is_verified) VALUES ($1, $2, $3, 'provider', false) RETURNING id", [contactPerson, lowerCaseEmail, hashedPassword])];
+                    return [4 /*yield*/, (0, database_1.query)("INSERT INTO users (email, password, first_name, last_name, role, email_verified) VALUES ($1, $2, $3, $4, 'provider', false) RETURNING id", [lowerCaseEmail, hashedPassword, contactPerson, ''])];
                 case 4:
                     userResult = _b.sent();
                     newUser = userResult.rows[0];

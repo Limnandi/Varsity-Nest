@@ -1,42 +1,81 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import LoadingSpinner from "./LoadingSpinner"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import LoadingSpinner from './LoadingSpinner'
 
 interface AuthGuardProps {
   children: React.ReactNode
-  requiredRole?: "admin" | "provider" | "student"
+  requiredRole?: 'admin' | 'provider' | 'student'
+  fallback?: React.ReactNode
 }
 
-export default function AuthGuard({ children, requiredRole }: AuthGuardProps) {
+interface UserSession {
+  userId: string
+  email: string
+  firstName: string
+  lastName: string
+  name: string
+  role: 'admin' | 'provider' | 'student'
+  phone?: string
+  studentNumber?: string
+  institution?: string
+  isActive: boolean
+  emailVerified: boolean
+  createdAt: string
+  updatedAt: string
+  university?: string
+  yearOfStudy?: number
+  course?: string
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+}
+
+export default function AuthGuard({ 
+  children, 
+  requiredRole, 
+  fallback 
+}: AuthGuardProps) {
+  const [authorized, setAuthorized] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isAuthorized, setIsAuthorized] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch("/api/auth/session")
-
-        if (!response.ok) {
-          router.push("/auth/login")
-          return
+        // Get user session from secure API
+        const response = await fetch('/api/auth/session')
+        
+        if (response.ok) {
+          const userSession: UserSession = await response.json()
+          setUserRole(userSession.role)
+          
+          // Check if user is active
+          if (!userSession.isActive) {
+            setAuthorized(false)
+            setIsLoading(false)
+            router.push('/auth/login?error=account-deactivated')
+            return
+          }
+          
+          // Check role permissions
+          if (requiredRole && userSession.role !== requiredRole) {
+            setAuthorized(false)
+            setIsLoading(false)
+            router.push('/unauthorized')
+            return
+          }
+          
+          setAuthorized(true)
+        } else {
+          setAuthorized(false)
+          router.push('/auth/login')
         }
-
-        const session = await response.json()
-
-        if (requiredRole && session.role !== requiredRole) {
-          router.push("/unauthorized")
-          return
-        }
-
-        setIsAuthorized(true)
       } catch (error) {
-        console.error("Auth check failed:", error)
-        router.push("/auth/login")
+        console.error('Auth check failed:', error)
+        setAuthorized(false)
+        router.push('/auth/login')
       } finally {
         setIsLoading(false)
       }
@@ -45,17 +84,8 @@ export default function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     checkAuth()
   }, [requiredRole, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <LoadingSpinner />
-      </div>
-    )
-  }
-
-  if (!isAuthorized) {
-    return null
-  }
+  if (isLoading) return fallback || <LoadingSpinner />
+  if (!authorized) return fallback || <LoadingSpinner />
 
   return <>{children}</>
 }

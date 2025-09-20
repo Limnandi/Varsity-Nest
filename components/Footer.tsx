@@ -4,73 +4,81 @@ import { Mail, Phone, MapPin, Facebook, Twitter, Instagram } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 bg-opacity-95 backdrop-blur-sm text-white border-t border-gray-700">
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-gradient-to-b from-[#040945] to-[#02042b] text-white border-t border-white/10">
+      <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Logo and Company Info */}
           <div className="md:col-span-2">
-            <div className="flex items-center space-x-4 mb-6">
-              <Image
-                src="/images/varsity-nest-logo.png"
-                alt="Varsity Nest Logo"
-                width={100}
-                height={60}
-                className="object-contain"
-              />
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="relative">
+                <Image
+                  src="/images/varsity-nest-logo.png"
+                  alt="Varsity Nest Logo"
+                  width={100}
+                  height={60}
+                  className="object-contain"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm"></div>
+              </div>
               <div>
-                <div className="text-xl font-bold">Varsity Nest</div>
-                <div className="text-gray-400">Powered by Massive Operations</div>
+                <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Varsity Nest</div>
+                <div className="text-neutral-400">Powered by Massive Operations</div>
               </div>
             </div>
-            <p className="text-gray-300 mb-4 max-w-md">
+            <p className="text-neutral-300 mb-8 max-w-md leading-relaxed text-lg">
               Your trusted partner in finding quality, verified student accommodation in Bloemfontein. Safe,
               comfortable, and close to campus.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Facebook className="w-5 h-5" />
+            <div className="flex space-x-6">
+              <a href="https://www.facebook.com/people/Massive-Operations/61573795036731/" target="_blank" rel="noopener noreferrer" className="group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-110">
+                <Facebook className="w-6 h-6 text-neutral-400 group-hover:text-blue-400 transition-colors" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Twitter className="w-5 h-5" />
+              <a href="#" className="group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-110">
+                <Twitter className="w-6 h-6 text-neutral-400 group-hover:text-blue-400 transition-colors" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Instagram className="w-5 h-5" />
+              <a href="#" className="group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/10 transition-all duration-300 hover:scale-110">
+                <Instagram className="w-6 h-6 text-neutral-400 group-hover:text-pink-400 transition-colors" />
               </a>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
+            <h3 className="text-xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Quick Links</h3>
+            <ul className="space-y-4">
               <li>
-                <Link href="/accommodations/accredited" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/accommodations/accredited" className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-300 transition-colors"></div>
                   Accredited Properties
                 </Link>
               </li>
               <li>
                 <Link
                   href="/accommodations/provisionally-accredited"
-                  className="text-gray-300 hover:text-white transition-colors"
+                  className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2"
                 >
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full mr-3 group-hover:bg-yellow-300 transition-colors"></div>
                   Provisionally Accredited
                 </Link>
               </li>
               <li>
                 <Link
                   href="/accommodations/non-accredited"
-                  className="text-gray-300 hover:text-white transition-colors"
+                  className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2"
                 >
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:bg-gray-300 transition-colors"></div>
                   Budget Options
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/contact" className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-3 group-hover:bg-purple-300 transition-colors"></div>
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="/auth/register" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/auth/register" className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full mr-3 group-hover:bg-green-300 transition-colors"></div>
                   List Your Property
                 </Link>
               </li>
@@ -79,26 +87,30 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
-            <ul className="space-y-3">
-              <li className="flex items-center space-x-3">
-                <Phone className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-300">+27 51 123 4567</span>
+            <h3 className="text-xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Contact Info</h3>
+            <ul className="space-y-6">
+              <li className="flex items-center space-x-4 group">
+                <div className="p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl group-hover:bg-white/10 transition-all duration-300">
+                  <Phone className="w-5 h-5 text-blue-400" />
+                </div>
+                <span className="text-neutral-300 group-hover:text-white transition-colors">+27 62 407 9139</span>
               </li>
-              <li className="flex items-center space-x-3">
-                <Mail className="w-4 h-4 text-gray-400" />
+              <li className="flex items-center space-x-4 group">
+                <div className="p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl group-hover:bg-white/10 transition-all duration-300">
+                  <Mail className="w-5 h-5 text-purple-400" />
+                </div>
                 <a
                   href="mailto:info@massiveoperations.co.za"
-                  className="text-gray-300 hover:text-white transition-colors"
+                  className="text-neutral-300 hover:text-white transition-colors"
                 >
                   info@massiveoperations.co.za
                 </a>
               </li>
-              <li className="flex items-start space-x-3">
-                <MapPin className="w-4 h-4 text-gray-400 mt-1" />
-                <span className="text-gray-300">
-                  123 Business Street
-                  <br />
+              <li className="flex items-start space-x-4 group">
+                <div className="p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl group-hover:bg-white/10 transition-all duration-300 mt-1">
+                  <MapPin className="w-5 h-5 text-green-400" />
+                </div>
+                <span className="text-neutral-300 group-hover:text-white transition-colors">
                   Bloemfontein, 9300
                   <br />
                   South Africa
@@ -108,16 +120,16 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-400 text-sm">© 2025 Massive Operations. All rights reserved.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
+        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-neutral-400 text-sm">© 2025 Massive Operations. All rights reserved.</p>
+          <div className="flex space-x-8 mt-4 md:mt-0">
+            <Link href="/privacy" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <Link href="/terms" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Terms of Service
             </Link>
-            <Link href="/support" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <Link href="/contact" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Support
             </Link>
           </div>

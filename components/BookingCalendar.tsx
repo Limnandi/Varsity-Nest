@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Calendar, Clock, Users } from "lucide-react"
+import { formatZar } from "@/lib/utils"
 
 interface BookingCalendarProps {
   accommodationId: number
@@ -72,7 +73,7 @@ export default function BookingCalendar({ accommodationId, price }: BookingCalen
         <div className="border-t pt-4">
           <div className="flex justify-between items-center mb-2">
             <span>Monthly rent</span>
-            <span>R{price.toLocaleString()}</span>
+            <span>{formatZar(price)}</span>
           </div>
           <div className="flex justify-between items-center mb-2">
             <span>Duration</span>
@@ -80,7 +81,7 @@ export default function BookingCalendar({ accommodationId, price }: BookingCalen
           </div>
           <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
             <span>Total</span>
-            <span className="text-green-600">R{calculateTotal().toLocaleString()}</span>
+            <span className="text-green-600">{formatZar(calculateTotal())}</span>
           </div>
         </div>
 
@@ -88,7 +89,7 @@ export default function BookingCalendar({ accommodationId, price }: BookingCalen
           Request Booking
         </button>
 
-        <p className="text-xs text-gray-500 text-center">You won't be charged yet. This is just a booking request.</p>
+        <p className="text-xs text-gray-500 text-center">You won&apos;t be charged yet. This is just a booking request.</p>
       </div>
     </div>
   )

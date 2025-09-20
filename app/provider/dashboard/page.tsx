@@ -1,175 +1,225 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import DashboardLayout from "@/components/DashboardLayout"
-import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser, type ServiceProvider } from "@/lib/auth"
-import { accommodations } from "@/lib/data"
-import { Building, DollarSign, Eye, TrendingUp, Plus } from "lucide-react"
+import { getCurrentUser } from "@/lib/stackauth"
 import Link from "next/link"
+import DashboardLayout from "@/components/DashboardLayout"
+import { Building, Users, Star, TrendingUp, Calendar, DollarSign, CheckCircle, Clock, AlertTriangle } from "lucide-react"
+import { formatZar } from "@/lib/utils"
+
+// For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added missing isLoading state to fix undefined variable error
 
 export default function ProviderDashboard() {
-  const [user, setUser] = useState<ServiceProvider | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalAccommodations: 0,
+    activeBookings: 0,
+    totalRevenue: 0,
+    averageRating: 0,
+    pendingReviews: 0,
+    upcomingMaintenance: 0
+  })
 
   useEffect(() => {
-    const currentUser = getCurrentUser() as ServiceProvider
-    setUser(currentUser)
+    const load = async () => {
+      try {
+        // Get current user from secure session API
+        const response = await fetch('/api/auth/session')
+        
+        if (response.ok) {
+          const userSession = await response.json()
+          const user = {
+            id: userSession.userId,
+            email: userSession.email,
+            firstName: userSession.firstName,
+            lastName: userSession.lastName,
+            role: userSession.role,
+            phone: userSession.phone,
+            studentNumber: userSession.studentNumber,
+            institution: userSession.institution,
+            isActive: userSession.isActive,
+            emailVerified: userSession.emailVerified,
+            createdAt: new Date(userSession.createdAt),
+            updatedAt: new Date(userSession.updatedAt),
+            university: userSession.university,
+            yearOfStudy: userSession.yearOfStudy,
+            course: userSession.course,
+            emergencyContactName: userSession.emergencyContactName,
+            emergencyContactPhone: userSession.emergencyContactPhone,
+          }
+          
+          try {
+            // Fetch stats from server-side API
+            const statsResponse = await fetch(`/api/provider/stats?providerId=${user.id}`)
+            
+            if (statsResponse.ok) {
+              const data = await statsResponse.json()
+              setStats(data.stats)
+            } else {
+              console.error('Failed to fetch provider stats:', statsResponse.statusText)
+              // Set default stats on error
+              setStats({
+                totalAccommodations: 0,
+                activeBookings: 0,
+                totalRevenue: 0,
+                averageRating: 0,
+                pendingReviews: 0,
+                upcomingMaintenance: 0
+              })
+            }
+          } catch (error) {
+            console.error('Error fetching provider stats:', error)
+            // Set default stats on error
+            setStats({
+              totalAccommodations: 0,
+              activeBookings: 0,
+              totalRevenue: 0,
+              averageRating: 0,
+              pendingReviews: 0,
+              upcomingMaintenance: 0
+            })
+          }
+        } else {
+          // No valid session, redirect to login
+          window.location.href = '/auth/login'
+          return
+        }
+      } catch (error) {
+        console.error('Error loading user:', error)
+        window.location.href = '/auth/login'
+        return
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    load()
   }, [])
 
-  if (!user) return null
-
-  const userAccommodations = accommodations.filter((acc) => user.accommodations.includes(acc.id.toString()))
-
-  const totalViews = userAccommodations.reduce((sum, acc) => sum + acc.reviewCount * 10, 0)
-  const totalBookings = userAccommodations.reduce((sum, acc) => sum + Math.floor(acc.reviewCount / 2), 0)
-
-  const stats = [
+  const statsData = [
     {
       title: "Total Accommodations",
-      value: userAccommodations.length,
+      value: stats.totalAccommodations,
       icon: Building,
       color: "bg-blue-500",
-      change: "+2 this month",
+      change: "+0 this month", // Will update with real change data
     },
     {
       title: "Monthly Revenue",
-      value: `R${user.billingInfo.monthlyFee.toLocaleString()}`,
+      value: formatZar(stats.totalRevenue, true),
       icon: DollarSign,
       color: "bg-green-500",
-      change: "Next payment: Jan 1",
+      change: "Next payment: loading", // Will update with real data
     },
     {
       title: "Total Views",
-      value: totalViews.toLocaleString(),
-      icon: Eye,
+      value: stats.totalAccommodations, // Placeholder, will be updated
+      icon: Users,
       color: "bg-purple-500",
-      change: "+15% this week",
+      change: "+0% this week", // Will update with real change data
     },
     {
       title: "Bookings",
-      value: totalBookings,
+      value: stats.activeBookings,
       icon: TrendingUp,
       color: "bg-orange-500",
-      change: "+3 this week",
+      change: "+0 this week", // Will update with real change data
     },
   ]
 
   return (
-    <AuthGuard requiredRole="provider">
-      <DashboardLayout userRole="provider">
-        <div className="space-y-6">
-          {/* Welcome Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-            <h1 className="text-2xl font-bold mb-2">Welcome back, {user.name}!</h1>
-            <p className="text-blue-100">Manage your accommodations and track your performance</p>
-          </div>
+    <DashboardLayout userRole="provider">
+      <div className="space-y-8 p-6">
+        {/* Welcome Section */}
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
+          <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Welcome back!</h1>
+          <p className="text-neutral-300 text-lg">Manage your accommodations and track your performance</p>
+        </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl p-6 shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                    <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
-                  </div>
-                  <div className={`${stat.color} p-3 rounded-lg`}>
-                    <stat.icon className="w-6 h-6 text-white" />
-                  </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statsData.map((stat, index) => (
+            <div key={index} className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-neutral-400 mb-2">{stat.title}</p>
+                  <p className="text-2xl font-bold text-white mb-1">{stat.value}</p>
+                  <p className="text-sm text-neutral-500">{stat.change}</p>
+                </div>
+                <div className={`${stat.color} p-3 rounded-xl shadow-lg`}>
+                  <stat.icon className="w-6 h-6 text-white" />
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link
-                href="/provider/accommodations/new"
-                className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                <Plus className="w-8 h-8 text-blue-600 mr-3" />
-                <div>
-                  <h3 className="font-medium text-gray-900">Add New Accommodation</h3>
-                  <p className="text-sm text-gray-600">List a new property</p>
-                </div>
-              </Link>
-
-              <Link
-                href="/provider/billing"
-                className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-              >
-                <DollarSign className="w-8 h-8 text-green-600 mr-3" />
-                <div>
-                  <h3 className="font-medium text-gray-900">View Billing</h3>
-                  <p className="text-sm text-gray-600">Manage payments</p>
-                </div>
-              </Link>
-
-              <Link
-                href="/provider/accommodations"
-                className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-              >
-                <Building className="w-8 h-8 text-purple-600 mr-3" />
-                <div>
-                  <h3 className="font-medium text-gray-900">Manage Properties</h3>
-                  <p className="text-sm text-gray-600">Edit your listings</p>
-                </div>
-              </Link>
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Recent Accommodations */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Your Accommodations</h2>
-              <Link href="/provider/accommodations" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                View All
-              </Link>
-            </div>
-
-            <div className="space-y-4">
-              {userAccommodations.slice(0, 3).map((accommodation) => (
-                <div key={accommodation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{accommodation.title}</h3>
-                      <p className="text-sm text-gray-600">{accommodation.address}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-green-600">R{accommodation.price.toLocaleString()}/month</p>
-                    <p className="text-sm text-gray-500">
-                      {accommodation.availableRooms}/{accommodation.totalRooms} available
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Billing Status */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border">
-            <h2 className="text-lg font-semibold mb-4">Billing Status</h2>
-            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium text-gray-900">Account in Good Standing</p>
-                  <p className="text-sm text-gray-600">Next payment due: {user.billingInfo.nextPayment}</p>
-                </div>
+        {/* Quick Actions */}
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Link
+              href="/provider/accommodations/new"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-500/20"
+            >
+              <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl mr-4 group-hover:bg-blue-500/20 transition-all duration-300">
+                <Building className="w-8 h-8 text-blue-400" />
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-gray-900">R{user.billingInfo.monthlyFee}</p>
-                <p className="text-sm text-gray-600">Monthly fee</p>
+              <div>
+                <h3 className="font-semibold text-white text-lg group-hover:text-blue-300 transition-colors">Add New Accommodation</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">List a new property</p>
               </div>
+            </Link>
+
+            <Link
+              href="/provider/billing"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-green-500/20"
+            >
+              <div className="p-4 border border-green-500/50 bg-green-500/10 rounded-xl mr-4 group-hover:bg-green-500/20 transition-all duration-300">
+                <DollarSign className="w-8 h-8 text-green-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white text-lg group-hover:text-green-300 transition-colors">View Billing</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Manage payments</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/provider/accommodations"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-purple-500/20"
+            >
+              <div className="p-4 border border-purple-500/50 bg-purple-500/10 rounded-xl mr-4 group-hover:bg-purple-500/20 transition-all duration-300">
+                <Building className="w-8 h-8 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white text-lg group-hover:text-purple-300 transition-colors">Manage Properties</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Edit your listings</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Billing Status */}
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Billing Status</h2>
+          <div className="flex items-center justify-between p-6 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl">
+            <div className="flex items-center space-x-4">
+              <div className="w-4 h-4 bg-green-400 rounded-full shadow-lg shadow-green-500/50"></div>
+              <div>
+                <p className="font-semibold text-white text-lg">Account in Good Standing</p>
+                <p className="text-neutral-400">
+                  Loading payment info...
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-white text-xl">
+                R0
+              </p>
+              <p className="text-neutral-400">Monthly fee</p>
             </div>
           </div>
         </div>
-      </DashboardLayout>
-    </AuthGuard>
+      </div>
+    </DashboardLayout>
   )
 }

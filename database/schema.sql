@@ -131,6 +131,46 @@ CREATE TABLE IF NOT EXISTS reports (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Admin settings table
+CREATE TABLE IF NOT EXISTS admin_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    maintenance_mode BOOLEAN DEFAULT false,
+    registration_enabled BOOLEAN DEFAULT true,
+    payments_enabled BOOLEAN DEFAULT true,
+    show_provisionally_accredited BOOLEAN DEFAULT true,
+    show_non_accredited BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT single_row CHECK (id = 1)
+);
+
+-- Insert default admin settings
+INSERT INTO admin_settings (id, maintenance_mode, registration_enabled, payments_enabled, show_provisionally_accredited, show_non_accredited)
+VALUES (1, false, true, true, true, true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Admin activities table for tracking admin actions
+CREATE TABLE IF NOT EXISTS admin_activities (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    activity_type VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL,
+    admin_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add view_count column to accommodations if it doesn't exist
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0;
+
+-- Add missing columns to providers table
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS registration_status VARCHAR(20) DEFAULT 'pending' CHECK (registration_status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]';
+-- Seed compatibility and richer provider metadata
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS province VARCHAR(100);
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20);
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS accreditation_status VARCHAR(30) DEFAULT 'pending' CHECK (accreditation_status IN ('accredited','provisionally_accredited','non_accredited','pending'));
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -144,6 +184,112 @@ CREATE INDEX IF NOT EXISTS idx_reviews_accommodation ON reviews(accommodation_id
 CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 
+-- Webhook events for idempotency
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Provider subscription and billing columns
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'inactive' CHECK (subscription_status IN ('inactive','active','past_due','canceled'));
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS next_payment_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
+
+-- Payment transactions for gateway idempotency and audits
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    provider_id VARCHAR(255) REFERENCES providers(id) ON DELETE SET NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'ZAR',
+    m_payment_id VARCHAR(100) UNIQUE NOT NULL,
+    pf_payment_id VARCHAR(100),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'cancelled')),
+    payment_date TIMESTAMP WITH TIME ZONE,
+    gateway_response JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Payment audit logs for comprehensive tracking
+CREATE TABLE IF NOT EXISTS payment_audit_logs (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    transaction_id VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL CHECK (action IN ('created', 'updated', 'completed', 'failed', 'cancelled', 'reconciled')),
+    old_status VARCHAR(20),
+    new_status VARCHAR(20),
+    amount DECIMAL(10,2),
+    provider_id VARCHAR(255) REFERENCES providers(id) ON DELETE SET NULL,
+    admin_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+    reason TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Payment reconciliations for financial accuracy
+CREATE TABLE IF NOT EXISTS payment_reconciliations (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    transaction_id VARCHAR(255) NOT NULL,
+    expected_amount DECIMAL(10,2) NOT NULL,
+    actual_amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('matched', 'mismatch', 'missing', 'duplicate')),
+    reconciliation_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- File upload audit logs table
+CREATE TABLE IF NOT EXISTS file_upload_audits (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    purpose VARCHAR(50) NOT NULL CHECK (purpose IN ('accommodation', 'document', 'profile', 'accreditation')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('uploaded', 'rejected', 'quarantined', 'deleted')),
+    reason TEXT,
+    security_checks JSONB NOT NULL,
+    cloudinary_id VARCHAR(255),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- File quarantine table
+CREATE TABLE IF NOT EXISTS file_quarantines (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    original_file_name VARCHAR(255) NOT NULL,
+    quarantined_file_name VARCHAR(255) NOT NULL,
+    reason TEXT NOT NULL,
+    risk_score INTEGER NOT NULL CHECK (risk_score >= 0 AND risk_score <= 100),
+    threats TEXT[] NOT NULL,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('quarantined', 'released', 'deleted'))
+);
+
+-- Helpful indexes for payment transactions
+CREATE INDEX IF NOT EXISTS idx_payment_txn_provider ON payment_transactions(provider_id);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_status ON payment_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_created_at ON payment_transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_m_payment_id ON payment_transactions(m_payment_id);
+CREATE INDEX IF NOT EXISTS idx_payment_txn_pf_payment_id ON payment_transactions(pf_payment_id);
+
+-- Indexes for payment audit logs
+CREATE INDEX IF NOT EXISTS idx_payment_audit_transaction ON payment_audit_logs(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_action ON payment_audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_created_at ON payment_audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_provider ON payment_audit_logs(provider_id);
+
+-- Indexes for payment reconciliations
+CREATE INDEX IF NOT EXISTS idx_payment_recon_transaction ON payment_reconciliations(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payment_recon_status ON payment_reconciliations(status);
+CREATE INDEX IF NOT EXISTS idx_payment_recon_date ON payment_reconciliations(reconciliation_date);
+
+-- Trigger for updated_at on payment_transactions
+CREATE TRIGGER update_payment_transactions_updated_at BEFORE UPDATE ON payment_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -152,6 +298,19 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Indexes for file upload audits
+CREATE INDEX IF NOT EXISTS idx_file_audit_user ON file_upload_audits(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_audit_purpose ON file_upload_audits(purpose);
+CREATE INDEX IF NOT EXISTS idx_file_audit_status ON file_upload_audits(status);
+CREATE INDEX IF NOT EXISTS idx_file_audit_created_at ON file_upload_audits(created_at);
+CREATE INDEX IF NOT EXISTS idx_file_audit_cloudinary_id ON file_upload_audits(cloudinary_id);
+
+-- Indexes for file quarantine
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_user ON file_quarantines(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_status ON file_quarantines(status);
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_expires ON file_quarantines(expires_at);
+CREATE INDEX IF NOT EXISTS idx_file_quarantine_risk_score ON file_quarantines(risk_score);
 
 -- Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -162,3 +321,26 @@ CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings FOR EACH ROW
 CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_reports_updated_at BEFORE UPDATE ON reports FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_admin_settings_updated_at BEFORE UPDATE ON admin_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- VarsityNest additions for production listing display parity with mock templates
+-- Add UI-facing fields to accommodations if they don't exist
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS area VARCHAR(100);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS distance TEXT;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS rating INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_open BOOLEAN DEFAULT true;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS available_rooms INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS total_rooms INTEGER DEFAULT 0;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+-- Seed compatibility: extra fields referenced by seeding scripts
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS province VARCHAR(100);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS accommodation_type VARCHAR(50);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS price_per_month DECIMAL(10,2);
+
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_accommodations_featured ON accommodations(featured) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_accommodations_created_at ON accommodations(created_at);

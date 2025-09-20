@@ -70,7 +70,7 @@ export default function ReviewsModal({
                 ...reply,
                 likes: hasLiked ? reply.likes - 1 : reply.likes + 1,
                 likedBy: hasLiked
-                  ? reply.likedBy.filter((id) => id !== currentStudent.id)
+                  ? reply.likedBy.filter((id: string) => id !== currentStudent.id)
                   : [...reply.likedBy, currentStudent.id],
               }
             }

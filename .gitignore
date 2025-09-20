@@ -25,3 +25,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# coverage
+coverage/
+
+# test results
+test-results/
+
+# playwright
+playwright-report/
+

@@ -4,7 +4,7 @@ const path = require("path")
 const csv = require("csv-parser")
 
 if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL environment variable is not set")
+  console.error("DATABASE_URL environment variable is not set")
   process.exit(1)
 }
 
@@ -12,12 +12,12 @@ const sql = neon(process.env.DATABASE_URL)
 
 async function query(text, params = []) {
   try {
-    console.log("🔍 Executing query:", text.substring(0, 100) + "...")
+    console.log("Executing query:", text.substring(0, 100) + "...")
     const result = await sql(text, params)
-    console.log("✅ Query executed successfully")
+    console.log("Query executed successfully")
     return { rows: Array.isArray(result) ? result : [result] }
   } catch (error) {
-    console.error("❌ Database query error:", error)
+    console.error("Database query error:", error)
     throw error
   }
 }
@@ -50,12 +50,12 @@ async function getTableRowCount(tableName) {
 }
 
 async function createTables() {
-  console.log("🏗️ Creating database tables...")
+  console.log("Creating database tables...")
 
   const schemaPath = path.join(__dirname, "..", "database", "schema.sql")
 
   if (!fs.existsSync(schemaPath)) {
-    console.error("❌ Schema file not found:", schemaPath)
+    console.error("Schema file not found:", schemaPath)
     return false
   }
 
@@ -63,20 +63,23 @@ async function createTables() {
 
   try {
     await query(schema)
-    console.log("✅ Database tables created successfully")
+    console.log("Database tables created successfully")
     return true
   } catch (error) {
-    console.error("❌ Error creating tables:", error)
+    console.error("Error creating tables:", error)
     return false
   }
 }
 
 async function seedData() {
-  console.log("🌱 Seeding database with initial data...")
+  console.log("Seeding database with initial data...")
 
   try {
     // Create admin user if it doesn't exist
-    const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || "admin123"
+    const adminPassword = process.env.ADMIN_INITIAL_PASSWORD
+    if (!adminPassword) {
+      throw new Error("ADMIN_INITIAL_PASSWORD is required for seeding")
+    }
     const bcrypt = require("bcryptjs")
     const hashedPassword = await bcrypt.hash(adminPassword, 12)
 
@@ -87,15 +90,15 @@ async function seedData() {
       ["admin-001", "admin@varsitynest.space", hashedPassword, "System", "Administrator", "admin", true, true],
     )
 
-    console.log("✅ Admin user created/verified")
+    console.log("Admin user created/verified")
 
     // Seed accommodations from CSV
     await seedAccommodationsFromCSV()
 
-    console.log("✅ Database seeded successfully")
+    console.log("Database seeded successfully")
     return true
   } catch (error) {
-    console.error("❌ Error seeding data:", error)
+    console.error("Error seeding data:", error)
     return false
   }
 }
@@ -104,7 +107,7 @@ async function seedAccommodationsFromCSV() {
   const csvPath = path.join(__dirname, "..", "data", "ufs-accredited-providers.csv")
 
   if (!fs.existsSync(csvPath)) {
-    console.log("⚠️ CSV file not found, skipping accommodation seeding")
+    console.log("CSV file not found, skipping accommodation seeding")
     return
   }
 
@@ -117,7 +120,7 @@ async function seedAccommodationsFromCSV() {
         accommodations.push(row)
       })
       .on("end", async () => {
-        console.log(`📊 Processing ${accommodations.length} accommodations from CSV...`)
+        console.log(`Processing ${accommodations.length} accommodations from CSV...`)
 
         for (const acc of accommodations) {
           try {
@@ -149,7 +152,7 @@ async function seedAccommodationsFromCSV() {
           }
         }
 
-        console.log("✅ Accommodations seeded from CSV")
+        console.log("Accommodations seeded from CSV")
         resolve()
       })
       .on("error", reject)

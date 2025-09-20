@@ -1,9 +1,9 @@
 "use server"
 
-import { query } from "../../lib/database"
+import { query } from "@/lib/database"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { getSession } from "@/lib/session"
+import { getSession } from "@/lib/stackauth"
 
 const SETTINGS_KEY = "platform_settings"
 
@@ -17,13 +17,16 @@ export type PlatformSettings = z.infer<typeof SettingsSchema>
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {
   try {
-    const data = await query`
-      SELECT value FROM admin_settings WHERE key = ${SETTINGS_KEY}
-    `
-    if (data.length === 0) {
-      throw new Error("Platform settings not found. Please run the seed script.")
+    const res = await query`SELECT maintenance_mode, registration_enabled, payments_enabled FROM admin_settings WHERE id = 1`
+    const row = res.rows?.[0]
+    if (!row) {
+      throw new Error("admin_settings not found. Please run the migration/seed script.")
     }
-    const settings = SettingsSchema.parse(data[0].value)
+    const settings = SettingsSchema.parse({
+      production_mode: !Boolean(row.maintenance_mode),
+      registration_enabled: Boolean(row.registration_enabled),
+      reviews_enabled: false,
+    })
     return settings
   } catch (error) {
     console.error("Failed to fetch platform settings:", error)
@@ -37,7 +40,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 
 export async function updateProductionMode(isProduction: boolean) {
   const session = await getSession()
-  if (session?.role !== "admin") {
+  if (session?.user.role !== "admin") {
     return { success: false, message: "Unauthorized" }
   }
 
@@ -45,11 +48,7 @@ export async function updateProductionMode(isProduction: boolean) {
     const currentSettings = await getPlatformSettings()
     const newSettings = { ...currentSettings, production_mode: isProduction }
 
-    await query`
-      UPDATE admin_settings
-      SET value = ${JSON.stringify(newSettings)}::jsonb
-      WHERE key = ${SETTINGS_KEY}
-    `
+    await query`UPDATE admin_settings SET maintenance_mode = ${!isProduction} WHERE id = 1`
     revalidatePath("/admin/dashboard")
     return { success: true, message: `Production mode set to ${isProduction ? "ON" : "OFF"}.` }
   } catch (error) {

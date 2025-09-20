@@ -13,6 +13,8 @@ type ToastActionElement = React.ReactElement
 type ToastItem = ToastProps & {
   id: string
   action?: ToastActionElement
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const TOAST_LIMIT = 1
@@ -109,6 +111,7 @@ export const reducer = (state: StateType, action: Action): StateType => {
   }
 }
 
+//Design pattern: Observer
 const listeners: Array<(state: StateType) => void> = []
 
 let memoryState: StateType = { toasts: [] }

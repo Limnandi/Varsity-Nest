@@ -1,20 +1,13 @@
 "use server"
 
+import { env } from "@/lib/env"
+
 export async function verifyRecaptcha(token: string | null) {
   if (!token) {
     return { success: false, message: "reCAPTCHA token is missing." }
   }
 
-  const secretKey = process.env.RECAPTCHA_SECRET_KEY
-
-  if (!secretKey) {
-    console.error("RECAPTCHA_SECRET_KEY is not set.")
-    // In development, you might want to bypass this check
-    if (process.env.NODE_ENV !== "production") {
-      return { success: true, message: "reCAPTCHA bypassed in development." }
-    }
-    return { success: false, message: "Server configuration error." }
-  }
+  const secretKey = env.RECAPTCHA_SECRET_KEY
 
   try {
     const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {

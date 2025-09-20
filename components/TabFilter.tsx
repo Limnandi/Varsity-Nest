@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { Accommodation } from "@/lib/data"
+import type { Accommodation } from "@/lib/types"
 
 interface TabFilterProps {
   accommodations: Accommodation[]
@@ -28,13 +28,15 @@ export default function TabFilter({ accommodations, onFilter }: TabFilterProps) 
   }
 
   return (
-    <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+    <div className="flex space-x-1 bg-black/20 border border-white/10 p-1 rounded-lg backdrop-blur-sm">
       {tabs.map((tab) => (
         <button
           key={tab}
           onClick={() => handleTabChange(tab)}
-          className={`px-4 py-2 rounded-md transition-colors ${
-            activeTab === tab ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+          className={`px-4 py-2 rounded-md transition-all duration-300 ${
+            activeTab === tab 
+              ? "bg-white/20 text-white shadow-lg border border-white/20" 
+              : "text-neutral-300 hover:text-white hover:bg-white/10"
           }`}
         >
           {tab}

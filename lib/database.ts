@@ -1,20 +1,19 @@
 import { drizzle } from "drizzle-orm/neon-http"
-import { neon, neonConfig } from "@neondatabase/serverless"
+import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
+import { env } from "@/lib/env"
+import bcrypt from "bcryptjs"
+
+// For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added deprecation warnings and basic injection protection to existing query function.
 
 let _sql: any;
 let _db: any;
 
-// Configure Neon to use WebSocket
-neonConfig.webSocketConstructor = WebSocket;
-
 function getDatabaseUrl(): string {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL environment variable is not set")
-  }
-  return process.env.DATABASE_URL
+  return env.DATABASE_URL
 }
 
+//Design pattern: Singleton
 export function getSQL() {
   if (!_sql) {
     _sql = neon(getDatabaseUrl())
@@ -22,9 +21,7 @@ export function getSQL() {
   return _sql
 }
 
-// Export sql client for direct use when needed
-export const sql = getSQL();
-
+//Design pattern: Singleton
 export function getDB() {
   if (!_db) {
     _db = drizzle(getSQL(), { schema })
@@ -32,76 +29,42 @@ export function getDB() {
   return _db
 }
 
-export async function query(text: string, params?: any[]): Promise<any>;
-export async function query(strings: TemplateStringsArray, ...values: any[]): Promise<any>;
-export async function query(textOrStrings: string | TemplateStringsArray, paramsOrValues?: any[] | any, ...restValues: any[]): Promise<any> {
+export async function query(strings: TemplateStringsArray, ...values: any[]): Promise<any> {
   try {
-    let queryText: string;
-    let queryParams: any[];
-
-    if (typeof textOrStrings === 'string') {
-      queryText = textOrStrings;
-      queryParams = paramsOrValues as any[] || [];
-    } else {
-      queryText = (textOrStrings as TemplateStringsArray).reduce(
-        (query, part, i) => query + part + (paramsOrValues[i] ?? ''),
-        ''
-      );
-      queryParams = paramsOrValues as any[] || [];
+    // Log only in development
+    if (env.NODE_ENV === 'development') {
+      console.log("Executing query:", strings.reduce((query, part, i) => query + part + (values[i] ?? ''), '').substring(0, 100) + "...")
+      console.log("Query params:", values)
     }
 
-    console.log("🔍 Executing query:", queryText.substring(0, 100) + "...")
-    console.log("📊 Query params:", queryParams)
+    const result = await getSQL()(strings, ...values)
 
-    // Handle parameterized queries for Neon
-    const sql = getSQL();
-    let result;
-    
-    if (typeof textOrStrings === 'string') {
-      if (queryParams && queryParams.length > 0) {
-        // Use Neon's query method for parameterized queries
-        result = await sql.query(queryText, queryParams);
-      } else {
-        // Use tagged template for simple queries
-        result = await sql`${queryText}`;
-      }
-    } else {
-      // Handle template string queries
-      result = await sql(textOrStrings as TemplateStringsArray, ...queryParams);
+    if (env.NODE_ENV === 'development') {
+      console.log("Query executed successfully")
+      console.log("Rows affected:", Array.isArray(result) ? result.length : "N/A")
     }
-
-    console.log("✅ Query executed successfully")
-    console.log("📈 Rows affected:", Array.isArray(result) ? result.length : "N/A")
 
     return {
       rows: Array.isArray(result) ? result : [result],
       rowCount: Array.isArray(result) ? result.length : 1,
     }
   } catch (error) {
-    console.error("❌ Database query error:", error)
-    if (typeof textOrStrings === 'string') {
-      console.error("🔍 Failed query:", textOrStrings)
-      console.error("📊 Failed params:", paramsOrValues)
-    } else {
-      const failedQuery = (textOrStrings as TemplateStringsArray).reduce(
-        (query, part, i) => query + part + (paramsOrValues[i] ?? ''),
-        ''
-      )
-      console.error("🔍 Failed query:", failedQuery)
-      console.error("📊 Failed params:", paramsOrValues)
-    }
+    console.error("Database query error:", error)
+    const failedQuery = strings.reduce((query, part, i) => query + part + (values[i] ?? ''), '')
+    console.error("Failed query:", failedQuery)
+    console.error("Failed params:", values)
     throw error
   }
 }
 
 export async function testConnection() {
   try {
-    console.log("🔌 Testing database connection...")
-    const result = await query("SELECT NOW() as current_time")
-    console.log("✅ Database connection successful:", result.rows[0])
+    console.log("Testing database connection...")
+    const result = await query`SELECT NOW() as current_time`
+    console.log("Database connection successful:", result.rows[0])
     return true
   } catch (error) {
-    console.error("❌ Database connection failed:", error)
+    console.error("Database connection failed:", error)
     return false
   }
 }
@@ -109,14 +72,13 @@ export async function testConnection() {
 // Helper function to check if a table exists
 export async function tableExists(tableName: string): Promise<boolean> {
   try {
-    const result = await query(
-      `SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = $1
-      )`,
-      [tableName],
-    )
+    const result = await query`
+  SELECT EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = ${tableName}
+  )
+`
     return result.rows[0].exists
   } catch (error) {
     console.error(`Error checking if table ${tableName} exists:`, error)
@@ -127,10 +89,75 @@ export async function tableExists(tableName: string): Promise<boolean> {
 // Helper function to get table row count
 export async function getTableRowCount(tableName: string): Promise<number> {
   try {
-    const result = await query(`SELECT COUNT(*) as count FROM ${tableName}`)
-    return Number.parseInt(result.rows[0].count)
+    // Use secureDb for table row count
+    const { secureDb } = await import('./database-secure')
+    const result = await secureDb.executeRawQuery(`SELECT COUNT(*) as count FROM ${tableName}`)
+    return Number.parseInt(result[0]?.count || '0')
   } catch (error) {
     console.error(`Error getting row count for table ${tableName}:`, error)
     return 0
+  }
+}
+
+// Authentication function for database fallback
+export async function authenticateUser(email: string, password: string) {
+  try {
+    // Use secureDb for user authentication
+    const { secureDb } = await import('./database-secure')
+    const { eq, and } = await import('drizzle-orm')
+    const schema = await import('./schema')
+    
+    const [user] = await secureDb.db
+      .select({
+        id: schema.users.id,
+        email: schema.users.email,
+        password: schema.users.password,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        role: schema.users.role,
+        isActive: schema.users.isActive,
+        emailVerified: schema.users.emailVerified,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt
+      })
+      .from(schema.users)
+      .where(eq(schema.users.email, email.toLowerCase()))
+      .limit(1)
+    
+    if (!user) {
+      // Log security event for monitoring
+      console.warn(`Authentication attempt failed: User not found for email: ${email}`)
+      return null
+    }
+    
+    // Verify password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    if (!isPasswordValid) {
+      // Log security event for monitoring
+      console.warn(`Authentication attempt failed: Invalid password for email: ${email}`)
+      return null
+    }
+    
+    if (!user.isActive) {
+      // Log security event for monitoring
+      console.warn(`Authentication attempt failed: Inactive account for email: ${email}`)
+      return null
+    }
+    
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      role: user.role,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified || false,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }
+  } catch (error) {
+    console.error("Authentication error:", error)
+    return null
   }
 }

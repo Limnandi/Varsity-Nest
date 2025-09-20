@@ -23,16 +23,16 @@ const __dirname = path.resolve()
 const envPath = path.join(process.cwd(), ".env.local")
 const result = dotenv.config({ path: envPath })
 if (result.error) {
-  console.error("❌ Failed to load .env.local:", result.error)
+  console.error("Failed to load .env.local:", result.error)
   process.exit(1)
 }
-console.log("✅ Loaded environment variables from:", envPath)
+console.log("Loaded environment variables from:", envPath)
 
 const { ADMIN_INITIAL_PASSWORD } = process.env
 const UFS_ACCREDITED_PROVIDERS_CSV = path.join(process.cwd(), "data", "ufs-accredited-providers.csv")
 
 if (!ADMIN_INITIAL_PASSWORD) {
-  console.error("❌ FATAL: ADMIN_INITIAL_PASSWORD environment variable is not set.")
+  console.error("FATAL: ADMIN_INITIAL_PASSWORD environment variable is not set.")
   process.exit(1)
 }
 
@@ -68,7 +68,7 @@ async function seedProvidersFromCSV() {
   for (const provider of results) {
     const providerName = provider["PROPERTY NAME / EIENDOM NAAM"] || "Unknown Provider"
     const contactPerson = provider["CONTACT PERSON"] || "N/A"
-    const email = provider["E-MAIL"] || `provider-${Date.now()}@example.com`
+    const email = provider["E-MAIL"] || `provider-${Date.now()}@varsitynest.space`
 
     // Create a user for the provider
     const hashedPassword = await bcrypt.hash("provider123", 10)
@@ -135,3 +135,4 @@ async function main() {
 }
 
 main()
+

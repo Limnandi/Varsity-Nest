@@ -1,94 +1,136 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { useStackApp, useUser } from "@stackframe/stack"
 import Link from "next/link"
-import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
-import { registerStudent } from "./actions"
+import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
 
 export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const app = useStackApp()
+  const user = useUser({ or: 'return-null' })
 
-  const handleSubmit = async (formData: FormData) => {
-    startTransition(async () => {
-      const result = await registerStudent(null, formData)
-      setState(result)
-    })
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsPending(true)
+    setState({})
+
+    try {
+      const form = new FormData(e.currentTarget)
+      const name = String(form.get('name') || '')
+      const email = String(form.get('email') || '')
+      const password = String(form.get('password') || '')
+      const confirmPassword = String(form.get('confirmPassword') || '')
+
+      if (password !== confirmPassword) {
+        throw new Error('Passwords do not match')
+      }
+
+      const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      await app.signUpWithCredential({ 
+        email, 
+        password,
+        verificationCallbackUrl: `${callbackBase}/auth/check-email`
+      })
+      // Set Stack display name after signup
+      try {
+        await user?.update({ displayName: name })
+      } catch {}
+      // Role is persisted in our DB; display name set on Stack profile
+      setState({ success: true, message: 'Account created. Check your email to verify.' })
+    } catch (error: any) {
+      setState({ 
+        error: error.message || 'Registration failed. Please try again.' 
+      })
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-blue-800 to-blue-900 px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
+      <div className="max-w-md w-full">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+          {/* Home Button */}
+          <Link 
+            href="/" 
+            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          >
+            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+          </Link>
           <div className="text-center mb-8">
-            <GraduationCap className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Registration</h1>
-            <p className="text-gray-600">Join Varsity Nest with your university email</p>
+            <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl w-fit mx-auto mb-4">
+              <GraduationCap className="w-16 h-16 text-blue-400" />
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Student Registration</h1>
+            <p className="text-neutral-300 text-lg">Join Varsity Nest with your university email</p>
           </div>
 
           {state?.error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <span className="text-red-700 text-sm">{state.error}</span>
+            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <span className="text-red-300 text-sm">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-green-700 text-sm">{state.message}</span>
+            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-green-300 text-sm">{state.message}</span>
             </div>
           )}
 
-          <form action={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Full Name *</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type="text"
                   name="name"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="John Doe"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">University Email *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">University Email *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type="email"
                   name="email"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="student@ufs4life.ac.za"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Use your UFS (@ufs4life.ac.za, @student.ufs.ac.za) or CUT (@cut.ac.za, @student.cut.ac.za) email
+              <p className="text-xs text-neutral-500 mt-2">
+                Use your university email address. Only whitelisted domains are allowed for registration.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  minLength={8}
+                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Enter password (min 8 characters)"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -96,69 +138,73 @@ export default function StudentRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   required
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Confirm your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-start space-x-2">
-              <input
-                type="checkbox"
-                name="terms"
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Student Number *</label>
+              <div className="relative">
+                <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                <input
+                  type="text"
+                  name="studentNumber"
+                  required
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                  placeholder="e.g., 2023123456"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">University *</label>
+              <select
+                name="university"
                 required
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mt-1"
-              />
-              <label className="text-sm text-gray-700">
-                I agree to the{" "}
-                <Link href="/terms" className="text-green-600 hover:text-green-700 underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-green-600 hover:text-green-700 underline">
-                  Privacy Policy
-                </Link>
-              </label>
+                className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+              >
+                <option value="">Select your university</option>
+                <option value="UFS">University of the Free State (UFS)</option>
+                <option value="CUT">Central University of Technology (CUT)</option>
+              </select>
             </div>
 
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 transform hover:scale-105 shadow-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
             >
-              {isPending ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                "Create Student Account"
-              )}
+              <span className="relative z-10">
+                {isPending ? "Creating Account..." : "Create Account"}
+              </span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
-          </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-green-600 hover:text-green-700 underline">
-                Sign in here
-              </Link>
-            </p>
-          </div>
+            <div className="text-center">
+              <p className="text-sm text-neutral-400">
+                Already have an account?{" "}
+                <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>
