@@ -90,7 +90,7 @@ export async function verifySecureSession(token: string): Promise<SecureSession 
 
     const sessionData = sessionResult.rows[0]
 
-    return {
+  return {
       user: {
         id: sessionData.user_id,
         email: sessionData.email,
@@ -110,7 +110,7 @@ export async function verifySecureSession(token: string): Promise<SecureSession 
         emergencyContactName: sessionData.emergency_contact_name,
         emergencyContactPhone: sessionData.emergency_contact_phone,
       },
-      sessionId,
+      sessionId: String(sessionId),
       expiresAt: new Date(sessionData.expires_at),
       iat: Math.floor(new Date(sessionData.created_at).getTime() / 1000)
     }
