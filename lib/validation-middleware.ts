@@ -83,15 +83,16 @@ export function createRateLimitMiddleware(options: {
   keyGenerator?: (req: NextRequest) => string
 }) {
   return (request: NextRequest) => {
-    const key = options.keyGenerator 
-      ? options.keyGenerator(request) 
-      : request.ip || 'unknown'
+    const forwarded = request.headers.get('x-forwarded-for')
+    const realIp = request.headers.get('x-real-ip')
+    const ip = forwarded?.split(',')[0]?.trim() || realIp || 'unknown'
+    const key = options.keyGenerator ? options.keyGenerator(request) : ip
     
     const now = Date.now()
     const windowStart = now - options.windowMs
     
     // Clean up old entries
-    for (const [k, v] of rateLimitMap.entries()) {
+    for (const [k, v] of Array.from(rateLimitMap.entries())) {
       if (v.resetTime < now) {
         rateLimitMap.delete(k)
       }
