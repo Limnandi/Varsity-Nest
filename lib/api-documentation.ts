@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 // in prod or development, add to the url /api/docs?format=endpoints to see the documentation
 export interface ApiEndpoint {
