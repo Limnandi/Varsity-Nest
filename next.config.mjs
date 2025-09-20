@@ -24,6 +24,7 @@ const nextConfig = {
       {
         source: '/api/:path*',
         headers: [
+          // CORS set dynamically by middleware; keep permissive structure here
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NODE_ENV === 'production' 
@@ -71,6 +72,7 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), payment=()'
           }
+          // CSP and HSTS are set centrally in middleware/security-config with report-only toggle
         ]
       }
     ]

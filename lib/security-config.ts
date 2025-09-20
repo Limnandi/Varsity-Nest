@@ -47,7 +47,7 @@ export const defaultSecurityConfig: SecurityConfig = {
     credentials: true
   },
   headers: {
-    csp: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.stripe.com https://www.google-analytics.com; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';",
+    csp: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://www.payfast.co.za https://sandbox.payfast.co.za;",
     hsts: 'max-age=31536000; includeSubDomains; preload',
     xFrameOptions: 'DENY',
     xContentTypeOptions: 'nosniff',
@@ -93,9 +93,26 @@ export class SecurityMiddleware {
    */
   static applySecurityHeaders(response: NextResponse, config: SecurityConfig = defaultSecurityConfig): NextResponse {
     const headers = config.headers
-    
-    response.headers.set('Content-Security-Policy', headers.csp)
-    response.headers.set('Strict-Transport-Security', headers.hsts)
+
+    // CSP: allow report-only toggle and optional report-uri
+    const reportOnly = process.env.CSP_REPORT_ONLY === 'true'
+    const reportUri = process.env.CSP_REPORT_URI
+    const cspValue = reportUri && !headers.csp.includes('report-uri')
+      ? `${headers.csp} report-uri ${reportUri};`
+      : headers.csp
+
+    if (reportOnly) {
+      response.headers.set('Content-Security-Policy-Report-Only', cspValue)
+    } else {
+      response.headers.set('Content-Security-Policy', cspValue)
+    }
+
+    // HSTS: enable only on HTTPS in production
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+    const enableHsts = env.NODE_ENV === 'production' && appUrl.startsWith('https://')
+    if (enableHsts) {
+      response.headers.set('Strict-Transport-Security', headers.hsts)
+    }
     response.headers.set('X-Frame-Options', headers.xFrameOptions)
     response.headers.set('X-Content-Type-Options', headers.xContentTypeOptions)
     response.headers.set('Referrer-Policy', headers.referrerPolicy)
