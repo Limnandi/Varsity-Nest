@@ -1,16 +1,14 @@
 import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
+import { env } from "@/lib/env"
 import { ErrorLoggingService, ErrorSeverity, ErrorCategory } from "./services/error-logging"
 
 let _sql: any
 let _db: any
 
 function getDatabaseUrl(): string {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL environment variable is not set")
-  }
-  return process.env.DATABASE_URL
+  return env.DATABASE_URL
 }
 
 // Design pattern: Singleton
@@ -34,7 +32,7 @@ export async function query(strings: TemplateStringsArray, ...values: any[]): Pr
     const queryString = strings.reduce((query, part, i) => query + part + (values[i] ?? ''), '')
     
     // Log query in development only
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.log("🔒 Executing query:", queryString.substring(0, 100) + "...")
       console.log("📊 Query params:", values)
     }
@@ -42,7 +40,7 @@ export async function query(strings: TemplateStringsArray, ...values: any[]): Pr
     const result = await getSQL()(strings, ...values)
 
     // Log success in development only
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.log("✅ Query executed successfully")
       console.log("📈 Rows affected:", Array.isArray(result) ? result.length : "N/A")
     }
@@ -73,13 +71,13 @@ export async function query(strings: TemplateStringsArray, ...values: any[]): Pr
 
 export async function testConnection() {
   try {
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.log("🔌 Testing database connection...")
     }
     
     const result = await query`SELECT 1 as test`
     
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.log("✅ Database connection successful:", result.rows[0])
     }
     

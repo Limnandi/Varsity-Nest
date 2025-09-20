@@ -1,14 +1,15 @@
 import { v2 as cloudinary } from "cloudinary"
+import { env } from "@/lib/env"
 import { FileValidationService } from "@/lib/services/file-validation"
 import { FileSecurityService } from "@/lib/services/file-security"
 import { FileUploadMiddleware } from "@/lib/middleware/file-upload"
 import { Sentry } from "@/lib/sentry"
 
-//Design pattern: Facade
+// Design pattern: Facade
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
 })
 
 export { cloudinary }

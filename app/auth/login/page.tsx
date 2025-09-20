@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
+import { publicEnv } from "@/lib/env.client"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -165,7 +166,7 @@ export default function LoginPage() {
             <div className="flex justify-center">
               <ReCAPTCHA
                 ref={recaptchaRef}
-                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                sitekey={publicEnv.RECAPTCHA_SITE_KEY}
               />
             </div>
 

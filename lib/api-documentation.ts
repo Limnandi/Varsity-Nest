@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { env } from '@/lib/env'
 // in prod or development, add to the url /api/docs?format=endpoints to see the documentation
 export interface ApiEndpoint {
   path: string
@@ -110,10 +111,8 @@ export class ApiDocumentation {
       },
       servers: [
         {
-          url: process.env.NODE_ENV === 'production' 
-            ? (process.env.API_BASE_URL || 'https://varsitynest.space/api')
-            : 'http://localhost:3000/api',
-          description: process.env.NODE_ENV === 'production' ? 'Production' : 'Development'
+          url: env.API_URL,
+          description: env.NODE_ENV === 'production' ? 'Production' : 'Development'
         }
       ],
       authentication: {

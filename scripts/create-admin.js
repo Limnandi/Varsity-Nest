@@ -1,7 +1,7 @@
 const { neon } = require("@neondatabase/serverless")
 const bcrypt = require("bcryptjs")
 
-const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
+const databaseUrl = process.env.DATABASE_URL
 
 if (!databaseUrl) {
   console.error("DATABASE_URL environment variable is not set")
@@ -12,9 +12,13 @@ const sql = neon(databaseUrl)
 
 async function createAdminUser() {
   try {
-    const email = "admin@varsitynest.space"
-    const password = "43**Admin@VarsityNest"
-    const name = "Admin User"
+    const email = process.env.ADMIN_EMAIL
+    const password = process.env.ADMIN_INITIAL_PASSWORD
+    const name = process.env.ADMIN_NAME || "Admin User"
+
+    if (!email || !password) {
+      throw new Error("ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD must be set")
+    }
 
     // First, let's check what columns actually exist in the users table
     console.log("Checking users table structure...")

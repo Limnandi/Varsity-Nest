@@ -1,6 +1,7 @@
 import crypto from "crypto"
 import { PayFastWebhook, PaymentSecurity } from "@/lib/schemas/payment"
 import { Sentry } from "@/lib/sentry"
+import { env } from "@/lib/env"
 
 export class PaymentSecurityService {
   private static readonly PAYFAST_IP_RANGES = [
@@ -104,7 +105,7 @@ export class PaymentSecurityService {
       paramString = paramString.slice(0, -1)
 
       // Add passphrase for enhanced security
-      const passphrase = process.env.PAYFAST_PASSPHRASE
+      const passphrase = env.PAYFAST_PASSPHRASE
       if (passphrase) {
         paramString += `&passphrase=${encodeURIComponent(passphrase)}`
       }
@@ -181,7 +182,7 @@ export class PaymentSecurityService {
       }
 
       // Validate merchant ID
-      if (security.merchantId !== process.env.PAYFAST_MERCHANT_ID) {
+      if (security.merchantId !== env.PAYFAST_MERCHANT_ID) {
         Sentry.captureMessage('Invalid merchant ID in payment request', {
           level: 'error',
           tags: { component: 'payment-security' },

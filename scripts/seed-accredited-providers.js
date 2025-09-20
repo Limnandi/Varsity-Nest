@@ -1,16 +1,12 @@
 import { neon } from "@neondatabase/serverless"
 import bcrypt from "bcryptjs"
-import dotenv from "dotenv"
 import fs from "fs"
 import path from "path"
-
-// Load environment variables
-dotenv.config({ path: ".env.local" })
 
 const databaseUrl = process.env.DATABASE_URL
 
 if (!databaseUrl) {
-  console.error("❌ DATABASE_URL environment variable is not set.")
+  console.error("DATABASE_URL environment variable is not set.")
   process.exit(1)
 }
 
@@ -112,7 +108,7 @@ async function seedAccreditedProviders() {
           `
         }
       }
-      console.log("✅ CSV data processed successfully")
+    console.log("CSV data processed successfully")
     }
 
     // Seed hardcoded providers
@@ -121,7 +117,7 @@ async function seedAccreditedProviders() {
       const hashedPassword = await bcrypt.hash("TempPassword123!", 12)
       const userEmail = providerData.email
 
-      console.log(`👤 Creating provider user: ${userEmail}`)
+      console.log(`Creating provider user: ${userEmail}`)
 
       const userResult = await sql`
         INSERT INTO users (email, password, first_name, last_name, role, phone, is_active, email_verified)
@@ -144,7 +140,7 @@ async function seedAccreditedProviders() {
       const userId = userResult[0].id
 
       // Create provider record
-      console.log(`🏢 Creating provider: ${providerData.businessName}`)
+      console.log(`Creating provider: ${providerData.businessName}`)
 
       const providerResult = await sql`
         INSERT INTO providers (
@@ -173,7 +169,7 @@ async function seedAccreditedProviders() {
       const providerId = providerResult[0].id
 
       // Create accommodation
-      console.log(`🏠 Creating accommodation for: ${providerData.businessName}`)
+      console.log(`Creating accommodation for: ${providerData.businessName}`)
 
       await sql`
         INSERT INTO accommodations (
@@ -200,16 +196,16 @@ async function seedAccreditedProviders() {
       `
     }
 
-    console.log("✅ Accredited providers seeding completed successfully!")
-    console.log(`📊 Created ${accreditedProviders.length} accredited providers with accommodations`)
+    console.log("Accredited providers seeding completed successfully!")
+    console.log(`Created ${accreditedProviders.length} accredited providers with accommodations`)
     console.log("")
-    console.log("🔑 Provider login credentials:")
-    console.log("   📧 Email: [provider-email]@[domain].co.za (see console output above)")
-    console.log("   🔐 Password: TempPassword123!")
+    console.log("Provider login credentials:")
+    console.log("   Email: [provider-email]@[domain].co.za (see console output above)")
+    console.log("   Temporary Password: TempPassword123!")
     console.log("")
-    console.log("⚠️  Providers should change their passwords on first login")
+    console.log("Providers should change their passwords on first login")
   } catch (error) {
-    console.error("❌ Error seeding accredited providers:", error)
+    console.error("Error seeding accredited providers:", error)
     process.exit(1)
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { env } from '@/lib/env'
 
 export interface SecurityConfig {
   cors: {
@@ -30,8 +31,8 @@ export interface SecurityConfig {
 
 export const defaultSecurityConfig: SecurityConfig = {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://varsitynest.space'])
+    origin: env.NODE_ENV === 'production' 
+      ? env.ALLOWED_ORIGINS
       : ['http://localhost:3000', 'http://localhost:3001'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [

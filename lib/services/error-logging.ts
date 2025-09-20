@@ -109,7 +109,7 @@ export class ErrorLoggingService {
       this.trackErrorFrequency(errorMessage, severity)
 
       // Log to console in development
-      if (process.env.NODE_ENV === 'development') {
+      if ((await import('@/lib/env')).env.NODE_ENV === 'development') {
         console.error(`🚨 [${severity.toUpperCase()}] ${category}:`, {
           errorId,
           message: errorMessage,

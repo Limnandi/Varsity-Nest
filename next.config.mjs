@@ -18,7 +18,7 @@ const nextConfig = {
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NODE_ENV === 'production' 
-              ? (process.env.ALLOWED_ORIGIN || 'https://varsitynest.space')
+              ? '' // Set dynamically at runtime by middleware or vercel config
               : 'http://localhost:3000'
           },
           {

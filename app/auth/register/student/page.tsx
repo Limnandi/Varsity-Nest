@@ -32,7 +32,7 @@ export default function StudentRegistrationPage() {
       await app.signUpWithCredential({ 
         email, 
         password,
-        verificationCallbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/check-email`
+        verificationCallbackUrl: `${(await import('@/lib/env')).env.APP_URL}/auth/check-email`
       })
       // Set Stack display name after signup
       try {

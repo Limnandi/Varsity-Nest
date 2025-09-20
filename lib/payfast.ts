@@ -1,4 +1,5 @@
 import crypto from "crypto"
+import { env } from "@/lib/env"
 
 interface PayFastData {
   // Required fields
@@ -86,13 +87,13 @@ export function createPayFastPayment(
 ): PayFastData & { signature: string } {
   const data: PayFastData = {
     // Required merchant credentials
-    merchant_id: process.env.PAYFAST_MERCHANT_ID!,
-    merchant_key: process.env.PAYFAST_MERCHANT_KEY!,
+    merchant_id: env.PAYFAST_MERCHANT_ID,
+    merchant_key: env.PAYFAST_MERCHANT_KEY,
     
     // URLs
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/provider/billing/success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/provider/billing/cancel`,
-    notify_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payfast/notify`,
+    return_url: `${env.APP_URL}/provider/billing/success`,
+    cancel_url: `${env.APP_URL}/provider/billing/cancel`,
+    notify_url: `${env.APP_URL}/api/payfast/notify`,
     
     // Customer information
     name_first: userName.split(" ")[0] || userName,
@@ -134,14 +135,14 @@ export function createPayFastPayment(
     }
   })
 
-  const signature = generatePayFastSignature(data, process.env.PAYFAST_PASSPHRASE)
+  const signature = generatePayFastSignature(data, env.PAYFAST_PASSPHRASE)
 
   return { ...data, signature }
 }
 
 export function verifyPayFastSignature(data: any, signature: string): boolean {
   try {
-    const generatedSignature = generatePayFastSignature(data, process.env.PAYFAST_PASSPHRASE)
+    const generatedSignature = generatePayFastSignature(data, env.PAYFAST_PASSPHRASE)
     return generatedSignature === signature
   } catch (error) {
     console.error("Signature verification error:", error)
@@ -162,7 +163,7 @@ export async function verifyPayFastITNWithServer(data: Record<string, string>, o
       .map((k) => `${k}=${encodeURIComponent(data[k])}`)
       .join("&")
 
-    const host = process.env.NODE_ENV === 'production' ? 'www.payfast.co.za' : 'sandbox.payfast.co.za'
+    const host = env.NODE_ENV === 'production' ? 'www.payfast.co.za' : 'sandbox.payfast.co.za'
 
     const resp = await fetch(`https://${host}/eng/query/validate`, {
       method: 'POST',

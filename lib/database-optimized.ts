@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import { Pool } from "pg"
 import * as schema from "./schema"
+import { env } from "@/lib/env"
 import { eq, and, desc, count, sql, inArray } from "drizzle-orm"
 import { redis } from "./redis"
 
@@ -23,10 +24,7 @@ let _sql: any = null
 let _db: any = null
 
 function getDatabaseUrl(): string {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL environment variable is not set")
-  }
-  return process.env.DATABASE_URL
+  return env.DATABASE_URL
 }
 
 // Optimized connection pool

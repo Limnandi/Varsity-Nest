@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
+import { env } from "@/lib/env"
 import { eq, and, or, desc, asc, sql, count, sum, avg, max, min } from "drizzle-orm"
 import { z } from "zod"
 import { randomUUID } from "crypto"
@@ -9,10 +10,7 @@ let _sql: any;
 let _db: any;
 
 function getDatabaseUrl(): string {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL environment variable is not set")
-  }
-  return process.env.DATABASE_URL
+  return env.DATABASE_URL
 }
 
 // Design pattern: Singleton

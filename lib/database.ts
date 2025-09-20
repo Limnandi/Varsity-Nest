@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
+import { env } from "@/lib/env"
 import bcrypt from "bcryptjs"
 
 // For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added deprecation warnings and basic injection protection to existing query function.
@@ -9,10 +10,7 @@ let _sql: any;
 let _db: any;
 
 function getDatabaseUrl(): string {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL environment variable is not set")
-  }
-  return process.env.DATABASE_URL
+  return env.DATABASE_URL
 }
 
 //Design pattern: Singleton
@@ -33,35 +31,40 @@ export function getDB() {
 
 export async function query(strings: TemplateStringsArray, ...values: any[]): Promise<any> {
   try {
-    console.log("�� Executing query:", strings.reduce((query, part, i) => query + part + (values[i] ?? ''), '').substring(0, 100) + "...")
-    console.log("📊 Query params:", values)
+    // Log only in development
+    if (env.NODE_ENV === 'development') {
+      console.log("Executing query:", strings.reduce((query, part, i) => query + part + (values[i] ?? ''), '').substring(0, 100) + "...")
+      console.log("Query params:", values)
+    }
 
     const result = await getSQL()(strings, ...values)
 
-    console.log("✅ Query executed successfully")
-    console.log("📈 Rows affected:", Array.isArray(result) ? result.length : "N/A")
+    if (env.NODE_ENV === 'development') {
+      console.log("Query executed successfully")
+      console.log("Rows affected:", Array.isArray(result) ? result.length : "N/A")
+    }
 
     return {
       rows: Array.isArray(result) ? result : [result],
       rowCount: Array.isArray(result) ? result.length : 1,
     }
   } catch (error) {
-    console.error("❌ Database query error:", error)
+    console.error("Database query error:", error)
     const failedQuery = strings.reduce((query, part, i) => query + part + (values[i] ?? ''), '')
-    console.error("🔍 Failed query:", failedQuery)
-    console.error("📊 Failed params:", values)
+    console.error("Failed query:", failedQuery)
+    console.error("Failed params:", values)
     throw error
   }
 }
 
 export async function testConnection() {
   try {
-    console.log("🔌 Testing database connection...")
+    console.log("Testing database connection...")
     const result = await query`SELECT NOW() as current_time`
-    console.log("✅ Database connection successful:", result.rows[0])
+    console.log("Database connection successful:", result.rows[0])
     return true
   } catch (error) {
-    console.error("❌ Database connection failed:", error)
+    console.error("Database connection failed:", error)
     return false
   }
 }

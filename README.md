@@ -33,50 +33,32 @@ Varsity Nest is a Next.js 15 application for student accommodation discovery and
 - `styles/` — Global styles (Tailwind)
 
 ## Environment Variables
-Create `.env.local` (never commit). Required variables are sourced by code in `lib/*`:
+Create `.env.local` (never commit). All variables are validated at startup in `lib/env.ts` and `lib/env.client.ts`.
 
-### Core
+### Server (required)
+- `NODE_ENV` — `development` | `production` | `test`
 - `NEXT_PUBLIC_APP_URL` — Public app base URL (e.g., https://varsitynest.space)
-- `NODE_ENV` — `development` | `production`
-
-### StackAuth (Stack)
-From `lib/stack.ts`:
-- `NEXT_PUBLIC_STACK_PROJECT_ID`
-- `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY`
-- `STACK_SECRET_SERVER_KEY` (or `STACK_SECRET`)
-
-### Database (Neon + Drizzle)
-From `lib/database.ts`:
 - `DATABASE_URL` — Neon Postgres connection string
-
-### Redis (Upstash)
-From `lib/redis.ts`:
-- `UPSTASH_REDIS_REST_URL` or `KV_REST_API_URL`
-- `UPSTASH_REDIS_REST_TOKEN` or `KV_REST_API_TOKEN`
-
-### Cloudinary
-From `lib/cloudinary.ts`:
+- `UPSTASH_REDIS_REST_URL` (or `KV_REST_API_URL`)
+- `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_TOKEN`)
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-
-### PayFast
-From `lib/payfast.ts`:
+- `RESEND_API_KEY`
+- `NEXTAUTH_SECRET`
+- `STACK_SECRET_SERVER_KEY` (or `STACK_SECRET`)
 - `PAYFAST_MERCHANT_ID`
 - `PAYFAST_MERCHANT_KEY`
-- `PAYFAST_PASSPHRASE` (optional but recommended)
-
-### Sentry
-From `lib/sentry.ts`:
-- `SENTRY_DSN`
-
-### reCAPTCHA
-From `lib/recaptcha.ts`:
+- `PAYFAST_PASSPHRASE`
 - `RECAPTCHA_SECRET_KEY`
+- `SENTRY_DSN` (required in production)
+- `ALLOWED_ORIGINS` (comma-separated, required in production)
 
-### CORS/Headers
-From `next.config.mjs`:
-- `ALLOWED_ORIGIN` (optional; defaults to `https://varsitynest.space` in prod)
+### Client/Public (required)
+- `NEXT_PUBLIC_STACK_PROJECT_ID`
+- `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY`
+- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
+- `NEXT_PUBLIC_GA_ID` (optional)
 
 ## Install & Run
 ```bash
