@@ -1,4 +1,4 @@
-# Production-grade multi-stage Dockerfile for Next.js (App Router)
+# multi-stage Dockerfile for Next.js (App Router)
 
 ARG NODE_VERSION=22-alpine
 
