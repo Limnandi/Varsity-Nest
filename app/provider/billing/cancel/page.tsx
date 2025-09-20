@@ -11,10 +11,10 @@ import Link from "next/link"
 export default function PaymentCancelPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
-  // Extract cancellation details from URL parameters
-  const paymentId = searchParams.get("pf_payment_id")
-  const reason = searchParams.get("reason") || "Payment was cancelled by the user"
+
+  // Extract cancellation details from URL parameters (guard against null)
+  const paymentId = searchParams?.get("pf_payment_id") || undefined
+  const reason = searchParams?.get("reason") || "Payment was cancelled by the user"
 
   return (
     <AuthGuard requiredRole="provider">
@@ -56,9 +56,9 @@ export default function PaymentCancelPage() {
               <div className="bg-yellow-50 p-6 rounded-lg">
                 <h3 className="font-semibold text-yellow-800 mb-4">What Happens Next?</h3>
                 <div className="text-left space-y-2 text-sm text-yellow-700">
-                  <p>ℹ️ No charges were made to your account</p>
-                  <p>ℹ️ Your subscription remains unchanged</p>
-                  <p>ℹ️ You can try the payment again at any time</p>
+                  <p>No charges were made to your account</p>
+                  <p>Your subscription remains unchanged</p>
+                  <p>You can try the payment again at any time</p>
                 </div>
               </div>
 

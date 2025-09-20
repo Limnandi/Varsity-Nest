@@ -12,7 +12,7 @@ export default function StudentDashboard() {
   const current = useUser() as any
 
   useEffect(() => {
-    const isNewUser = searchParams.get("new_user") === "true"
+    const isNewUser = searchParams?.get("new_user") === "true"
     if (isNewUser && current) {
       toast.success(`Welcome, ${current.displayName || current.primaryEmail}! You are now signed in.`)
     }

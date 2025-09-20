@@ -16,11 +16,11 @@ export default function PaymentSuccessPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Extract payment details from URL parameters
-    const paymentId = searchParams.get("pf_payment_id")
-    const status = searchParams.get("payment_status")
-    const amount = searchParams.get("amount_gross")
-    const itemName = searchParams.get("item_name")
+    // Extract payment details from URL parameters (guard against null)
+    const paymentId = searchParams?.get("pf_payment_id")
+    const status = searchParams?.get("payment_status")
+    const amount = searchParams?.get("amount_gross")
+    const itemName = searchParams?.get("item_name")
 
     if (paymentId && status === "COMPLETE") {
       setPaymentDetails({
