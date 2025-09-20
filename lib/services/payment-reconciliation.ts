@@ -121,7 +121,7 @@ export class PaymentReconciliationService {
         )
         .orderBy(desc(schema.paymentTransactions.createdAt))
 
-      const duplicateTransactions = recentTransactions.filter(t => 
+      const duplicateTransactions = recentTransactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => 
         Math.abs(Number(t.amount) - amount) <= 0.01 && 
         t.status === 'completed'
       )
@@ -229,8 +229,8 @@ export class PaymentReconciliationService {
         )
         .orderBy(desc(schema.paymentTransactions.createdAt))
 
-      const completedTransactions = transactions.filter(t => t.status === 'completed')
-      const totalExpectedAmount = completedTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
+      const completedTransactions = transactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'completed')
+      const totalExpectedAmount = completedTransactions.reduce((sum: number, t: typeof schema.paymentTransactions.$inferSelect) => sum + Number(t.amount), 0)
       
       // For this report, we'll assume all completed transactions are matched
       // In a real implementation, you'd compare with PayFast records
@@ -238,8 +238,8 @@ export class PaymentReconciliationService {
       const mismatchedTransactions = transactions.length - matchedTransactions
 
       const discrepancies = transactions
-        .filter(t => t.status === 'failed' || t.status === 'cancelled')
-        .map(t => ({
+        .filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'failed' || t.status === 'cancelled')
+        .map((t: typeof schema.paymentTransactions.$inferSelect) => ({
           transactionId: t.id,
           expectedAmount: Number(t.amount),
           actualAmount: 0,
