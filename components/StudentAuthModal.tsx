@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { X, Mail, User, Shield, AlertCircle, Lock, Eye, EyeOff } from "lucide-react"
 import { StudentAuthService } from "@/lib/student-auth"
+import { useStackApp } from "@stackframe/stack"
 
 interface StudentAuthModalProps {
   isOpen: boolean
@@ -14,7 +15,7 @@ interface StudentAuthModalProps {
 
 export default function StudentAuthModal({ isOpen, onClose, onSuccess }: StudentAuthModalProps) {
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
-  const [step, setStep] = useState<"email" | "password" | "otp" | "register" | "reset_password">("email")
+  const [step, setStep] = useState<"email" | "password" | "register" | "reset_password">("email")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -24,7 +25,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [hashedOTP, setHashedOTP] = useState("")
+  const app = useStackApp()
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,14 +34,9 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
 
     try {
       if (mode === "forgot") {
-        // Password reset flow
-        const result = await StudentAuthService.sendRealOTP(email, "password_reset")
-        if (result.success) {
-          setHashedOTP(result.hashedOTP!)
-          setStep("otp")
-        } else {
-          setError(result.error!)
-        }
+        // Delegate to StackAuth's built-in reset flow via login page
+        window.location.href = "/auth/login?reset=1"
+        return
       } else {
         // Login/Register flow
         const existingList = await StudentAuthService.getStudents()
@@ -58,14 +54,8 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
             setError("No account found with this email. Please register first.")
             return
           }
-                  // Send OTP for registration
-        const result = await StudentAuthService.sendRealOTP(email, "registration")
-          if (result.success) {
-            setHashedOTP(result.hashedOTP!)
-            setStep("otp")
-          } else {
-            setError(result.error!)
-          }
+          // Proceed directly to registration step (StackAuth will send verification email after sign-up)
+          setStep("register")
         }
       }
     } catch (err) {
@@ -96,29 +86,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
     }
   }
 
-  const handleOTPSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
-    try {
-      const result = await StudentAuthService.verifyOTP(email, otp)
-      if (result.success) {
-        if (mode === "forgot") {
-          setStep("reset_password")
-        } else {
-          // Registration flow
-          setStep("register")
-        }
-      } else {
-        setError(result.error!)
-      }
-    } catch (err) {
-      setError("Failed to verify OTP. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // OTP step removed in favor of StackAuth's email verification
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -138,8 +106,15 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
     }
 
     try {
-      const student = await StudentAuthService.registerStudent(email, name, password)
-      onSuccess(student)
+      // Use StackAuth to sign up and trigger email verification
+      const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      await app.signUpWithCredential({
+        email,
+        password,
+        verificationCallbackUrl: `${callbackBase}/auth/check-email`
+      })
+      // Inform user to verify email
+      alert("Account created. Please check your email to verify your account.")
       onClose()
       resetForm()
     } catch (err) {
@@ -193,7 +168,6 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
     setOTP("")
     setName("")
     setError("")
-    setHashedOTP("")
     setShowPassword(false)
     setShowConfirmPassword(false)
   }
@@ -353,51 +327,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
             </form>
           )}
 
-          {/* OTP Step */}
-          {step === "otp" && (
-            <form onSubmit={handleOTPSubmit} className="space-y-4">
-              <div className="text-center mb-4">
-                <Shield className="w-12 h-12 text-blue-600 mx-auto mb-2" />
-                <h3 className="font-semibold">Check Your Email</h3>
-                <p className="text-sm text-gray-600">
-                  We sent a 6-digit code to <strong>{email}</strong>
-                </p>
-                {/* 🔥 REAL EMAIL INDICATOR */}
-                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
-                  ✅ Real email sent! Check your inbox (and spam folder)
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Verification Code</label>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOTP(e.target.value.replace(/\D/g, ""))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-mono"
-                  placeholder="123456"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || otp.length !== 6}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
-              >
-                {isLoading ? "Verifying..." : "Verify Code"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStep("email")}
-                className="w-full text-gray-600 hover:text-gray-800 text-sm"
-              >
-                Use different email
-              </button>
-            </form>
-          )}
+          {/* OTP step removed; StackAuth sends verification email after sign-up */}
 
           {/* Register Step */}
           {step === "register" && (
