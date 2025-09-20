@@ -68,7 +68,7 @@ async function seedProvidersFromCSV() {
   for (const provider of results) {
     const providerName = provider["PROPERTY NAME / EIENDOM NAAM"] || "Unknown Provider"
     const contactPerson = provider["CONTACT PERSON"] || "N/A"
-    const email = provider["E-MAIL"] || `provider-${Date.now()}@example.com`
+    const email = provider["E-MAIL"] || `provider-${Date.now()}@varsitynest.space`
 
     // Create a user for the provider
     const hashedPassword = await bcrypt.hash("provider123", 10)
@@ -135,3 +135,4 @@ async function main() {
 }
 
 main()
+

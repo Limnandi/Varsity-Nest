@@ -127,7 +127,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isPending}
                   className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="you@example.com"
+                  placeholder="you@varsitynest.space"
                 />
               </div>
             </div>
@@ -221,3 +221,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

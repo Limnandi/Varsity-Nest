@@ -136,7 +136,7 @@ export default function Contact() {
                     value={formData.email}
                     onChange={handleChange}
                     className="w-full px-4 py-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                    placeholder="your.email@example.com"
+                    placeholder="your.email@varsitynest.space"
                   />
                 </div>
               </div>
@@ -216,3 +216,4 @@ export default function Contact() {
     </div>
   )
 }
+
