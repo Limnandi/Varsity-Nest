@@ -68,7 +68,7 @@ export class PaymentAuditService {
         .where(eq(schema.paymentAuditLogs.transactionId, transactionId))
         .orderBy(desc(schema.paymentAuditLogs.createdAt))
 
-      return logs.map(log => ({
+      return logs.map((log: typeof schema.paymentAuditLogs.$inferSelect) => ({
         id: log.id,
         transactionId: log.transactionId,
         action: log.action as PaymentAuditLog['action'],
@@ -117,11 +117,11 @@ export class PaymentAuditService {
 
       const summary = {
         totalTransactions: transactions.length,
-        successfulPayments: transactions.filter(t => t.status === 'completed').length,
-        failedPayments: transactions.filter(t => t.status === 'failed').length,
+        successfulPayments: transactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'completed').length,
+        failedPayments: transactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'failed').length,
         totalAmount: transactions
-          .filter(t => t.status === 'completed')
-          .reduce((sum, t) => sum + Number(t.amount), 0),
+          .filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'completed')
+          .reduce((sum: number, t: typeof schema.paymentTransactions.$inferSelect) => sum + Number(t.amount), 0),
         lastPaymentDate: transactions.length > 0 ? transactions[0].createdAt : null,
       }
 
@@ -161,12 +161,12 @@ export class PaymentAuditService {
         .where(gte(schema.paymentTransactions.createdAt, startDate))
         .orderBy(desc(schema.paymentTransactions.createdAt))
 
-      const successfulTransactions = transactions.filter(t => t.status === 'completed')
-      const totalRevenue = successfulTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
+      const successfulTransactions = transactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'completed')
+      const totalRevenue = successfulTransactions.reduce((sum: number, t: typeof schema.paymentTransactions.$inferSelect) => sum + Number(t.amount), 0)
 
       // Group by provider
       const providerStats = new Map<string, { count: number; amount: number }>()
-      successfulTransactions.forEach(t => {
+      successfulTransactions.forEach((t: typeof schema.paymentTransactions.$inferSelect) => {
         if (t.providerId) {
           const existing = providerStats.get(t.providerId) || { count: 0, amount: 0 }
           providerStats.set(t.providerId, {
@@ -188,8 +188,8 @@ export class PaymentAuditService {
       return {
         totalTransactions: transactions.length,
         successfulPayments: successfulTransactions.length,
-        failedPayments: transactions.filter(t => t.status === 'failed').length,
-        pendingPayments: transactions.filter(t => t.status === 'pending').length,
+        failedPayments: transactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'failed').length,
+        pendingPayments: transactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'pending').length,
         totalRevenue,
         averageTransactionValue: successfulTransactions.length > 0 
           ? totalRevenue / successfulTransactions.length 
@@ -235,15 +235,15 @@ export class PaymentAuditService {
       }
 
       // Check for failed payment patterns
-      const failedTransactions = recentTransactions.filter(t => t.status === 'failed')
+      const failedTransactions = recentTransactions.filter((t: typeof schema.paymentTransactions.$inferSelect) => t.status === 'failed')
       if (failedTransactions.length > 3) {
         reasons.push('Multiple failed payment attempts')
         riskScore += 25
       }
 
       // Check for unusual amounts
-      const amounts = recentTransactions.map(t => Number(t.amount))
-      const avgAmount = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length
+      const amounts = recentTransactions.map((t: typeof schema.paymentTransactions.$inferSelect) => Number(t.amount))
+      const avgAmount = amounts.reduce((sum: number, amount: number) => sum + amount, 0) / amounts.length
       const maxAmount = Math.max(...amounts)
       if (maxAmount > avgAmount * 3) {
         reasons.push('Unusually high payment amount')
@@ -251,7 +251,7 @@ export class PaymentAuditService {
       }
 
       // Check for duplicate payment IDs
-      const paymentIds = recentTransactions.map(t => t.mPaymentId)
+      const paymentIds = recentTransactions.map((t: typeof schema.paymentTransactions.$inferSelect) => t.mPaymentId)
       const uniqueIds = new Set(paymentIds)
       if (paymentIds.length !== uniqueIds.size) {
         reasons.push('Duplicate payment IDs detected')
