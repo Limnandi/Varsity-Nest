@@ -108,8 +108,8 @@ export class ErrorLoggingService {
       // Track error frequency for alerting
       this.trackErrorFrequency(errorMessage, severity)
 
-      // Log to console in development
-      if ((await import('@/lib/env')).env.NODE_ENV === 'development') {
+      // Log to console in development without importing server-only env on client
+      if (process.env.NODE_ENV === 'development') {
         console.error(`🚨 [${severity.toUpperCase()}] ${category}:`, {
           errorId,
           message: errorMessage,
