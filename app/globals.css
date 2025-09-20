@@ -4,10 +4,7 @@
 @source "../components/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  color: #111827;
-}
+/* Use Next font and Tailwind variables defined below; avoid overriding here */
 
 @layer utilities {
   .text-balance {
