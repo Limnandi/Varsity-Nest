@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const pathname = usePathname()
+  const pathname = usePathname() || ""
 
   // Don't render main layout for dashboard/admin/auth pages
   const isDashboardArea =

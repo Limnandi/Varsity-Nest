@@ -15,10 +15,12 @@ export default function Navbar() {
     showNonAccredited: true,
   })
 
-  const pathname = usePathname()
+  const pathname = usePathname() || ""
   const router = useRouter()
   const isDashboardArea =
-    pathname.startsWith("/admin") || pathname.startsWith("/provider") || pathname.startsWith("/auth")
+    (pathname?.startsWith("/admin") ?? false) ||
+    (pathname?.startsWith("/provider") ?? false) ||
+    (pathname?.startsWith("/auth") ?? false)
 
   useEffect(() => {
     // Fetch admin settings from API
