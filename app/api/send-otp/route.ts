@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { env } from "@/lib/env"
 import { Sentry } from "@/lib/sentry"
+import { redis } from "@/lib/redis"
 
 const resend = new Resend(env.RESEND_API_KEY)
 
@@ -101,11 +102,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to send email" }, { status: 500 })
     }
 
-    return NextResponse.json({
-      success: true,
-      messageId: data?.id,
-      message: "Email sent successfully!",
-    })
+    // Persist OTP in Redis for server-side verification (10 minutes TTL)
+    try {
+      await redis.setex(`otp:registration:${email}`, 600, String(otp))
+    } catch (e) {
+      Sentry.captureException(e)
+      // Do not fail email send if cache write fails
+    }
+
+    return NextResponse.json({ success: true, messageId: data?.id })
   } catch (error) {
     Sentry.captureException(error)
     console.error("Send OTP error:", error)

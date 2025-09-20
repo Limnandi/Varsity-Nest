@@ -171,17 +171,6 @@ export class StudentAuthService {
       const result = await response.json()
 
       if (result.success) {
-        // Store OTP verification data
-        const verification: OTPVerification = {
-          email,
-          otp: hashedOTP,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
-          attempts: 0,
-          type,
-        }
-
-        localStorage.setItem(`otp_${email}`, JSON.stringify(verification))
-
         return { success: true, hashedOTP }
       } else {
         return { success: false, error: result.error || "Failed to send email" }
@@ -194,35 +183,16 @@ export class StudentAuthService {
 
 
   static async verifyOTP(email: string, inputOTP: string): Promise<{ success: boolean; error?: string }> {
-    const stored = localStorage.getItem(`otp_${email}`)
-    if (!stored) {
-      return { success: false, error: "No OTP found for this email" }
+    // Server-side verification
+    const res = await fetch('/api/auth/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp: inputOTP }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || 'OTP verification failed' }
     }
-
-    const verification: OTPVerification = JSON.parse(stored)
-
-    // Check expiry
-    if (new Date() > new Date(verification.expiresAt)) {
-      localStorage.removeItem(`otp_${email}`)
-      return { success: false, error: "OTP has expired" }
-    }
-
-    // Check attempts
-    if (verification.attempts >= 3) {
-      localStorage.removeItem(`otp_${email}`)
-      return { success: false, error: "Too many failed attempts" }
-    }
-
-    // Verify OTP
-    const hashedInput = this.hashOTP(inputOTP)
-    if (hashedInput !== verification.otp) {
-      verification.attempts++
-      localStorage.setItem(`otp_${email}`, JSON.stringify(verification))
-      return { success: false, error: "Invalid OTP" }
-    }
-
-    // Success - clean up
-    localStorage.removeItem(`otp_${email}`)
     return { success: true }
   }
 

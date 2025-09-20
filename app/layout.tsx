@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import Layout from "@/components/Layout"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { ReactQueryProvider } from "@/lib/query-client"
 import { StackProvider } from "@stackframe/stack"
 import { getStackServerApp } from "@/lib/stack"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
@@ -30,9 +31,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <ErrorBoundary component="root_layout">
           <StackProvider app={getStackServerApp() as any}>
-            <TooltipProvider>
-              <Layout>{children}</Layout>
-            </TooltipProvider>
+            <ReactQueryProvider>
+              <TooltipProvider>
+                <Layout>{children}</Layout>
+              </TooltipProvider>
+            </ReactQueryProvider>
           </StackProvider>
         </ErrorBoundary>
       </body>
