@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/lib/env'
+import { Sentry } from '@/lib/sentry'
 
 export interface SecurityConfig {
   cors: {
@@ -131,6 +132,16 @@ export class SecurityMiddleware {
     }
 
     if (clientData.count >= max) {
+      Sentry.captureMessage('API rate limit exceeded', {
+        level: 'warning',
+        tags: { component: 'security_middleware' },
+        extra: {
+          clientId,
+          route: request.nextUrl.pathname,
+          method: request.method,
+          retryAfter: Math.ceil((clientData.resetTime - now) / 1000)
+        }
+      })
       return NextResponse.json(
         { 
           success: false,
@@ -159,6 +170,16 @@ export class SecurityMiddleware {
     const contentLength = request.headers.get('content-length')
     
     if (contentLength && parseInt(contentLength) > config.requestSize.maxSize) {
+      Sentry.captureMessage('Request too large', {
+        level: 'warning',
+        tags: { component: 'security_middleware' },
+        extra: {
+          route: request.nextUrl.pathname,
+          method: request.method,
+          contentLength: Number(contentLength),
+          maxSize: config.requestSize.maxSize
+        }
+      })
       return NextResponse.json(
         {
           success: false,

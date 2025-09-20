@@ -3,6 +3,8 @@ import { SecurityMiddleware, SecurityConfig, defaultSecurityConfig } from './sec
 import { ApiVersioning } from './api-versioning'
 import { ApiErrorResponseBuilder } from './api-error-response'
 import { createSecurityMiddleware } from './validation-middleware'
+import { redis } from '@/lib/redis'
+import { Sentry } from '@/lib/sentry'
 
 export interface ApiMiddlewareOptions {
   security?: Partial<SecurityConfig>
@@ -94,6 +96,9 @@ export class ApiMiddleware {
   ) {
     return async (...args: T): Promise<NextResponse> => {
       const request = args[0] as NextRequest
+      const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+      const url = new URL(request.url)
+      const routeKey = `${request.method}:${url.pathname}`
       
       // Apply middleware checks
       const middlewareResponse = await this.apply(request, options)
@@ -102,10 +107,13 @@ export class ApiMiddleware {
       try {
         // Execute handler with timeout
         const timeout = options.timeout || defaultSecurityConfig.timeout.apiTimeout
-        const response = await SecurityMiddleware.withTimeout(
-          handler(...args),
-          timeout
-        )
+        const response = await SecurityMiddleware.withTimeout(handler(...args), timeout)
+
+        // Timing
+        const finishedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+        const durationMs = Math.round((finishedAt as number) - (startedAt as number))
+        response.headers.set('Server-Timing', `total;dur=${durationMs}`)
+        response.headers.set('X-Response-Time', `${durationMs}ms`)
 
         // Apply security headers
         const securityConfig = options.security ? { ...defaultSecurityConfig, ...options.security } : defaultSecurityConfig
@@ -113,7 +121,33 @@ export class ApiMiddleware {
         
         // Apply CORS if enabled
         if (options.cors !== false) {
-          return SecurityMiddleware.applyCORS(securedResponse, securityConfig)
+          const finalResponse = SecurityMiddleware.applyCORS(securedResponse, securityConfig)
+
+          // Fire-and-forget counters (best-effort) - no blocking
+          ;(async () => {
+            try {
+              const status = finalResponse.status
+              const minuteBucket = new Date().toISOString().slice(0, 16) // YYYY-MM-DDTHH:MM
+              await redis.incr(`metrics:req:count`)
+              await redis.incr(`metrics:req:route:${routeKey}`)
+              await redis.incr(`metrics:req:status:${status}`)
+              await redis.incr(`metrics:req:minute:${minuteBucket}`)
+              await redis.setex(`metrics:req:last:${routeKey}`, 300, String(Date.now()))
+            } catch (e) {
+              // swallow metrics errors; never block request
+            }
+          })()
+
+          // Log slow handlers
+          if (durationMs > 1000) {
+            Sentry.captureMessage('Slow API handler detected', {
+              level: 'warning',
+              tags: { component: 'api_middleware' },
+              extra: { routeKey, durationMs }
+            })
+          }
+
+          return finalResponse
         }
 
         return securedResponse
@@ -126,7 +160,19 @@ export class ApiMiddleware {
 
         // Apply security headers to error response
         const securityConfig = options.security ? { ...defaultSecurityConfig, ...options.security } : defaultSecurityConfig
-        return SecurityMiddleware.applySecurityHeaders(errorResponse, securityConfig)
+        const finalError = SecurityMiddleware.applySecurityHeaders(errorResponse, securityConfig)
+
+        // Increment error counter best-effort
+        ;(async () => {
+          try {
+            const url = new URL(request.url)
+            const routeKey = `${request.method}:${url.pathname}`
+            await redis.incr(`metrics:req:errors`)
+            await redis.incr(`metrics:req:errors:${routeKey}`)
+          } catch {}
+        })()
+
+        return finalError
       }
     }
   }
