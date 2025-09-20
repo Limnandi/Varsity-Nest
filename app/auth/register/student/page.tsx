@@ -29,10 +29,11 @@ export default function StudentRegistrationPage() {
         throw new Error('Passwords do not match')
       }
 
+      const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       await app.signUpWithCredential({ 
         email, 
         password,
-        verificationCallbackUrl: `${(await import('@/lib/env')).env.APP_URL}/auth/check-email`
+        verificationCallbackUrl: `${callbackBase}/auth/check-email`
       })
       // Set Stack display name after signup
       try {
