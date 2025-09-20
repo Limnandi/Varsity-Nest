@@ -10,6 +10,7 @@ import { eq, count } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getSession } from "@/lib/stackauth"
 import { Sentry } from "@/lib/sentry"
+import { env } from "@/lib/env"
 
 export async function POST(request: Request) {
   try {
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     const { amount, itemName, customData } = validationResult.data
 
     // Validate PayFast configuration
-    if (!process.env.PAYFAST_MERCHANT_ID || !process.env.PAYFAST_MERCHANT_KEY || !process.env.PAYFAST_PASSPHRASE) {
+    if (!env.PAYFAST_MERCHANT_ID || !env.PAYFAST_MERCHANT_KEY || !env.PAYFAST_PASSPHRASE) {
       Sentry.captureMessage('PayFast configuration missing', {
         level: 'error',
         tags: { component: 'payment-initiation' }

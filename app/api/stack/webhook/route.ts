@@ -14,7 +14,8 @@ function verifySignature(rawBody: string, secret: string, signature: string | nu
 
 export async function POST(request: NextRequest) {
   try {
-    const secret = process.env.STACK_WEBHOOK_SECRET || ''
+    const { env } = await import('@/lib/env')
+    const secret = process.env.STACK_WEBHOOK_SECRET || env.STACK_SECRET_SERVER_KEY || ''
     if (!secret) {
       return new Response('MISSING_SECRET', { status: 500, headers: { 'Content-Type': 'text/plain' } })
     }

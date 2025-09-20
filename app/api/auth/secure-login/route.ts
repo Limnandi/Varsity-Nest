@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('varsity-nest-session', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: (await import('@/lib/env')).env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: '/'

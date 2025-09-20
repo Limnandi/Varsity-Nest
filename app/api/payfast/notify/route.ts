@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate merchant ID
-    if (data.merchant_id !== process.env.PAYFAST_MERCHANT_ID) {
+    const { env } = await import('@/lib/env')
+    if (data.merchant_id !== env.PAYFAST_MERCHANT_ID) {
       Sentry.captureMessage('Merchant ID mismatch in PayFast webhook', {
         level: 'error',
         tags: { component: 'payfast-webhook' },
