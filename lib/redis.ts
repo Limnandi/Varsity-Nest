@@ -10,8 +10,8 @@ export const redis = new Redis({
 // OTP Management
 export async function storeOTP(email: string, otp: string, type: "registration" | "password_reset" = "registration") {
   const key = `otp:${type}:${email}`
-  await redis.setex(key, 300, otp) // 5 minutes expiry
-  await redis.setex(`${key}:attempts`, 300, "0") // Track attempts
+  await redis.set(key, otp, { ex: 300 }) // 5 minutes expiry
+  await redis.set(`${key}:attempts`, "0", { ex: 300 }) // Track attempts
 }
 
 export async function getOTP(
@@ -19,7 +19,8 @@ export async function getOTP(
   type: "registration" | "password_reset" = "registration",
 ): Promise<string | null> {
   const key = `otp:${type}:${email}`
-  return await redis.get(key)
+  const value = await redis.get(key) as string | null
+  return value
 }
 
 export async function deleteOTP(email: string, type: "registration" | "password_reset" = "registration") {
@@ -34,8 +35,13 @@ export async function incrementOTPAttempts(
 ): Promise<number> {
   const key = `otp:${type}:${email}:attempts`
   const attempts = await redis.incr(key)
-  await redis.expire(key, 300) // Reset expiry
-  return attempts
+  // Reset expiry using expire
+  try {
+    await redis.expire(key, 300) // Reset expiry
+  } catch (e) {
+    // ignore if expire not supported
+  }
+  return Number(attempts ?? 0)
 }
 
 export async function getOTPAttempts(
@@ -43,6 +49,6 @@ export async function getOTPAttempts(
   type: "registration" | "password_reset" = "registration",
 ): Promise<number> {
   const key = `otp:${type}:${email}:attempts`
-  const attempts = await redis.get(key)
+  const attempts = await redis.get(key) as string | null
   return attempts ? Number.parseInt(attempts as string) : 0
 }
