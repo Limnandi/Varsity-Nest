@@ -1,6 +1,6 @@
 import { FileUploadConfig, FileUploadAudit, FileQuarantine } from "@/lib/schemas/file-upload"
 import { FileValidationService } from "./file-validation"
-import { Sentry } from "@/lib/sentry"
+import { captureException, captureMessage } from '@/lib/logging/config'
 import { secureDb } from "@/lib/database-secure"
 import { eq, and, gte, lte } from "drizzle-orm"
 import * as schema from "@/lib/schema"
@@ -114,10 +114,7 @@ export class FileSecurityService {
         shouldQuarantine
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-security' },
-        extra: { fileName: file.name, fileSize: file.size, userId }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-security', fileName: file.name, fileSize: file.size, userId })
       
       errors.push("File validation failed due to internal error")
       return { isValid: false, errors, warnings, riskScore: 100, threats: ["Validation error"], shouldQuarantine: true }
@@ -167,10 +164,7 @@ export class FileSecurityService {
 
       return quarantinedFileName
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-security' },
-        extra: { fileName: file.name, userId, reason }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-security', fileName: file.name, userId, reason })
       throw new Error('Failed to quarantine file')
     }
   }
@@ -212,17 +206,14 @@ export class FileSecurityService {
         scanResult: isClean ? "Clean" : `Threats detected: ${threats.join(', ')}`
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-security' },
-        extra: { fileName: file.name, fileSize: file.size }
-      })
-      
-      return {
-        isClean: false,
-        threats: ["Scan failed"],
-        scanResult: "Scan failed due to error"
-      }
-    }
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-security', fileName: file.name, fileSize: file.size })
+       
+       return {
+         isClean: false,
+         threats: ["Scan failed"],
+         scanResult: "Scan failed due to error"
+       }
+     }
   }
 
   /**
@@ -267,24 +258,10 @@ export class FileSecurityService {
 
       // Log to Sentry for high-risk files
       if (securityInfo.riskScore > 70) {
-        Sentry.captureMessage('High-risk file upload attempt', {
-          level: 'warning',
-          tags: { component: 'file-security' },
-          extra: {
-            fileName: file.name,
-            fileSize: file.size,
-            riskScore: securityInfo.riskScore,
-            threats: securityInfo.threats,
-            userId,
-            ipAddress
-          }
-        })
+        captureMessage('High-risk file upload attempt', { level: 'warning', component: 'file-security', fileName: file.name, fileSize: file.size, riskScore: securityInfo.riskScore, threats: securityInfo.threats, userId, ipAddress })
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-security' },
-        extra: { fileName: file.name, userId }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-security', fileName: file.name, userId })
     }
   }
 
@@ -332,12 +309,9 @@ export class FileSecurityService {
         averageRiskScore
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-security' },
-        extra: { userId, days }
-      })
-      throw error
-    }
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-security', userId, days })
+       throw error
+     }
   }
 
   /**
@@ -380,10 +354,8 @@ export class FileSecurityService {
 
       return { cleaned, errors }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-security' }
-      })
-      throw error
-    }
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-security' })
+       throw error
+     }
   }
 }
