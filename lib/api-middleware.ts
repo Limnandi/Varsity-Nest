@@ -4,7 +4,7 @@ import { ApiVersioning } from './api-versioning'
 import { ApiErrorResponseBuilder } from './api-error-response'
 import { createSecurityMiddleware } from './validation-middleware'
 import { redis } from '@/lib/redis'
-import { Sentry } from '@/lib/sentry'
+import { captureMessage } from '@/lib/logging/config'
 
 export interface ApiMiddlewareOptions {
   security?: Partial<SecurityConfig>
@@ -140,11 +140,7 @@ export class ApiMiddleware {
 
           // Log slow handlers
           if (durationMs > 1000) {
-            Sentry.captureMessage('Slow API handler detected', {
-              level: 'warning',
-              tags: { component: 'api_middleware' },
-              extra: { routeKey, durationMs }
-            })
+            captureMessage('Slow API handler detected', { level: 'warning', component: 'api_middleware', routeKey, durationMs })
           }
 
           return finalResponse

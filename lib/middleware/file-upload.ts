@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { FileUploadConfig, FILE_UPLOAD_LIMITS } from "@/lib/schemas/file-upload"
 import { FileSecurityService } from "@/lib/services/file-security"
 import { FileValidationService } from "@/lib/services/file-validation"
-import { Sentry } from "@/lib/sentry"
+import { captureException } from '@/lib/logging/config'
 
 export interface FileUploadMiddlewareOptions {
   purpose: 'accommodation' | 'document' | 'profile' | 'accreditation'
@@ -107,10 +107,7 @@ export class FileUploadMiddleware {
           // File passed all security checks
           validFiles.push(file)
         } catch (fileError) {
-          Sentry.captureException(fileError, {
-            tags: { component: 'file-upload-middleware' },
-            extra: { fileName: file.name, fileSize: file.size }
-          })
+          captureException(fileError instanceof Error ? fileError : new Error(String(fileError)), { component: 'file-upload-middleware', fileName: file?.name, fileSize: file?.size })
           errors.push(`${file.name}: File processing failed`)
         }
       }
@@ -121,10 +118,8 @@ export class FileUploadMiddleware {
         warnings,
         quarantinedFiles
       }
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-upload-middleware' }
-      })
+    } catch (error: unknown) {
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-upload-middleware' })
       return {
         files: [],
         errors: ['File upload processing failed'],
@@ -189,7 +184,7 @@ export class FileUploadMiddleware {
         riskScore: securityResult.riskScore
       }
     } catch (error) {
-      Sentry.captureException(error, {
+      captureException(error, {
         tags: { component: 'file-upload-middleware' },
         extra: { fileName: file.name, purpose, userId }
       })
