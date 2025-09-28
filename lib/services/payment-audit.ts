@@ -2,7 +2,7 @@ import { PaymentAuditLog, PaymentTransaction } from "@/lib/schemas/payment"
 import { secureDb } from "@/lib/database-secure"
 import { eq, desc, and, gte, lte } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { Sentry } from "@/lib/sentry"
+import { captureException, captureMessage } from '@/lib/logging/config'
 
 export class PaymentAuditService {
   /**
@@ -42,17 +42,10 @@ export class PaymentAuditService {
 
       // Also log to Sentry for critical events
       if (['failed', 'cancelled'].includes(action)) {
-        Sentry.captureMessage(`Payment ${action}: ${transactionId}`, {
-          level: 'warning',
-          tags: { component: 'payment-audit', action },
-          extra: { transactionId, ...details }
-        })
+        captureMessage(`Payment ${action}: ${transactionId}`, { level: 'warning', component: 'payment-audit', action, transactionId, ...details })
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-audit' },
-        extra: { action, transactionId, details }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-audit', action, transactionId, details })
       throw error
     }
   }
@@ -82,10 +75,7 @@ export class PaymentAuditService {
         createdAt: log.createdAt,
       }))
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-audit' },
-        extra: { transactionId }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-audit', transactionId })
       throw error
     }
   }
@@ -127,10 +117,7 @@ export class PaymentAuditService {
 
       return summary
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-audit' },
-        extra: { providerId, days }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-audit', providerId, days })
       throw error
     }
   }
@@ -197,10 +184,7 @@ export class PaymentAuditService {
         topProviders,
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-audit' },
-        extra: { days }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-audit', days })
       throw error
     }
   }
@@ -264,10 +248,7 @@ export class PaymentAuditService {
         riskScore: Math.min(riskScore, 100)
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-audit' },
-        extra: { providerId }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-audit', providerId })
       throw error
     }
   }
