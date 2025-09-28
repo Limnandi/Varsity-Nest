@@ -1,6 +1,6 @@
 import crypto from "crypto"
 import { PayFastWebhook, PaymentSecurity } from "@/lib/schemas/payment"
-import { Sentry } from "@/lib/sentry"
+import { captureException, captureMessage } from '@/lib/logging/config'
 import { env } from "@/lib/env"
 
 export class PaymentSecurityService {
@@ -119,10 +119,7 @@ export class PaymentSecurityService {
         Buffer.from(signature, 'hex')
       )
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-security' },
-        extra: { action: 'signature-verification' }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'signature-verification', component: 'payment-security' })
       return false
     }
   }
@@ -135,10 +132,7 @@ export class PaymentSecurityService {
       // Check if IP is in PayFast ranges
       return this.PAYFAST_IP_RANGES.some(range => this.isIPInRange(ipAddress, range))
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-security' },
-        extra: { action: 'ip-validation', ipAddress }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'ip-validation', component: 'payment-security', ipAddress })
       return false
     }
   }
@@ -173,30 +167,19 @@ export class PaymentSecurityService {
       
       // Allow 5 minutes tolerance
       if (timeDiff > 5 * 60 * 1000) {
-        Sentry.captureMessage('Payment request timestamp too old', {
-          level: 'warning',
-          tags: { component: 'payment-security' },
-          extra: { timeDiff, ipAddress: security.ipAddress }
-        })
+        captureMessage('Payment request timestamp too old', { level: 'warning', component: 'payment-security', timeDiff, ipAddress: security.ipAddress })
         return false
       }
 
       // Validate merchant ID
       if (security.merchantId !== env.PAYFAST_MERCHANT_ID) {
-        Sentry.captureMessage('Invalid merchant ID in payment request', {
-          level: 'error',
-          tags: { component: 'payment-security' },
-          extra: { merchantId: security.merchantId, ipAddress: security.ipAddress }
-        })
+        captureMessage('Invalid merchant ID in payment request', { level: 'error', component: 'payment-security', merchantId: security.merchantId, ipAddress: security.ipAddress })
         return false
       }
 
       return true
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-security' },
-        extra: { action: 'security-validation' }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'security-validation', component: 'payment-security' })
       return false
     }
   }
