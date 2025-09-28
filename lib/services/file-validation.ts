@@ -1,5 +1,5 @@
-import { FileValidationResult, DANGEROUS_EXTENSIONS, SUSPICIOUS_PATTERNS } from "@/lib/schemas/file-upload"
-import { Sentry } from "@/lib/sentry"
+import { DANGEROUS_EXTENSIONS, SUSPICIOUS_PATTERNS } from "@/lib/schemas/file-upload"
+import { captureException } from '@/lib/logging/config'
 
 export class FileValidationService {
   /**
@@ -37,12 +37,9 @@ export class FileValidationService {
         isExecutable,
         hasMaliciousContent
       }
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'file-validation' },
-        extra: { fileName: file.name, fileSize: file.size }
-      })
-      throw new Error('Failed to validate file content')
+    } catch (err) {
+      captureException(err instanceof Error ? err : new Error(String(err)), { component: 'file-validation', fileName: file.name, fileSize: file.size })
+      throw new Error('File validation failed')
     }
   }
 
