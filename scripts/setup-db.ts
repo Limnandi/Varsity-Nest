@@ -14,11 +14,9 @@ function mapAccreditationStatus(status: string): string {
 }
 import path from "path"
 import csv from "csv-parser"
-import { fileURLToPath } from "url"
 import dotenv from "dotenv"
 
 // --- Configuration ---
-const __dirname = path.resolve()
 // Force load .env.local first to ensure variables are available
 const envPath = path.join(process.cwd(), ".env.local")
 const result = dotenv.config({ path: envPath })
