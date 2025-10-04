@@ -23,12 +23,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get revenue data for the specified period
+    // Calculate the start date in JavaScript instead of using INTERVAL with variable
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - days)
+    
     const revenueData = await query`
       SELECT 
         DATE_TRUNC('day', created_at) as date,
         COALESCE(SUM(amount), 0) as daily_revenue
       FROM payments 
-      WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE created_at >= ${startDate.toISOString()}::timestamp
         AND status = 'completed'
       GROUP BY DATE_TRUNC('day', created_at)
       ORDER BY date
