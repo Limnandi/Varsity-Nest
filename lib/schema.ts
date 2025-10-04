@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, numeric, text as textArray, integer, decimal, jsonb, varchar, check, bigint } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, boolean, integer, decimal, jsonb, varchar, bigint } from "drizzle-orm/pg-core"
 
 // Users table - matches actual database schema
 export const users = pgTable("users", {

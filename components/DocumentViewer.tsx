@@ -38,8 +38,8 @@ export function DocumentViewer({
   isOpen: boolean
   onClose: () => void
 }) {
-  const [numPages, setNumPages] = useState<number>()
-  const [pageNumber, setPageNumber] = useState<number>(1)
+  const [_numPages, setNumPages] = useState<number>()
+  const [pageNumber, _setPageNumber] = useState<number>(1)
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {

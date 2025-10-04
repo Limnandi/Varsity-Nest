@@ -13,8 +13,38 @@ export default function ProviderRegistrationPage() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
+  const [emailCheckMessage, setEmailCheckMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const app = useStackApp()
   const user = useUser({ or: 'return-null' })
+
+  // Check email availability with debounce
+  const checkEmailAvailability = async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailCheckMessage(null)
+      return
+    }
+
+    setIsCheckingEmail(true)
+    try {
+      const response = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`)
+      const data = await response.json()
+
+      if (data.available) {
+        setEmailCheckMessage({ type: 'success', message: '✓ Email is available' })
+      } else {
+        setEmailCheckMessage({ 
+          type: 'error', 
+          message: data.reason || 'Email already registered' 
+        })
+      }
+    } catch (error) {
+      console.error('Email check failed:', error)
+      setEmailCheckMessage(null)
+    } finally {
+      setIsCheckingEmail(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -33,6 +63,11 @@ export default function ProviderRegistrationPage() {
 
       if (password !== confirmPassword) {
         throw new Error('Passwords do not match')
+      }
+
+      // Check if email is available before proceeding
+      if (emailCheckMessage?.type === 'error') {
+        throw new Error('This email is already registered. Please use a different email or log in.')
       }
 
       // Only require documents if provider is accredited
@@ -70,13 +105,23 @@ export default function ProviderRegistrationPage() {
       })
       if (!resp.ok) {
         const j = await resp.json().catch(() => ({}))
-        throw new Error(j.error || 'Registration failed')
+        console.error('Registration error:', j)
+        const errorMsg = j.details ? `${j.error}: ${JSON.stringify(j.details)}` : (j.error || 'Registration failed')
+        throw new Error(errorMsg)
       }
 
       setState({ success: true, message: 'Account created. Check your email to verify.' })
     } catch (error: any) {
+      // Handle specific error messages
+      let errorMessage = error.message || 'Registration failed. Please try again.'
+      
+      // StackAuth duplicate email error
+      if (errorMessage.includes('already exists') || errorMessage.includes('already registered')) {
+        errorMessage = 'This email is already registered. Please log in or use a different email.'
+      }
+      
       setState({ 
-        error: error.message || 'Registration failed. Please try again.' 
+        error: errorMessage
       })
     } finally {
       setIsPending(false)
@@ -197,10 +242,20 @@ export default function ProviderRegistrationPage() {
                   type="email"
                   name="email"
                   required
+                  onBlur={(e) => checkEmailAvailability(e.target.value)}
+                  onChange={() => setEmailCheckMessage(null)}
                   className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="provider@varsitynest.space"
                 />
               </div>
+              {isCheckingEmail && (
+                <p className="text-sm text-neutral-400 mt-2">Checking email availability...</p>
+              )}
+              {emailCheckMessage && !isCheckingEmail && (
+                <p className={`text-sm mt-2 ${emailCheckMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                  {emailCheckMessage.message}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -215,10 +270,11 @@ export default function ProviderRegistrationPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Institution/Company</label>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Institution/Company *</label>
                 <input
                   type="text"
                   name="institution"
+                  required
                   className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                   placeholder="Your Company Name"
                 />

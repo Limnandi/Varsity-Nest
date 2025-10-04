@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUserFromRequest } from '@/lib/auth-server'
-import { uploadImage } from '@/lib/cloudinary'
-import { fetchAccommodationsByStatus, fetchAccommodationsByProvider, insertAccommodation } from '@/lib/repos/accommodations'
+import { fetchAccommodationsByProvider, insertAccommodation } from '@/lib/repos/accommodations'
 import { OptimizedAccommodationRepository } from '@/lib/database-optimized'
 import { searchSchema, accommodationCreateSchema, validateRequest } from '@/lib/validation-schemas'
-import { createSecurityMiddleware } from '@/lib/validation-middleware'
-import { ApiErrorResponseBuilder, ErrorCodes } from '@/lib/api-error-response'
-import { GlobalErrorHandler } from '@/lib/error-handler'
+import { ApiErrorResponseBuilder } from '@/lib/api-error-response'
 import { ApiMiddleware } from '@/lib/api-middleware'
 
 export const GET = ApiMiddleware.withMiddleware(

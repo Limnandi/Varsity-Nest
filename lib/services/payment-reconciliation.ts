@@ -2,7 +2,7 @@ import { PaymentReconciliation, PaymentTransaction } from "@/lib/schemas/payment
 import { secureDb } from "@/lib/database-secure"
 import { eq, and, gte, lte, desc } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { Sentry } from "@/lib/sentry"
+import { captureException } from '@/lib/logging/config'
 import { PaymentAuditService } from "./payment-audit"
 
 export class PaymentReconciliationService {
@@ -54,10 +54,7 @@ export class PaymentReconciliationService {
         reconciliationDate: new Date()
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-reconciliation' },
-        extra: { transactionId }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-reconciliation', transactionId })
       throw error
     }
   }
@@ -89,7 +86,7 @@ export class PaymentReconciliationService {
   private static generateReconciliationNotes(
     expectedAmount: number,
     actualAmount: number,
-    payfastData: any
+    _payfastData: any
   ): string {
     const amountDiff = Math.abs(expectedAmount - actualAmount)
     
@@ -131,10 +128,7 @@ export class PaymentReconciliationService {
         duplicateTransactions
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-reconciliation' },
-        extra: { providerId, amount }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-reconciliation', providerId, amount })
       throw error
     }
   }
@@ -180,19 +174,14 @@ export class PaymentReconciliationService {
             mismatched++
           }
         } catch (error) {
-          Sentry.captureException(error, {
-            tags: { component: 'payment-reconciliation' },
-            extra: { transactionId: transaction.id }
-          })
+          captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-reconciliation', transactionId: transaction.id })
           errors++
         }
       }
 
       return { reconciled, mismatched, errors }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-reconciliation' }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-reconciliation' })
       throw error
     }
   }
@@ -256,10 +245,7 @@ export class PaymentReconciliationService {
         discrepancies
       }
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { component: 'payment-reconciliation' },
-        extra: { startDate, endDate }
-      })
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-reconciliation', startDate, endDate })
       throw error
     }
   }

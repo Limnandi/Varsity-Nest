@@ -50,7 +50,7 @@ export default function ReportsPage() {
     }
   }
 
-  const getReviewAuthor = (reviewId: number): string => {
+  const getReviewAuthor = (_reviewId: number): string => {
     // This would normally fetch from existing reviews data
     // For demo, we'll return a placeholder
     return "Review Author"

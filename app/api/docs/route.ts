@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { ApiDocumentation } from '@/lib/api-documentation'
 import { ApiMiddleware } from '@/lib/api-middleware'
 

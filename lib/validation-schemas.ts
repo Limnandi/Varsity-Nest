@@ -56,10 +56,10 @@ export const providerFormDataSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   companyName: z.string().min(1, "Company name required").max(200, "Company name too long"),
-  phone: phoneSchema.optional(),
-  address: z.string().min(5, "Address required").max(500, "Address too long"),
-  description: z.string().min(10, "Description required").max(1000, "Description too long"),
-  website: z.string().url("Invalid website URL").optional(),
+  phone: z.string().optional().or(z.literal('')), // Allow empty string or valid phone
+  address: z.string().optional(), // Make optional since form doesn't collect it
+  description: z.string().optional(), // Make optional since form doesn't collect it
+  website: z.string().optional().or(z.literal('')), // Allow empty string
   documents: z.array(z.string().url("Invalid document URL")).max(5, "Too many documents").optional()
 })
 

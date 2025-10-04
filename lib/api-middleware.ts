@@ -4,7 +4,7 @@ import { ApiVersioning } from './api-versioning'
 import { ApiErrorResponseBuilder } from './api-error-response'
 import { createSecurityMiddleware } from './validation-middleware'
 import { redis } from '@/lib/redis'
-import { Sentry } from '@/lib/sentry'
+import { captureMessage } from '@/lib/logging/config'
 
 export interface ApiMiddlewareOptions {
   security?: Partial<SecurityConfig>
@@ -140,11 +140,7 @@ export class ApiMiddleware {
 
           // Log slow handlers
           if (durationMs > 1000) {
-            Sentry.captureMessage('Slow API handler detected', {
-              level: 'warning',
-              tags: { component: 'api_middleware' },
-              extra: { routeKey, durationMs }
-            })
+            captureMessage('Slow API handler detected', { level: 'warning', component: 'api_middleware', routeKey, durationMs })
           }
 
           return finalResponse
@@ -198,7 +194,7 @@ export class ApiMiddleware {
   static async createErrorResponse(
     error: Error | string,
     request: NextRequest,
-    status: number = 500,
+    _status: number = 500,
     context: Record<string, any> = {}
   ): Promise<NextResponse> {
     return await ApiErrorResponseBuilder.createErrorResponse(
@@ -211,7 +207,7 @@ export class ApiMiddleware {
   /**
    * Handle OPTIONS requests for CORS
    */
-  static handleCORS(request: NextRequest, config: SecurityConfig = defaultSecurityConfig): NextResponse {
+  static handleCORS(_request: NextRequest, config: SecurityConfig = defaultSecurityConfig): NextResponse {
     const response = new NextResponse(null, { status: 200 })
     return SecurityMiddleware.applyCORS(response, config)
   }
@@ -222,8 +218,8 @@ export class ApiMiddleware {
  */
 export function withApiMiddleware(options: ApiMiddlewareOptions = {}) {
   return function <T extends any[]>(
-    target: any,
-    propertyKey: string,
+    _target: any,
+    _propertyKey: string,
     descriptor: TypedPropertyDescriptor<(...args: T) => Promise<NextResponse>>
   ) {
     if (descriptor.value) {

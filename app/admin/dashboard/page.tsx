@@ -107,7 +107,7 @@ export default function AdminDashboard() {
     status: string
   }>>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [actionMessage, setActionMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
+  const [_actionMessage, setActionMessage] = useState<{type: 'success' | 'error', message: string} | null>(null)
   const [documentModalOpen, setDocumentModalOpen] = useState(false)
   const [currentDocuments, setCurrentDocuments] = useState<Array<{
     url: string

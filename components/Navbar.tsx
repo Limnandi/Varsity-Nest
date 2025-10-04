@@ -3,24 +3,16 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
-import { ChevronDown, Menu, X, LogOut, User, Building, Home, Phone } from "lucide-react"
+import { ChevronDown, Menu, X } from "lucide-react"
 
 export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [_isUserMenuOpen, _setIsUserMenuOpen] = useState(false)
   const [adminSettings, setAdminSettings] = useState({
     showProvisionallyAccredited: true,
     showNonAccredited: true,
   })
-
-  const pathname = usePathname() || ""
-  const router = useRouter()
-  const isDashboardArea =
-    (pathname?.startsWith("/admin") ?? false) ||
-    (pathname?.startsWith("/provider") ?? false) ||
-    (pathname?.startsWith("/auth") ?? false)
 
   useEffect(() => {
     // Fetch admin settings from API
@@ -58,15 +50,6 @@ export default function Navbar() {
       window.removeEventListener("adminSettingsUpdated", handleStorageChange)
     }
   }, [])
-
-  const handleLogout = async () => {
-    router.push('/auth/logout')
-  }
-
-  const getDashboardLink = () => {
-    // This function is no longer needed as authentication is removed
-    return "/"
-  }
 
   return (
     <nav className="relative z-40 bg-gradient-to-r from-[#02042b] to-[#040945] backdrop-blur-xl border-b border-white/10 shadow-2xl">

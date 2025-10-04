@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
 import { env } from "@/lib/env"
-import { eq, and, or, desc, asc, sql, count, sum, avg, max, min } from "drizzle-orm"
+import { eq, desc, count, sum, avg } from "drizzle-orm"
 import { z } from "zod"
 import { randomUUID } from "crypto"
 

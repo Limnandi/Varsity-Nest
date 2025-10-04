@@ -1,16 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getCurrentUser } from "@/lib/stackauth"
 import Link from "next/link"
 import DashboardLayout from "@/components/DashboardLayout"
-import { Building, Users, Star, TrendingUp, Calendar, DollarSign, CheckCircle, Clock, AlertTriangle } from "lucide-react"
+import { Building, Users, TrendingUp, DollarSign } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 
 // For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added missing isLoading state to fix undefined variable error
 
 export default function ProviderDashboard() {
-  const [isLoading, setIsLoading] = useState(true)
+  const [_isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     totalAccommodations: 0,
     activeBookings: 0,

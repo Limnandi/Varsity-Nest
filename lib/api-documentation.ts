@@ -96,7 +96,6 @@ export class ApiDocumentation {
    */
   static generateApiSpec(): any {
     const endpoints = this.getAllEndpoints()
-    const versions = Array.from(new Set(endpoints.map(ep => ep.version)))
 
     const spec = {
       api: {

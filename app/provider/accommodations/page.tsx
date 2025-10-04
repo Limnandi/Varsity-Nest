@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { getCurrentUser } from "@/lib/stackauth"
 import type { SessionUser } from "@/lib/stackauth"
 // Removed direct database import - using API endpoint instead
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
@@ -13,9 +12,9 @@ import { Building } from "lucide-react" // Import Building component
 import { formatZar } from "@/lib/utils"
 
 export default function ProviderAccommodations() {
-  const [user, setUser] = useState<SessionUser | null>(null)
+  const [_user, setUser] = useState<SessionUser | null>(null)
   const [userAccommodations, setUserAccommodations] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [_isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadUser() {

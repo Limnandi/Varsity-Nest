@@ -37,7 +37,7 @@ export default function AuthGuard({
   fallback 
 }: AuthGuardProps) {
   const [authorized, setAuthorized] = useState(false)
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const [_userRole, setUserRole] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
@@ -48,7 +48,17 @@ export default function AuthGuard({
         const response = await fetch('/api/auth/session')
         
         if (response.ok) {
-          const userSession: UserSession = await response.json()
+          const result = await response.json()
+          
+          // Check if response has the expected structure
+          if (!result.success || !result.data) {
+            setAuthorized(false)
+            setIsLoading(false)
+            router.push('/auth/login')
+            return
+          }
+          
+          const userSession: UserSession = result.data
           setUserRole(userSession.role)
           
           // Check if user is active

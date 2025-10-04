@@ -8,8 +8,21 @@ import { StackProvider } from "@stackframe/stack"
 import { getStackServerApp } from "@/lib/stack"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { GlobalErrorHandler } from "@/lib/error-handler"
+import { initializeLogging } from "@/lib/logging/config"
+import { performanceMonitor } from "@/lib/monitoring/performance"
 
 const inter = Inter({ subsets: ["latin"] })
+
+// Initialize monitoring and logging
+if (typeof window !== 'undefined') {
+  initializeLogging();
+  
+  // Report performance metrics every 5 minutes
+  setInterval(() => {
+    performanceMonitor.reportMetrics();
+    performanceMonitor.clearMetrics();
+  }, 5 * 60 * 1000);
+}
 
 export const metadata: Metadata = {
   title: "Varsity Nest - Student Accommodation",

@@ -7,7 +7,7 @@ if (typeof window !== 'undefined') {
 }
 
 import { secureDb } from "./database-secure"
-import { eq, and, desc, count, sum, sql } from "drizzle-orm"
+import { eq, desc, count, sum, sql } from "drizzle-orm"
 import * as schema from "./schema"
 
 export async function approveProvider(providerId: string) {
@@ -240,14 +240,6 @@ interface Activity {
   type: string
   message: string
   time: string
-}
-
-interface PendingApproval {
-  id: string
-  type: 'provider' | 'accommodation'
-  title: string
-  provider: string
-  status: 'pending'
 }
 
 export async function getRecentActivity(): Promise<Activity[]> {

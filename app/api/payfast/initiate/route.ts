@@ -9,7 +9,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq, count } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getSession } from "@/lib/stackauth"
-import { Sentry } from "@/lib/sentry"
+import { captureMessage, captureException } from '@/lib/logging/config'
 import { env } from "@/lib/env"
 
 export async function POST(request: Request) {
@@ -17,14 +17,7 @@ export async function POST(request: Request) {
     // Enhanced authentication and authorization
     const session = await getSession()
     if (!session || session.user.role !== 'provider') {
-      Sentry.captureMessage('Unauthorized payment initiation attempt', {
-        level: 'warning',
-        tags: { component: 'payment-initiation' },
-        extra: { 
-          userRole: session?.user?.role,
-          userId: session?.user?.id 
-        }
-      })
+      captureMessage('Unauthorized payment initiation attempt', { level: 'warning', component: 'payment-initiation', userRole: session?.user?.role, userId: session?.user?.id })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -33,14 +26,7 @@ export async function POST(request: Request) {
     const validationResult = PaymentInitiationSchema.safeParse(body)
     
     if (!validationResult.success) {
-      Sentry.captureMessage('Invalid payment initiation request', {
-        level: 'warning',
-        tags: { component: 'payment-initiation' },
-        extra: { 
-          errors: validationResult.error.issues,
-          userId: session.user.id 
-        }
-      })
+      captureMessage('Invalid payment initiation request', { level: 'warning', component: 'payment-initiation', errors: validationResult.error.issues, userId: session.user.id })
       return NextResponse.json({ 
         error: "Invalid request data", 
         details: validationResult.error.issues 
@@ -51,10 +37,7 @@ export async function POST(request: Request) {
 
     // Validate PayFast configuration
     if (!env.PAYFAST_MERCHANT_ID || !env.PAYFAST_MERCHANT_KEY || !env.PAYFAST_PASSPHRASE) {
-      Sentry.captureMessage('PayFast configuration missing', {
-        level: 'error',
-        tags: { component: 'payment-initiation' }
-      })
+      captureMessage('PayFast configuration missing', { level: 'error', component: 'payment-initiation' })
       return NextResponse.json({ error: "Payment system not configured" }, { status: 500 })
     }
 
@@ -71,11 +54,7 @@ export async function POST(request: Request) {
       .limit(1)
 
     if (!providerRow) {
-      Sentry.captureMessage('Provider account not found for payment initiation', {
-        level: 'error',
-        tags: { component: 'payment-initiation' },
-        extra: { userId: session.user.id }
-      })
+      captureMessage('Provider account not found for payment initiation', { level: 'error', component: 'payment-initiation', userId: session.user.id })
       return NextResponse.json({ error: "Provider account not found" }, { status: 403 })
     }
 
@@ -104,15 +83,7 @@ export async function POST(request: Request) {
     // Check for duplicate payments
     const duplicateCheck = await PaymentReconciliationService.detectDuplicatePayments(providerId, finalAmount)
     if (duplicateCheck.isDuplicate) {
-      Sentry.captureMessage('Duplicate payment attempt detected', {
-        level: 'warning',
-        tags: { component: 'payment-initiation' },
-        extra: { 
-          providerId, 
-          amount: finalAmount,
-          duplicateTransactions: duplicateCheck.duplicateTransactions.map(t => t.id)
-        }
-      })
+      captureMessage('Duplicate payment attempt detected', { level: 'warning', component: 'payment-initiation', providerId, amount: finalAmount, duplicateTransactions: duplicateCheck.duplicateTransactions.map(t => t.id) })
       return NextResponse.json({ 
         error: "Duplicate payment detected. Please wait before retrying." 
       }, { status: 409 })
@@ -175,24 +146,12 @@ export async function POST(request: Request) {
         })
       })
     } catch (dbError) {
-      Sentry.captureException(dbError, {
-        tags: { component: 'payment-initiation' },
-        extra: { providerId, amount: finalAmount, paymentId }
-      })
+      captureException(dbError instanceof Error ? dbError : new Error(String(dbError)), { component: 'payment-initiation', providerId, amount: finalAmount, paymentId })
       return NextResponse.json({ error: "Unable to create transaction" }, { status: 500 })
     }
 
     // Log successful payment initiation
-    Sentry.captureMessage('Payment initiated successfully', {
-      level: 'info',
-      tags: { component: 'payment-initiation' },
-      extra: { 
-        providerId, 
-        amount: finalAmount, 
-        paymentId,
-        itemName 
-      }
-    })
+    captureMessage('Payment initiated successfully', { level: 'info', component: 'payment-initiation', providerId, amount: finalAmount, paymentId, itemName })
 
     return NextResponse.json({ 
       paymentData,
@@ -200,16 +159,10 @@ export async function POST(request: Request) {
       amount: finalAmount
     })
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: 'payment-initiation' },
-      extra: { 
-        userId: 'unknown',
-        providerId: 'unknown'
-      }
-    })
-    console.error("PayFast initiate error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-initiation', userId: 'unknown', providerId: 'unknown' })
+     console.error("PayFast initiate error:", error)
+     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+   }
+ }
 
 

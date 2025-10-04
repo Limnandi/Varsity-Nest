@@ -1,4 +1,4 @@
-import { Sentry } from "@/lib/sentry"
+import { captureException } from '@/lib/logging/config'
 
 export enum ErrorSeverity {
   LOW = 'low',
@@ -87,19 +87,13 @@ export class ErrorLoggingService {
       }
 
       // Log to Sentry with enhanced context
-      Sentry.captureException(error, {
-        tags: {
-          errorId,
-          severity,
-          category,
-          component: context.component || 'unknown',
-          ...structuredError.tags.reduce((acc, tag) => ({ ...acc, [tag]: true }), {})
-        },
-        extra: {
+      captureException(typeof error === 'string' ? new Error(error) : error as Error, {
+        errorId,
+        severity,
+        category,
+        component: context.component || 'unknown',
+        context: {
           ...context,
-          errorId,
-          severity,
-          category,
           timestamp: structuredError.timestamp.toISOString()
         },
         level: this.mapSeverityToSentryLevel(severity)
@@ -249,7 +243,7 @@ export class ErrorLoggingService {
   static createUserFriendlyMessage(
     error: Error | string,
     category: ErrorCategory,
-    context: ErrorContext = {}
+    _context: ErrorContext = {}
   ): string {
     const errorMessage = typeof error === 'string' ? error : error.message
 
@@ -315,15 +309,15 @@ export class ErrorLoggingService {
     // Check if we've exceeded the threshold
     const threshold = this.errorThresholds.get(severity) || 10
     if (count + 1 >= threshold) {
-      Sentry.captureMessage(`Error frequency threshold exceeded: ${errorMessage}`, {
-        level: 'warning',
-        tags: {
-          errorMessage,
-          severity,
+      try {
+        captureException(new Error(`Error frequency threshold exceeded: ${errorMessage}`), {
           frequency: count + 1,
-          threshold
-        }
-      })
+          threshold,
+          severity
+        })
+      } catch (e) {
+        // ignore
+      }
     }
   }
 

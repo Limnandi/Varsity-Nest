@@ -3,7 +3,7 @@ import { env } from "@/lib/env"
 import { FileValidationService } from "@/lib/services/file-validation"
 import { FileSecurityService } from "@/lib/services/file-security"
 import { FileUploadMiddleware } from "@/lib/middleware/file-upload"
-import { Sentry } from "@/lib/sentry"
+import { captureException } from '@/lib/logging/config'
 
 // Design pattern: Facade
 cloudinary.config({
@@ -138,10 +138,7 @@ export async function uploadImageSecurely(
           },
           (error, result) => {
             if (error) {
-              Sentry.captureException(error, {
-                tags: { component: 'cloudinary-upload' },
-                extra: { fileName: file.name, userId, purpose }
-              })
+              captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-upload', fileName: file.name, userId, purpose })
               reject(error)
             } else {
               resolve(result)
@@ -157,10 +154,7 @@ export async function uploadImageSecurely(
       warnings: securityResult.warnings
     }
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: 'cloudinary-upload' },
-      extra: { fileName: file.name, userId: options.userId }
-    })
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-upload', fileName: file.name, userId: options.userId })
     return {
       success: false,
       error: "Upload failed due to internal error"
@@ -257,10 +251,7 @@ export async function uploadDocumentSecurely(
           },
           (error, result) => {
             if (error) {
-              Sentry.captureException(error, {
-                tags: { component: 'cloudinary-upload' },
-                extra: { fileName: file.name, userId, purpose }
-              })
+              captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-upload', fileName: file.name, userId, purpose })
               reject(error)
             } else {
               resolve(result)
@@ -276,10 +267,7 @@ export async function uploadDocumentSecurely(
       warnings: securityResult.warnings
     }
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: 'cloudinary-upload' },
-      extra: { fileName: file.name, userId: options.userId }
-    })
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-upload', fileName: file.name, userId: options.userId })
     return {
       success: false,
       error: "Document upload failed due to internal error"
@@ -311,10 +299,7 @@ export async function deleteImage(publicId: string) {
     const result = await cloudinary.uploader.destroy(publicId)
     return result
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: 'cloudinary-delete' },
-      extra: { publicId }
-    })
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete', publicId })
     throw new Error("Failed to delete image")
   }
 }
@@ -324,10 +309,7 @@ export async function deleteDocument(publicId: string) {
     const result = await cloudinary.uploader.destroy(publicId, { resource_type: "raw" })
     return result
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: 'cloudinary-delete' },
-      extra: { publicId }
-    })
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete', publicId })
     throw new Error("Failed to delete document")
   }
 }

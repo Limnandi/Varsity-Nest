@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { ApiMiddleware } from "@/lib/api-middleware"
 import { ApiErrorResponseBuilder } from "@/lib/api-error-response"

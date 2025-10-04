@@ -1,51 +1,9 @@
 "use client"
 
-import type React from "react"
 import Link from "next/link"
 import { ArrowRight, Home } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    companyName: "",
-    contactNumber: "",
-    address: "",
-    businessRegistration: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
-      return
-    }
-
-    try {
-      // Simulate registration
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // In real app, this would create the account
-      alert("Registration successful! Please check your email to verify your account.")
-      router.push("/auth/login")
-    } catch (err) {
-      setError("Registration failed. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8">

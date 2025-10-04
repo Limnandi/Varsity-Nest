@@ -14,7 +14,7 @@ const organizations = [
 ]
 
 export default function TrustedBy() {
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [_currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {

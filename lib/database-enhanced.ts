@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import * as schema from "./schema"
 import { env } from "@/lib/env"
-import { ErrorLoggingService, ErrorSeverity, ErrorCategory } from "./services/error-logging"
+import { ErrorLoggingService } from "./services/error-logging"
 
 let _sql: any
 let _db: any

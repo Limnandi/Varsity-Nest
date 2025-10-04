@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { OAuthButton, useStackApp } from "@stackframe/stack"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home } from "lucide-react"
+import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 import { publicEnv } from "@/lib/env.client"
 
@@ -13,10 +13,28 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
   const [isPending, setIsPending] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const recaptchaRef = useRef<ReCAPTCHA>(null)
   const app = useStackApp()
+
+  // Check for URL parameters (verified, error, etc.)
+  useEffect(() => {
+    const verified = searchParams.get('verified')
+    const errorParam = searchParams.get('error')
+    
+    if (verified === 'true') {
+      setSuccessMessage("✅ Email verified successfully! You can now sign in.")
+      // Clear the URL parameter after showing message
+      window.history.replaceState({}, '', '/auth/login')
+    }
+    
+    if (errorParam === 'email-not-verified') {
+      setError("Please verify your email before signing in. Check your inbox for the verification link.")
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,9 +60,19 @@ export default function LoginPage() {
         if ((result as any)?.error) {
           throw new Error((result as any).error)
         }
+        
+        // Email verification will be checked on the redirect/session endpoint
         router.push("/auth/redirect")
         return
       } catch (stackError: any) {
+        // Check if error is due to email not verified
+        if (stackError.message?.includes('email') && stackError.message?.includes('verif')) {
+          setError("Please verify your email before signing in. Check your inbox for the verification link.")
+          recaptchaRef.current?.reset()
+          setIsPending(false)
+          return
+        }
+        
         // StackAuth failed, try secure database authentication
         console.log("StackAuth authentication failed, trying secure database authentication:", stackError.message)
         
@@ -105,10 +133,24 @@ export default function LoginPage() {
             <p className="text-neutral-300 text-lg">Access your Varsity Nest dashboard</p>
           </div>
 
+          {successMessage && (
+            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-green-300 text-sm">{successMessage}</span>
+            </div>
+          )}
+
           {error && (
-            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <span className="text-red-300 text-sm">{error}</span>
+            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex flex-col space-y-2">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <span className="text-red-300 text-sm">{error}</span>
+              </div>
+              {error.includes('verify your email') && (
+                <Link href="/auth/check-email" className="text-xs text-blue-400 hover:text-blue-300 underline ml-8">
+                  Resend verification email →
+                </Link>
+              )}
             </div>
           )}
 

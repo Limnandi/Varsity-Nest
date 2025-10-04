@@ -5,8 +5,6 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getSession } from "@/lib/stackauth"
 
-const SETTINGS_KEY = "platform_settings"
-
 const SettingsSchema = z.object({
   production_mode: z.boolean(),
   registration_enabled: z.boolean(),
@@ -45,8 +43,7 @@ export async function updateProductionMode(isProduction: boolean) {
   }
 
   try {
-    const currentSettings = await getPlatformSettings()
-    const newSettings = { ...currentSettings, production_mode: isProduction }
+    await getPlatformSettings()
 
     await query`UPDATE admin_settings SET maintenance_mode = ${!isProduction} WHERE id = 1`
     revalidatePath("/admin/dashboard")

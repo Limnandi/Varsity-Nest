@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { validateRequest, sanitizeInput, escapeHtml } from "./validation-schemas"
+import { validateRequest, sanitizeInput } from "./validation-schemas"
 
 // Validation middleware factory
 export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
@@ -8,22 +8,42 @@ export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
     try {
       let data: unknown
 
-      // Parse data based on content type
-      const contentType = request.headers.get('content-type') || ''
-      
-      if (contentType.includes('application/json')) {
-        data = await request.json()
-      } else if (contentType.includes('multipart/form-data')) {
-        // For form data, we'll handle it in the route
-        return null // Let the route handle it
-      } else if (contentType.includes('application/x-www-form-urlencoded')) {
-        const formData = await request.formData()
-        data = Object.fromEntries(formData.entries())
+      // For GET requests, validate query parameters instead of body
+      if (request.method === 'GET') {
+        const searchParams = new URL(request.url).searchParams
+        data = Object.fromEntries(searchParams.entries())
+        
+        // Convert string values to appropriate types for validation
+        for (const [key, value] of Object.entries(data as Record<string, string>)) {
+          // Try to convert to number if it looks like a number
+          if (value && !isNaN(Number(value)) && value.trim() !== '') {
+            (data as any)[key] = Number(value)
+          }
+          // Convert boolean strings
+          else if (value === 'true') {
+            (data as any)[key] = true
+          } else if (value === 'false') {
+            (data as any)[key] = false
+          }
+        }
       } else {
-        return NextResponse.json(
-          { error: 'Unsupported content type' }, 
-          { status: 400 }
-        )
+        // Parse data based on content type for POST/PUT/PATCH/DELETE
+        const contentType = request.headers.get('content-type') || ''
+        
+        if (contentType.includes('application/json')) {
+          data = await request.json()
+        } else if (contentType.includes('multipart/form-data')) {
+          // For form data, we'll handle it in the route
+          return null // Let the route handle it
+        } else if (contentType.includes('application/x-www-form-urlencoded')) {
+          const formData = await request.formData()
+          data = Object.fromEntries(formData.entries())
+        } else {
+          return NextResponse.json(
+            { error: 'Unsupported content type' }, 
+            { status: 400 }
+          )
+        }
       }
 
       // Validate the data
@@ -89,7 +109,6 @@ export function createRateLimitMiddleware(options: {
     const key = options.keyGenerator ? options.keyGenerator(request) : ip
     
     const now = Date.now()
-    const windowStart = now - options.windowMs
     
     // Clean up old entries
     for (const [k, v] of Array.from(rateLimitMap.entries())) {

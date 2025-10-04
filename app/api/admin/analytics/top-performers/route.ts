@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/database"
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get top performing accommodations by revenue
     const topAccommodations = await query`
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const performers: any[] = []
 
     // Add top accommodations
-    topAccommodations.rows.forEach((row: any, index: number) => {
+    topAccommodations.rows.forEach((row: any) => {
       performers.push({
         id: `accommodation-${row.id}`,
         name: row.name,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Add top providers
-    topProviders.rows.forEach((row: any, index: number) => {
+    topProviders.rows.forEach((row: any) => {
       performers.push({
         id: `provider-${row.id}`,
         name: row.name,
