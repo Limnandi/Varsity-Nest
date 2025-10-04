@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { X, Mail, User, AlertCircle, Lock, Eye, EyeOff } from "lucide-react"
 import { StudentAuthService } from "@/lib/student-auth"
 import { useStackApp } from "@stackframe/stack"
@@ -26,6 +27,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const app = useStackApp()
+  const router = useRouter()
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -108,15 +110,61 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
     try {
       // Use StackAuth to sign up and trigger email verification
       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-      await app.signUpWithCredential({
+      const signupResult = await app.signUpWithCredential({
         email,
         password,
-        verificationCallbackUrl: `${callbackBase}/auth/check-email`
+        verificationCallbackUrl: `${callbackBase}/auth/check-email`,
+        noRedirect: true,
       })
-      // Inform user to verify email
-      alert("Account created. Please check your email to verify your account.")
+      
+      // Check result status (official SDK pattern)
+      if ((signupResult as any).status === "error") {
+        throw new Error((signupResult as any).error?.message || 'Failed to register')
+      }
+      
+      // IMPORTANT: Manually trigger verification email (required for custom SMTP)
+      // We MUST wait for this to complete before redirecting
+      try {
+        console.log('🔵 Starting manual verification email send for:', email)
+        
+        // Get the newly created user (wait for StackAuth to create the user)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        console.log('🔵 Fetching user from StackAuth...')
+        
+        const currentUser = await app.getUser()
+        console.log('🔵 Current user:', currentUser ? 'Found' : 'Not found')
+        
+        if (currentUser) {
+          console.log('🔵 Fetching contact channels...')
+          const contactChannels = await currentUser.listContactChannels()
+          console.log('🔵 Contact channels found:', contactChannels.length)
+          
+          const emailChannel = contactChannels.find(
+            (channel: any) => channel.type === 'email' && channel.value === email
+          )
+          console.log('🔵 Email channel:', emailChannel ? 'Found' : 'Not found')
+          
+          if (emailChannel) {
+            console.log('🔵 Sending verification email...')
+            // CRITICAL: Send without callbackUrl parameter - just use the default from StackAuth config
+            await emailChannel.sendVerificationEmail()
+            console.log('✅ Verification email sent successfully to:', email)
+          } else {
+            console.warn('⚠️ Email channel not found for:', email)
+            console.warn('Available channels:', contactChannels)
+          }
+        } else {
+          console.warn('⚠️ No current user found after signup')
+        }
+      } catch (emailError) {
+        console.error('❌ Failed to send verification email:', emailError)
+        // Don't throw - user is created, they can resend from check-email page
+      }
+      
+      // Redirect to check-email page after successful registration (AFTER email is sent)
       onClose()
       resetForm()
+      router.push('/auth/check-email')
     } catch (err) {
       setError("Failed to register. Please try again.")
     } finally {
