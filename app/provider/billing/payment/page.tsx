@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/DashboardLayout"
 import type { Provider } from "@/lib/definitions"
 import PayFastPaymentForm from "@/components/PayFastPaymentForm"
@@ -9,7 +8,6 @@ import { ArrowLeft, CreditCard, Shield, CheckCircle } from "lucide-react"
 import Link from "next/link"
 
 export default function PaymentPage() {
-  const router = useRouter()
   const [user, setUser] = useState<Provider | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 

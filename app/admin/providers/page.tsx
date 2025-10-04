@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { DocumentViewer } from "@/components/DocumentViewer"
-import { Building, Eye, Check, X, AlertTriangle, Trash2, Users, Clock } from "lucide-react"
+import { Building, Eye, Check, X, Trash2, Users, Clock } from "lucide-react"
 
 interface Provider {
   id: string
