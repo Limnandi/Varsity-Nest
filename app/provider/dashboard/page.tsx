@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/DashboardLayout"
-import { Building, Users, TrendingUp, DollarSign } from "lucide-react"
+import { Building, Users, TrendingUp, DollarSign, Settings } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 
 // For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added missing isLoading state to fix undefined variable error
@@ -192,6 +192,19 @@ export default function ProviderDashboard() {
               <div>
                 <h3 className="font-semibold text-white text-lg group-hover:text-purple-300 transition-colors">Manage Properties</h3>
                 <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Edit your listings</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/provider/settings"
+              className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-orange-500/20"
+            >
+              <div className="p-4 border border-orange-500/50 bg-orange-500/10 rounded-xl mr-4 group-hover:bg-orange-500/20 transition-all duration-300">
+                <Settings className="w-8 h-8 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white text-lg group-hover:text-orange-300 transition-colors">Settings</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Manage your preferences</p>
               </div>
             </Link>
           </div>

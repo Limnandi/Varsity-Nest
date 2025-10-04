@@ -116,31 +116,37 @@ export default function ProviderAccommodations() {
   return (
     <AuthGuard requiredRole="provider">
       <DashboardLayout userRole="provider">
-        <div className="space-y-6">
+        <div className="space-y-8 p-6 text-white">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">My Accommodations</h1>
-              <p className="text-gray-600">Manage your property listings</p>
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/20">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                  My Accommodations
+                </h1>
+                <p className="text-neutral-300 text-lg">Manage your property listings</p>
+              </div>
+              <Link
+                href="/provider/accommodations/new"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02]"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add New Property</span>
+              </Link>
             </div>
-            <Link
-              href="/provider/accommodations/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add New</span>
-            </Link>
           </div>
 
           {/* Accommodations Grid */}
           {userAccommodations.length === 0 ? (
-            <div className="bg-white rounded-xl p-12 text-center shadow-sm border">
-              <Building className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No accommodations yet</h3>
-              <p className="text-gray-600 mb-6">Start by adding your first property listing</p>
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-12 text-center shadow-2xl shadow-blue-500/10">
+              <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/30 bg-blue-500/10 rounded-full flex items-center justify-center">
+                <Building className="w-10 h-10 text-blue-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">No accommodations yet</h3>
+              <p className="text-neutral-300 mb-8 text-lg">Start by adding your first property listing</p>
               <Link
                 href="/provider/accommodations/new"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02]"
               >
                 <Plus className="w-5 h-5" />
                 <span>Add Your First Property</span>
@@ -149,7 +155,7 @@ export default function ProviderAccommodations() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {userAccommodations.map((accommodation) => (
-                <div key={accommodation.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div key={accommodation.id} className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/10 overflow-hidden hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
                   <div className="relative h-48">
                     <Image 
                       src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} 
@@ -168,16 +174,16 @@ export default function ProviderAccommodations() {
                     </div>
                   </div>
 
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold mb-2">{accommodation.name}</h3>
+                  <div className="p-6 text-white">
+                    <h3 className="text-xl font-bold mb-3 text-white">{accommodation.name}</h3>
 
-                    <div className="flex items-center text-gray-600 text-sm mb-2">
-                      <MapPin className="w-4 h-4 mr-1" />
+                    <div className="flex items-center text-neutral-300 text-sm mb-3">
+                      <MapPin className="w-4 h-4 mr-2 text-blue-400" />
                       <span>{accommodation.address}</span>
                     </div>
 
-                    <div className="flex items-center text-gray-600 text-sm mb-3">
-                      <Users className="w-4 h-4 mr-1" />
+                    <div className="flex items-center text-neutral-300 text-sm mb-4">
+                      <Users className="w-4 h-4 mr-2 text-green-400" />
                       <span>
                         {accommodation.available_rooms ?? 0}/{accommodation.total_rooms ?? 0} rooms available
                       </span>
@@ -188,49 +194,67 @@ export default function ProviderAccommodations() {
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${i < (accommodation.rating ?? 0) ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                            className={`w-4 h-4 ${i < (accommodation.rating ?? 0) ? "text-yellow-400 fill-current" : "text-neutral-600"}`}
                           />
                         ))}
                       </div>
-                      <span className="ml-2 text-sm text-gray-600">({accommodation.review_count ?? 0} reviews)</span>
+                      <span className="ml-2 text-sm text-neutral-400">({accommodation.review_count ?? 0} reviews)</span>
                     </div>
 
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-bold text-green-600">{formatZar(Number(accommodation.price) || 0)}</span>
-                      <span className="text-gray-500">/month</span>
+                    <div className="flex items-center justify-between mb-6">
+                      <span className="text-3xl font-bold text-green-400">{formatZar(Number(accommodation.price) || 0)}</span>
+                      <span className="text-neutral-400">/month</span>
                     </div>
 
-                    <div className="flex items-center gap-3 mb-4">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={Boolean(accommodation.featured)} onChange={(e) => handleToggleFeatured(accommodation.id, e.target.checked)} />
-                        Featured
-                      </label>
-                      <div className="flex items-center gap-2 text-sm">
-                        <input type="number" className="w-20 border rounded px-2 py-1" defaultValue={accommodation.available_rooms ?? 0} onBlur={(e) => handleUpdateRooms(accommodation.id, Number(e.target.value) || 0, Number(accommodation.total_rooms) || 0)} />
-                        /
-                        <input type="number" className="w-20 border rounded px-2 py-1" defaultValue={accommodation.total_rooms ?? 0} onBlur={(e) => handleUpdateRooms(accommodation.id, Number(accommodation.available_rooms) || 0, Number(e.target.value) || 0)} />
-                        rooms
+                    <div className="space-y-4 mb-6">
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm text-neutral-300">
+                          <input 
+                            type="checkbox" 
+                            checked={Boolean(accommodation.featured)} 
+                            onChange={(e) => handleToggleFeatured(accommodation.id, e.target.checked)}
+                            className="w-4 h-4 text-blue-600 bg-black/20 border-white/20 rounded focus:ring-blue-500"
+                          />
+                          <span>Featured</span>
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-neutral-300">Rooms:</span>
+                        <input 
+                          type="number" 
+                          className="w-20 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                          defaultValue={accommodation.available_rooms ?? 0} 
+                          onBlur={(e) => handleUpdateRooms(accommodation.id, Number(e.target.value) || 0, Number(accommodation.total_rooms) || 0)} 
+                        />
+                        <span className="text-neutral-400">/</span>
+                        <input 
+                          type="number" 
+                          className="w-20 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                          defaultValue={accommodation.total_rooms ?? 0} 
+                          onBlur={(e) => handleUpdateRooms(accommodation.id, Number(accommodation.available_rooms) || 0, Number(e.target.value) || 0)} 
+                        />
+                        <span className="text-sm text-neutral-400">available</span>
                       </div>
                     </div>
 
                     <div className="flex space-x-2">
                       <Link
                         href={`/listing/${accommodation.id}`}
-                        className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-center flex items-center justify-center space-x-1"
+                        className="flex-1 bg-white/10 text-white px-4 py-3 rounded-lg hover:bg-white/20 transition-all duration-300 text-center flex items-center justify-center space-x-2 border border-white/20"
                       >
                         <Eye className="w-4 h-4" />
                         <span>View</span>
                       </Link>
                       <Link
                         href={`/provider/accommodations/edit/${accommodation.id}`}
-                        className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center flex items-center justify-center space-x-1"
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/20"
                       >
                         <Edit className="w-4 h-4" />
                         <span>Edit</span>
                       </Link>
                       <button
                         onClick={() => handleDelete(accommodation.id)}
-                        className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-1"
+                        className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg shadow-red-500/20"
                       >
                         <Trash2 className="w-4 h-4" />
                         <span>Delete</span>
