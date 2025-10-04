@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if email is verified
+    if (!userData.email_verified) {
+      return NextResponse.json(
+        { error: "Please verify your email before signing in" },
+        { status: 403 }
+      )
+    }
+
     // Create secure session
     const user = {
       id: userData.id,

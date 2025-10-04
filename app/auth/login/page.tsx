@@ -61,17 +61,7 @@ export default function LoginPage() {
           throw new Error((result as any).error)
         }
         
-        // Check if email is verified
-        const user = app.getUser()
-        if (user && !user.primaryEmailVerified) {
-          // Email not verified - sign out and show error
-          await app.signOut()
-          setError("Please verify your email before signing in. Check your inbox for the verification link.")
-          setIsPending(false)
-          recaptchaRef.current?.reset()
-          return
-        }
-        
+        // Email verification will be checked on the redirect/session endpoint
         router.push("/auth/redirect")
         return
       } catch (stackError: any) {
@@ -97,14 +87,6 @@ export default function LoginPage() {
         const secureData = await secureResponse.json()
 
         if (secureResponse.ok && secureData.success) {
-          // Check if email is verified in database
-          if (secureData.data && !secureData.data.emailVerified) {
-            setError("Please verify your email before signing in. Check your inbox for the verification link.")
-            setIsPending(false)
-            recaptchaRef.current?.reset()
-            return
-          }
-          
           // Secure authentication successful - session is set via HTTP-only cookie
           router.push("/auth/redirect")
           return
