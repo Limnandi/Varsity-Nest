@@ -9,7 +9,7 @@ interface BookingCalendarProps {
   price: number
 }
 
-export default function BookingCalendar({ accommodationId, price }: BookingCalendarProps) {
+export default function BookingCalendar({ accommodationId: _accommodationId, price }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState("")
   const [duration, setDuration] = useState("12") // months
   const [occupants, setOccupants] = useState("1")

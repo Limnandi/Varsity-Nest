@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { X, Mail, User, Shield, AlertCircle, Lock, Eye, EyeOff } from "lucide-react"
+import { X, Mail, User, AlertCircle, Lock, Eye, EyeOff } from "lucide-react"
 import { StudentAuthService } from "@/lib/student-auth"
 import { useStackApp } from "@stackframe/stack"
 
@@ -19,7 +19,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [otp, setOTP] = useState("")
+  const [_otp, setOTP] = useState("")
   const [name, setName] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)

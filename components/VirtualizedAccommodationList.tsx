@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, memo } from "react"
+import { useState, useMemo, memo } from "react"
 import { FixedSizeList as List } from "react-window"
 import AccommodationCard from "./AccommodationCard"
 
@@ -64,14 +64,9 @@ export default function VirtualizedAccommodationList({
   height = 600,
   itemHeight = 400
 }: VirtualizedAccommodationListProps) {
-  const [containerHeight, setContainerHeight] = useState(height)
+  const [containerHeight] = useState(height)
 
   const itemData = useMemo(() => accommodations, [accommodations])
-
-  const handleResize = useCallback(() => {
-    const newHeight = Math.min(window.innerHeight * 0.8, height)
-    setContainerHeight(newHeight)
-  }, [height])
 
   return (
     <div className="w-full">
