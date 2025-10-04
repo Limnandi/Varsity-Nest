@@ -25,7 +25,7 @@ export function validateRequest(schemas: ValidationSchemas) {
           query.parse(queryParams);
         } catch (error) {
           if (error instanceof z.ZodError) {
-            throw new ValidationError('Invalid query parameters', error.errors);
+            throw new ValidationError('Invalid query parameters', (error as any).errors);
           }
         }
       }
@@ -50,7 +50,7 @@ export function validateRequest(schemas: ValidationSchemas) {
           return handler(newRequest as NextRequest);
         } catch (error) {
           if (error instanceof z.ZodError) {
-            throw new ValidationError('Invalid request body', error.errors);
+            throw new ValidationError('Invalid request body', (error as any).errors);
           }
           throw error;
         }
@@ -63,7 +63,7 @@ export function validateRequest(schemas: ValidationSchemas) {
           params.parse(urlParams);
         } catch (error) {
           if (error instanceof z.ZodError) {
-            throw new ValidationError('Invalid URL parameters', error.errors);
+            throw new ValidationError('Invalid URL parameters', (error as any).errors);
           }
         }
       }

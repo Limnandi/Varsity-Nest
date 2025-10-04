@@ -26,7 +26,7 @@ export const getDatabaseStats = async (): Promise<TableStats[]> => {
       ORDER BY pg_total_relation_size(relid) DESC;
     `);
 
-    return result as TableStats[];
+    return result.rows as unknown as TableStats[];
   } finally {
     endMetric();
   }
@@ -67,7 +67,7 @@ export const createIndexIfNotExists = async (
       AND indexname = ${indexName}
     `);
 
-    if (!indexExists || indexExists.length === 0) {
+    if (!indexExists || !indexExists.rows || indexExists.rows.length === 0) {
       await db.execute(sql`
         CREATE INDEX IF NOT EXISTS ${sql.raw(indexName)}
         ON ${sql.raw(tableName)} (${sql.raw(columnName)})

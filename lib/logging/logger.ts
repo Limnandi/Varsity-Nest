@@ -52,7 +52,7 @@ export const log = {
     logger.http(`${req.method} ${req.url}`, {
       ...context,
       headers: req.headers,
-      ip: req.ip
+      ip: (req as any).ip || req.headers.get('x-forwarded-for') || 'unknown'
     });
   }
 };

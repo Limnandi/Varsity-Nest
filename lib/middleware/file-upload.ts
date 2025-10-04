@@ -184,7 +184,7 @@ export class FileUploadMiddleware {
         riskScore: securityResult.riskScore
       }
     } catch (error) {
-      captureException(error, {
+      captureException(error as Error, {
         tags: { component: 'file-upload-middleware' },
         extra: { fileName: file.name, purpose, userId }
       })

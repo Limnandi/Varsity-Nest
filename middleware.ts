@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { defaultSecurityConfig, SecurityMiddleware } from '@/lib/security-config'
-import { env } from '@/lib/env'
 
 export function middleware(request: NextRequest) {
   // Only apply CORS/security headers to API routes
