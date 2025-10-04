@@ -8,6 +8,7 @@ import { StackProvider } from "@stackframe/stack"
 import { getStackServerApp } from "@/lib/stack"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { GlobalErrorHandler } from "@/lib/error-handler"
+import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { initializeLogging } from "@/lib/logging/config"
 import { performanceMonitor } from "@/lib/monitoring/performance"
@@ -50,6 +51,7 @@ export default function RootLayout({
                 <Layout>
                   {children}
                   <SpeedInsights />
+                  <Analytics />
                 </Layout>
               </TooltipProvider>
             </ReactQueryProvider>
