@@ -56,6 +56,7 @@ export const providers = pgTable("providers", {
   lastPaymentDate: timestamp("last_payment_date", { withTimezone: true }),
   nextPaymentDate: timestamp("next_payment_date", { withTimezone: true }),
   isFeatured: boolean("is_featured").default(false),
+  settings: jsonb("settings").default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })

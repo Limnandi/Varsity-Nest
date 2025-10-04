@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS providers (
     description TEXT,
     is_verified BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
+    settings JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
