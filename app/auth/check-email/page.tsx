@@ -1,14 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useStackApp, useUser } from "@stackframe/stack"
+import { useUser } from "@stackframe/stack"
 import { Mail, RefreshCw, ArrowLeft, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function CheckEmailPage() {
-  const app = useStackApp()
   const user = useUser()
   const [isResending, setIsResending] = useState(false)
   const [resendSuccess, setResendSuccess] = useState(false)
@@ -17,9 +14,8 @@ export default function CheckEmailPage() {
   // Check if user is already verified
   useEffect(() => {
     if (user?.primaryEmailVerified) {
-      // Redirect to appropriate dashboard based on role
-      // Note: We'll get the role from our database via the redirect page
-      const redirectUrl = "/auth/redirect"
+      // Redirect to login page with success message
+      const redirectUrl = "/auth/login?verified=true"
       window.location.href = redirectUrl
     }
   }, [user])
