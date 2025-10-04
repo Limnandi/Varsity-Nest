@@ -97,6 +97,38 @@ export const signOut = async (_token?: string) => {
 
 // Additional auth functions needed by various components
 export const getCurrentUser = async (): Promise<SessionUser | null> => {
+  // Check if we're on the client side
+  if (typeof window !== 'undefined') {
+    // On client side, try to get user from StackAuth client
+    try {
+      const { getStackClientApp } = await import('@/lib/stack')
+      const clientApp = getStackClientApp()
+      const user = await clientApp.getUser()
+      
+      if (user) {
+        // Convert StackAuth user to our SessionUser format
+        return {
+          id: user.id,
+          email: user.primaryEmail || '',
+          firstName: user.displayName?.split(' ')[0] || '',
+          lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+          role: (user as any).role || 'student',
+          phone: (user as any).phone,
+          studentNumber: (user as any).studentNumber,
+          institution: (user as any).institution,
+          isActive: true,
+          emailVerified: user.primaryEmailVerified,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      }
+    } catch (error) {
+      console.error('Error getting user from StackAuth client:', error)
+    }
+    return null
+  }
+  
+  // On server side, use the session
   const session = await getSession()
   return session?.user || null
 }

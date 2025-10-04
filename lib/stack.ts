@@ -1,6 +1,5 @@
 import { StackClientApp, StackServerApp } from "@stackframe/stack"
 import { publicEnv } from "@/lib/env.client"
-import { env } from "@/lib/env"
 
 // Singletons for client and server apps
 let clientApp: InstanceType<typeof StackClientApp> | null = null
@@ -22,21 +21,27 @@ export function getStackClientApp() {
 //Design pattern: Singleton
 export function getStackServerApp() {
   if (!serverApp) {
-    serverApp = new StackServerApp({
-      projectId: publicEnv.STACK_PROJECT_ID,
-      secretServerKey: env.STACK_SECRET_SERVER_KEY as string,
-      tokenStore: "nextjs-cookie",
-      urls: {
-        oauthCallback: "/handler/oauth-callback",
-        error: "/handler/error",
-        signIn: "/auth/login",
-        signUp: "/auth/register",
-        afterSignIn: "/auth/redirect",
-        afterSignUp: "/auth/check-email",
-        // After email verification, redirect to login with success message
-        emailVerification: "/auth/login?verified=true",
-      },
-    })
+    // Only import server env on server side
+    if (typeof window === 'undefined') {
+      const { env } = require("@/lib/env")
+      serverApp = new StackServerApp({
+        projectId: publicEnv.STACK_PROJECT_ID,
+        secretServerKey: env.STACK_SECRET_SERVER_KEY as string,
+        tokenStore: "nextjs-cookie",
+        urls: {
+          oauthCallback: "/handler/oauth-callback",
+          error: "/handler/error",
+          signIn: "/auth/login",
+          signUp: "/auth/register",
+          afterSignIn: "/auth/redirect",
+          afterSignUp: "/auth/check-email",
+          // After email verification, redirect to dedicated success page
+          emailVerification: "/auth/email-verified",
+        },
+      })
+    } else {
+      throw new Error("getStackServerApp() can only be called on the server side")
+    }
   }
   return serverApp
 }
