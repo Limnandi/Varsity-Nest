@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/stackauth"
-import { secureDb } from "@/lib/database-secure"
 import { query } from "@/lib/database"
-import { eq } from "drizzle-orm"
-import * as schema from "@/lib/schema"
 
 // GET - Fetch all whitelisted domains
 export async function GET() {
@@ -34,15 +31,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { action, domain, university, domainId, isActive } = body
+    const { action, domain, university, domainId: _domainId, isActive: _isActive } = body
 
     if (action === 'add') {
       // Add new domain
-      const formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
+      const _formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
       
       const inserted = await query`
         INSERT INTO whitelisted_domains (domain, university, is_active)
-        VALUES (${formattedDomain}, ${university}, true)
+        VALUES (${_formattedDomain}, ${university}, true)
         RETURNING id, domain, university, created_at, is_active
       `
       const row = inserted.rows[0]
@@ -52,9 +49,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'update') {
-      // Update existing domain
-      const formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
-      
       // TODO: whitelisted_domains table doesn't exist in schema
       return NextResponse.json({ 
         error: 'Whitelisted domains functionality not implemented yet' 

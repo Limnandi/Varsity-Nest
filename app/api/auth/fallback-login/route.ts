@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateUser } from "@/lib/database"
 import { getStackServerApp } from "@/lib/stack"
-import bcrypt from "bcryptjs"
 
 export async function POST(request: NextRequest) {
   try {

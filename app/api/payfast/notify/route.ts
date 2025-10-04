@@ -181,7 +181,7 @@ async function processSuccessfulPayment(
   providerId: string, 
   amount: number, 
   transactionId: string,
-  merchantPaymentId: string, 
+  _merchantPaymentId: string, 
   paymentDate: Date,
   webhookData: any
 ) {
@@ -255,8 +255,8 @@ async function processPendingPayment(
   providerId: string, 
   amount: number, 
   transactionId: string, 
-  merchantPaymentId: string,
-  paymentDate: Date,
+  _merchantPaymentId: string,
+  _paymentDate: Date,
   webhookData: any
 ) {
   try {
@@ -291,8 +291,8 @@ async function processFailedPayment(
   providerId: string, 
   amount: number, 
   transactionId: string, 
-  merchantPaymentId: string,
-  paymentDate: Date,
+  _merchantPaymentId: string,
+  _paymentDate: Date,
   webhookData: any
 ) {
   try {
@@ -330,8 +330,8 @@ async function processCancelledPayment(
   providerId: string, 
   amount: number, 
   transactionId: string, 
-  merchantPaymentId: string,
-  paymentDate: Date,
+  _merchantPaymentId: string,
+  _paymentDate: Date,
   webhookData: any
 ) {
   try {
