@@ -194,7 +194,7 @@ export class ApiMiddleware {
   static async createErrorResponse(
     error: Error | string,
     request: NextRequest,
-    status: number = 500,
+    _status: number = 500,
     context: Record<string, any> = {}
   ): Promise<NextResponse> {
     return await ApiErrorResponseBuilder.createErrorResponse(
@@ -207,7 +207,7 @@ export class ApiMiddleware {
   /**
    * Handle OPTIONS requests for CORS
    */
-  static handleCORS(request: NextRequest, config: SecurityConfig = defaultSecurityConfig): NextResponse {
+  static handleCORS(_request: NextRequest, config: SecurityConfig = defaultSecurityConfig): NextResponse {
     const response = new NextResponse(null, { status: 200 })
     return SecurityMiddleware.applyCORS(response, config)
   }
@@ -218,8 +218,8 @@ export class ApiMiddleware {
  */
 export function withApiMiddleware(options: ApiMiddlewareOptions = {}) {
   return function <T extends any[]>(
-    target: any,
-    propertyKey: string,
+    _target: any,
+    _propertyKey: string,
     descriptor: TypedPropertyDescriptor<(...args: T) => Promise<NextResponse>>
   ) {
     if (descriptor.value) {

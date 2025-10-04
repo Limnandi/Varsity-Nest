@@ -1,6 +1,6 @@
-import { PaymentAuditLog, PaymentTransaction } from "@/lib/schemas/payment"
+import { PaymentAuditLog } from "@/lib/schemas/payment"
 import { secureDb } from "@/lib/database-secure"
-import { eq, desc, and, gte, lte } from "drizzle-orm"
+import { eq, desc, and, gte } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { captureException, captureMessage } from '@/lib/logging/config'
 

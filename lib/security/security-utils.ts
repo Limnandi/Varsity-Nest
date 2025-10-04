@@ -5,7 +5,6 @@ import { redis } from '@/lib/redis';
 export class SecurityUtils {
   private static readonly CSRF_TOKEN_LENGTH = 32;
   private static readonly CSRF_HEADER = 'X-CSRF-Token';
-  private static readonly CSRF_COOKIE = 'csrf-token';
   private static readonly TOKEN_EXPIRY = 3600; // 1 hour
 
   // Generate CSRF token

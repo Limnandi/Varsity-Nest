@@ -33,7 +33,6 @@ class ClientCache {
 // Server-side cache manager (only available on server)
 class ServerCacheManager {
   private static readonly DEFAULT_TTL = 300 // 5 minutes
-  private static readonly LONG_TTL = 3600 // 1 hour
   private static readonly SHORT_TTL = 60 // 1 minute
 
   // Generic cache operations

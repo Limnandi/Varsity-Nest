@@ -88,10 +88,9 @@ export const signIn = async (_credentials: { email: string; password: string }) 
 
 export const signOut = async (_token?: string) => {
   try {
-    const app = getStackServerApp()
     // StackServerApp does not expose logout server-side; rely on client handler or cookie invalidation
     return { success: true }
-  } catch (e) {
+  } catch (_e) {
     return { success: false, error: 'Logout failed' }
   }
 }
@@ -112,11 +111,11 @@ export const getAllStudents = async () => {
   return []
 }
 
-export const toggleUserStatus = async (userId: string, isActive: boolean) => {
+export const toggleUserStatus = async (_userId: string, _isActive: boolean) => {
   return { success: true }
 }
 
-export const deleteUser = async (userId: string) => {
+export const deleteUser = async (_userId: string) => {
   return { success: true }
 }
 

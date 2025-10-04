@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { ErrorLoggingService, ErrorSeverity, ErrorCategory } from './services/error-logging'
+import { ErrorLoggingService, ErrorCategory } from './services/error-logging'
 
 export interface ApiErrorResponse {
   success: false

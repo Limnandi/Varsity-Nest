@@ -86,7 +86,7 @@ export class PaymentReconciliationService {
   private static generateReconciliationNotes(
     expectedAmount: number,
     actualAmount: number,
-    payfastData: any
+    _payfastData: any
   ): string {
     const amountDiff = Math.abs(expectedAmount - actualAmount)
     

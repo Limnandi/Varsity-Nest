@@ -1,4 +1,4 @@
-import { captureException, startSentryTransaction } from '@/lib/logging/config'
+import { captureException } from '@/lib/logging/config'
 
 export enum ErrorSeverity {
   LOW = 'low',
@@ -243,7 +243,7 @@ export class ErrorLoggingService {
   static createUserFriendlyMessage(
     error: Error | string,
     category: ErrorCategory,
-    context: ErrorContext = {}
+    _context: ErrorContext = {}
   ): string {
     const errorMessage = typeof error === 'string' ? error : error.message
 
