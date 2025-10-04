@@ -39,7 +39,10 @@ export default function AccreditedAccommodations() {
             throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || response.statusText}`)
           }
           
-          const data = await response.json()
+          const result = await response.json()
+          
+          // Extract data from API response structure
+          const data = result.success && result.data ? result.data : result
           
           // Ensure data is an array
           accommodations = Array.isArray(data) ? data : []

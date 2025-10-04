@@ -2,26 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useStackApp } from "@stackframe/stack"
-
-interface DatabaseSession {
-  user: {
-    id: string
-    email: string
-    firstName: string
-    lastName: string
-    role: string
-    isActive: boolean
-    emailVerified: boolean
-  }
-  authMethod: string
-}
 
 export default function ClientRedirect() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const app = useStackApp()
 
   useEffect(() => {
     const handleRedirect = async () => {
@@ -30,7 +15,16 @@ export default function ClientRedirect() {
         const response = await fetch('/api/auth/session')
         
         if (response.ok) {
-          const userSession = await response.json()
+          const result = await response.json()
+          
+          // Check if response has the expected structure
+          if (!result.success || !result.data) {
+            setError("Invalid session response")
+            router.push('/auth/login')
+            return
+          }
+          
+          const userSession = result.data
           console.log(`Secure session found: ${userSession.role} for ${userSession.email}`)
           
           // Redirect based on role
