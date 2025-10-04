@@ -2,12 +2,15 @@
 
 import { useState } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X, Home } from "lucide-react"
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
 
 export default function ProviderRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [password, setPassword] = useState("")
   const [isAccredited, setIsAccredited] = useState<"yes" | "no" | "">("")
   const [accreditedBy, setAccreditedBy] = useState<string[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
@@ -17,6 +20,7 @@ export default function ProviderRegistrationPage() {
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const app = useStackApp()
   const user = useUser({ or: 'return-null' })
+  const router = useRouter()
 
   // Check email availability with debounce
   const checkEmailAvailability = async (email: string) => {
@@ -75,13 +79,21 @@ export default function ProviderRegistrationPage() {
         throw new Error('Please upload 1-2 documents (PDF or images)')
       }
 
-      // Client-side sign-up with StackAuth
+      // Client-side sign-up with StackAuth (matches official SDK pattern)
       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-      await app.signUpWithCredential({ 
+      const signupResult = await app.signUpWithCredential({ 
         email, 
         password,
-        verificationCallbackUrl: `${callbackBase}/auth/check-email`
+        verificationCallbackUrl: `${callbackBase}/auth/check-email`,
+        noRedirect: true,
       })
+      
+      // Check result status (official SDK pattern)
+      if ((signupResult as any).status === "error") {
+        const errorMessage = (signupResult as any).error?.message || 'Registration failed'
+        throw new Error(errorMessage)
+      }
+      
       // Set Stack display name from first/last name
       try {
         const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
@@ -89,6 +101,45 @@ export default function ProviderRegistrationPage() {
           await user?.update({ displayName: fullName })
         }
       } catch {}
+      
+      // IMPORTANT: Manually trigger verification email (required for custom SMTP)
+      // We MUST wait for this to complete before redirecting
+      try {
+        console.log('🔵 Starting manual verification email send for:', email)
+        
+        // Get the newly created user (wait for StackAuth to create the user)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        console.log('🔵 Fetching user from StackAuth...')
+        
+        const currentUser = await app.getUser()
+        console.log('🔵 Current user:', currentUser ? 'Found' : 'Not found')
+        
+        if (currentUser) {
+          console.log('🔵 Fetching contact channels...')
+          const contactChannels = await currentUser.listContactChannels()
+          console.log('🔵 Contact channels found:', contactChannels.length)
+          
+          const emailChannel = contactChannels.find(
+            (channel: any) => channel.type === 'email' && channel.value === email
+          )
+          console.log('🔵 Email channel:', emailChannel ? 'Found' : 'Not found')
+          
+          if (emailChannel) {
+            console.log('🔵 Sending verification email...')
+            // CRITICAL: Send without callbackUrl parameter - just use the default from StackAuth config
+            await emailChannel.sendVerificationEmail()
+            console.log('✅ Verification email sent successfully to:', email)
+          } else {
+            console.warn('⚠️ Email channel not found for:', email)
+            console.warn('Available channels:', contactChannels)
+          }
+        } else {
+          console.warn('⚠️ No current user found after signup')
+        }
+      } catch (emailError) {
+        console.error('❌ Failed to send verification email:', emailError)
+        // Don't throw - user is created, they can resend from check-email page
+      }
 
       // Build multipart form for server registration (DB + docs)
       const payload = new FormData()
@@ -103,14 +154,29 @@ export default function ProviderRegistrationPage() {
         method: 'POST',
         body: payload,
       })
+      
       if (!resp.ok) {
-        const j = await resp.json().catch(() => ({}))
-        console.error('Registration error:', j)
-        const errorMsg = j.details ? `${j.error}: ${JSON.stringify(j.details)}` : (j.error || 'Registration failed')
-        throw new Error(errorMsg)
+        let errorMessage = 'Registration failed'
+        try {
+          const j = await resp.json()
+          console.error('Registration error response:', j)
+          errorMessage = j.details ? `${j.error}: ${JSON.stringify(j.details)}` : (j.error || 'Registration failed')
+        } catch (jsonError) {
+          // If JSON parsing fails, try to get the text response
+          try {
+            const textResponse = await resp.text()
+            console.error('Registration error (non-JSON):', textResponse)
+            errorMessage = textResponse || `Registration failed with status ${resp.status}`
+          } catch (textError) {
+            console.error('Failed to read error response:', textError)
+            errorMessage = `Registration failed with status ${resp.status}`
+          }
+        }
+        throw new Error(errorMessage)
       }
 
-      setState({ success: true, message: 'Account created. Check your email to verify.' })
+      // Redirect to check-email page after successful registration
+      router.push('/auth/check-email')
     } catch (error: any) {
       // Handle specific error messages
       let errorMessage = error.message || 'Registration failed. Please try again.'
@@ -289,6 +355,8 @@ export default function ProviderRegistrationPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
                     className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
@@ -301,6 +369,10 @@ export default function ProviderRegistrationPage() {
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
+                </div>
+                {/* Password Strength Indicator */}
+                <div className="mt-3">
+                  <PasswordStrengthIndicator password={password} show={password.length > 0} />
                 </div>
               </div>
 

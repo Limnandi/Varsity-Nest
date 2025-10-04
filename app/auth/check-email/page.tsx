@@ -14,8 +14,8 @@ export default function CheckEmailPage() {
   // Check if user is already verified
   useEffect(() => {
     if (user?.primaryEmailVerified) {
-      // Redirect to login page with success message
-      const redirectUrl = "/auth/login?verified=true"
+      // Redirect to dedicated email verified success page
+      const redirectUrl = "/auth/email-verified"
       window.location.href = redirectUrl
     }
   }, [user])

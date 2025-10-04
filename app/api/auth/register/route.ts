@@ -7,6 +7,7 @@ import { providerFormDataSchema, validateRequest } from "@/lib/validation-schema
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') || ''
+    console.log('Registration request received with content-type:', contentType)
 
     if (contentType.includes('multipart/form-data')) {
       // Provider registration documents and DB linkage after client StackAuth signup
@@ -129,33 +130,43 @@ export async function POST(request: NextRequest) {
           .where(eq(schema.users.id, userId))
       }
 
-      // Create provider record
+      // Create or update provider record (manual upsert because userId is not unique)
+      const existingProvider = await secureDb.db
+        .select({ id: schema.providers.id })
+        .from(schema.providers)
+        .where(eq(schema.providers.userId, userId))
+        .limit(1)
+
       const providerId = (await import('crypto')).randomUUID()
-      await secureDb.db
-        .insert(schema.providers)
-        .values({
-          id: providerId,
-          userId: userId,
-          businessName: companyName, // Database column is businessName, not companyName
-          contactPerson: `${firstName} ${lastName}`,
-          contactEmail: email,
-          contactPhone: phone || 'Not provided', // Database requires NOT NULL, provide default
-          address: address || 'Not provided',
-          registrationStatus: 'pending',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        })
-        .onConflictDoUpdate({
-          target: schema.providers.userId,
-          set: {
-            businessName: companyName, // Database column is businessName, not companyName
+
+      if (existingProvider && existingProvider.length > 0) {
+        await secureDb.db
+          .update(schema.providers)
+          .set({
+            businessName: companyName,
             contactPerson: `${firstName} ${lastName}`,
             contactEmail: email,
-            contactPhone: phone || 'Not provided', // Database requires NOT NULL, provide default
+            contactPhone: phone || 'Not provided',
             address: address || 'Not provided',
-            updatedAt: new Date()
-          }
-        })
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.providers.userId, userId))
+      } else {
+        await secureDb.db
+          .insert(schema.providers)
+          .values({
+            id: providerId,
+            userId: userId,
+            businessName: companyName,
+            contactPerson: `${firstName} ${lastName}`,
+            contactEmail: email,
+            contactPhone: phone || 'Not provided',
+            address: address || 'Not provided',
+            registrationStatus: 'pending',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+      }
 
       // Upload up to 2 documents securely
       const docs = (form.getAll('documents') as unknown as File[]) || []
@@ -189,8 +200,8 @@ export async function POST(request: NextRequest) {
       if (urls.length > 0) {
         await secureDb.db
           .update(schema.providers)
-          .set({ documents: urls })
-          .where(eq(schema.providers.id, providerId))
+          .set({ documents: urls, updatedAt: new Date() })
+          .where(eq(schema.providers.userId, userId))
       }
 
       return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
@@ -200,30 +211,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unsupported content type' }, { status: 415 })
 
   } catch (error) {
-    console.error("Registration error:", error)
+    console.error("=== Registration Error Caught ===")
+    console.error("Error object:", error)
+    console.error("Error type:", typeof error)
     
     // Extract detailed error information
     let errorMessage = "Registration failed"
-    let errorDetails: any = undefined
+    let errorDetails: any = {}
     
     if (error instanceof Error) {
       errorMessage = error.message
       errorDetails = {
         message: error.message,
         name: error.name,
-        stack: error.stack?.split('\n').slice(0, 3).join('\n') // First 3 lines of stack
+        stack: process.env.NODE_ENV === 'development' ? error.stack?.split('\n').slice(0, 5).join('\n') : undefined
+      }
+      
+      // Check if it's a database error
+      if ((error as any).code) {
+        errorDetails.code = (error as any).code
+        errorDetails.detail = (error as any).detail
+        errorDetails.hint = (error as any).hint
       }
     } else if (typeof error === 'object' && error !== null) {
       errorDetails = error
-      errorMessage = (error as any).message || JSON.stringify(error)
+      errorMessage = (error as any).message || 'An unexpected error occurred'
+    } else {
+      errorMessage = String(error)
     }
     
-    console.error("Detailed error:", errorDetails)
+    console.error("Formatted error response:", { error: "Registration failed", details: errorMessage, debugInfo: errorDetails })
     
-    return NextResponse.json({ 
+    // Always return valid JSON
+    const response = { 
       error: "Registration failed", 
       details: errorMessage,
       debugInfo: process.env.NODE_ENV === 'development' ? errorDetails : undefined
-    }, { status: 500 })
+    }
+    
+    return NextResponse.json(response, { status: 500 })
   }
 }
