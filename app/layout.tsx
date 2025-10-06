@@ -27,7 +27,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const metadata: Metadata = {
-  title: "Varsity Nest - Student Accommodation",
+  title: "Varsity Nest",
   description: "Find your perfect student home in Bloemfontein",
 }
 
