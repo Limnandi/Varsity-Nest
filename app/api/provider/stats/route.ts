@@ -58,42 +58,51 @@ export async function GET(request: NextRequest) {
       WHERE provider_id = ${providerId}
     `
 
-    // Fetch booking stats
-    const bookingsResult = await query`
-      SELECT 
-        COUNT(*) as total_bookings,
-        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as active_bookings,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings,
-        SUM(CASE WHEN status = 'confirmed' THEN amount ELSE 0 END) as total_revenue
-      FROM bookings b
-      JOIN accommodations a ON b.accommodation_id = a.id
-      WHERE a.provider_id = ${providerId}
-    `
+    // Fetch booking stats (with error handling)
+    let bookingStats = {
+      total_bookings: 0,
+      active_bookings: 0,
+      pending_bookings: 0,
+      total_revenue: 0
+    }
+    
+    try {
+      const bookingsResult = await query`
+        SELECT 
+          COUNT(*) as total_bookings,
+          COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as active_bookings,
+          COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings,
+          COALESCE(SUM(CASE WHEN status = 'confirmed' THEN amount ELSE 0 END), 0) as total_revenue
+        FROM bookings b
+        JOIN accommodations a ON b.accommodation_id = a.id
+        WHERE a.provider_id = ${providerId}
+      `
+      bookingStats = bookingsResult.rows[0] || bookingStats
+    } catch (bookingError) {
+      console.warn("Bookings table query failed:", bookingError)
+    }
 
-    // Fetch review stats
-    const reviewsResult = await query`
-      SELECT 
-        COUNT(*) as total_reviews,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_reviews
-      FROM reviews r
-      JOIN accommodations a ON r.accommodation_id = a.id
-      WHERE a.provider_id = ${providerId}
-    `
-
-    // Fetch maintenance stats
-    const maintenanceResult = await query`
-      SELECT 
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_maintenance,
-        COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled_maintenance
-      FROM maintenance_requests mr
-      JOIN accommodations a ON mr.accommodation_id = a.id
-      WHERE a.provider_id = ${providerId}
-    `
+    // Fetch review stats (with error handling)
+    let reviewStats = {
+      total_reviews: 0,
+      average_review_rating: 0
+    }
+    
+    try {
+      const reviewsResult = await query`
+        SELECT 
+          COUNT(*) as total_reviews,
+          COALESCE(AVG(rating), 0) as average_review_rating
+        FROM reviews r
+        JOIN accommodations a ON r.accommodation_id = a.id
+        WHERE a.provider_id = ${providerId}
+      `
+      reviewStats = reviewsResult.rows[0] || reviewStats
+    } catch (reviewError) {
+      console.warn("Reviews table query failed:", reviewError)
+    }
 
     const accommodationStats = accommodationsResult.rows[0]
-    const bookingStats = bookingsResult.rows[0]
-    const reviewStats = reviewsResult.rows[0]
-    const maintenanceStats = maintenanceResult.rows[0]
 
     const stats = {
       totalAccommodations: Number(accommodationStats.total_accommodations) || 0,
@@ -105,10 +114,11 @@ export async function GET(request: NextRequest) {
       pendingBookings: Number(bookingStats.pending_bookings) || 0,
       totalRevenue: Number(bookingStats.total_revenue) || 0,
       totalReviews: Number(reviewStats.total_reviews) || 0,
-      pendingReviews: Number(reviewStats.pending_reviews) || 0,
-      pendingMaintenance: Number(maintenanceStats.pending_maintenance) || 0,
-      scheduledMaintenance: Number(maintenanceStats.scheduled_maintenance) || 0,
-      upcomingMaintenance: Number(maintenanceStats.pending_maintenance) + Number(maintenanceStats.scheduled_maintenance) || 0
+      averageReviewRating: Number(reviewStats.average_review_rating) || 0,
+      // Maintenance stats - placeholder until table is created
+      pendingMaintenance: 0,
+      scheduledMaintenance: 0,
+      upcomingMaintenance: 0
     }
 
     return NextResponse.json({ stats })
