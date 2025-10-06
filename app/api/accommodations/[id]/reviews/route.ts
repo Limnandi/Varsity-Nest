@@ -16,8 +16,6 @@ export async function GET(
         r.rating,
         r.comment,
         r.is_verified,
-        r.helpful_votes,
-        r.total_votes,
         r.created_at,
         u.first_name,
         u.last_name,

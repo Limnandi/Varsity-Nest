@@ -186,7 +186,17 @@ export class OptimizedAccommodationRepository {
     
     // Cache result
     try {
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result))
+      const serializedResult = JSON.stringify(result, (_, value) => {
+        // Handle special cases for JSON serialization
+        if (value instanceof Date) {
+          return value.toISOString()
+        }
+        if (typeof value === 'bigint') {
+          return value.toString()
+        }
+        return value
+      })
+      await redis.setex(cacheKey, this.CACHE_TTL, serializedResult)
     } catch (error) {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }
@@ -268,7 +278,17 @@ export class OptimizedAccommodationRepository {
     
     // Cache result
     try {
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result))
+      const serializedResult = JSON.stringify(result, (_, value) => {
+        // Handle special cases for JSON serialization
+        if (value instanceof Date) {
+          return value.toISOString()
+        }
+        if (typeof value === 'bigint') {
+          return value.toString()
+        }
+        return value
+      })
+      await redis.setex(cacheKey, this.CACHE_TTL, serializedResult)
     } catch (error) {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }
@@ -305,7 +325,17 @@ export class OptimizedAccommodationRepository {
     
     // Cache result
     try {
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result))
+      const serializedResult = JSON.stringify(result, (_, value) => {
+        // Handle special cases for JSON serialization
+        if (value instanceof Date) {
+          return value.toISOString()
+        }
+        if (typeof value === 'bigint') {
+          return value.toString()
+        }
+        return value
+      })
+      await redis.setex(cacheKey, this.CACHE_TTL, serializedResult)
     } catch (error) {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }
