@@ -21,6 +21,11 @@ export default function NewAccommodation() {
     distance: "",
     amenities: [] as string[],
     images: [] as File[],
+    accreditationStatus: "accredited" as "accredited" | "provisionally_accredited" | "non_accredited",
+    hasSingleRooms: false,
+    hasSharingRooms: false,
+    singleRoomPrice: "",
+    sharingRoomPrice: "",
   })
 
   const availableAmenities = [
@@ -46,6 +51,24 @@ export default function NewAccommodation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate room types
+    if (!formData.hasSingleRooms && !formData.hasSharingRooms) {
+      alert("Please select at least one room type (Single or Sharing)")
+      return
+    }
+    
+    // Validate pricing for selected room types
+    if (formData.hasSingleRooms && (!formData.singleRoomPrice || Number(formData.singleRoomPrice) <= 0)) {
+      alert("Please enter a valid price for single rooms")
+      return
+    }
+    
+    if (formData.hasSharingRooms && (!formData.sharingRoomPrice || Number(formData.sharingRoomPrice) <= 0)) {
+      alert("Please enter a valid price for sharing rooms")
+      return
+    }
+    
     setIsLoading(true)
 
     try {
@@ -58,6 +81,11 @@ export default function NewAccommodation() {
       form.append("description", formData.description)
       form.append("distance", formData.distance)
       form.append("amenities", JSON.stringify(formData.amenities))
+      form.append("accreditation_status", formData.accreditationStatus)
+      form.append("has_single_rooms", formData.hasSingleRooms.toString())
+      form.append("has_sharing_rooms", formData.hasSharingRooms.toString())
+      form.append("single_room_price", formData.singleRoomPrice)
+      form.append("sharing_room_price", formData.sharingRoomPrice)
       formData.images.forEach((file) => form.append("images", file))
 
       const res = await fetch("/api/accommodations", {
@@ -199,6 +227,142 @@ export default function NewAccommodation() {
                     placeholder="e.g., 0.5km from UFS"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Accreditation Status */}
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-yellow-500/20">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent flex items-center gap-3">
+                <Shield className="w-6 h-6 text-yellow-400" />
+                Accreditation Status
+              </h2>
+              <div className="space-y-4">
+                <p className="text-neutral-300 text-lg">Select the accreditation status for your accommodation:</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <label className="flex items-center space-x-3 cursor-pointer p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                    <input
+                      type="radio"
+                      name="accreditationStatus"
+                      value="accredited"
+                      checked={formData.accreditationStatus === "accredited"}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, accreditationStatus: e.target.value as any }))}
+                      className="w-4 h-4 text-yellow-600 border-white/30 rounded focus:ring-yellow-500 bg-black/30"
+                    />
+                    <div>
+                      <div className="font-semibold text-green-400">Accredited</div>
+                      <div className="text-sm text-neutral-400">Fully accredited by UFS</div>
+                    </div>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                    <input
+                      type="radio"
+                      name="accreditationStatus"
+                      value="provisionally_accredited"
+                      checked={formData.accreditationStatus === "provisionally_accredited"}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, accreditationStatus: e.target.value as any }))}
+                      className="w-4 h-4 text-yellow-600 border-white/30 rounded focus:ring-yellow-500 bg-black/30"
+                    />
+                    <div>
+                      <div className="font-semibold text-yellow-400">Provisionally Accredited</div>
+                      <div className="text-sm text-neutral-400">Under review by UFS</div>
+                    </div>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                    <input
+                      type="radio"
+                      name="accreditationStatus"
+                      value="non_accredited"
+                      checked={formData.accreditationStatus === "non_accredited"}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, accreditationStatus: e.target.value as any }))}
+                      className="w-4 h-4 text-yellow-600 border-white/30 rounded focus:ring-yellow-500 bg-black/30"
+                    />
+                    <div>
+                      <div className="font-semibold text-red-400">Non-Accredited</div>
+                      <div className="text-sm text-neutral-400">Not accredited by UFS</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Room Types & Pricing */}
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-indigo-500/20">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
+                <Users className="w-6 h-6 text-indigo-400" />
+                Room Types & Pricing
+              </h2>
+              <div className="space-y-6">
+                <p className="text-neutral-300 text-lg">Select which room types you offer and set pricing for each:</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <label className="flex items-center space-x-3 cursor-pointer p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.hasSingleRooms}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, hasSingleRooms: e.target.checked }))}
+                        className="w-4 h-4 text-indigo-600 border-white/30 rounded focus:ring-indigo-500 bg-black/30"
+                      />
+                      <div>
+                        <div className="font-semibold text-indigo-400">Single Rooms</div>
+                        <div className="text-sm text-neutral-400">Private rooms for one person</div>
+                      </div>
+                    </label>
+                    {formData.hasSingleRooms && (
+                      <div className="ml-7">
+                        <label className="block text-sm font-medium text-neutral-300 mb-2">Single Room Price (R/month)</label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                          <input
+                            type="number"
+                            value={formData.singleRoomPrice}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, singleRoomPrice: e.target.value }))}
+                            className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                            placeholder="3500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="flex items-center space-x-3 cursor-pointer p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.hasSharingRooms}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, hasSharingRooms: e.target.checked }))}
+                        className="w-4 h-4 text-indigo-600 border-white/30 rounded focus:ring-indigo-500 bg-black/30"
+                      />
+                      <div>
+                        <div className="font-semibold text-indigo-400">Sharing Rooms</div>
+                        <div className="text-sm text-neutral-400">Shared rooms for multiple people</div>
+                      </div>
+                    </label>
+                    {formData.hasSharingRooms && (
+                      <div className="ml-7">
+                        <label className="block text-sm font-medium text-neutral-300 mb-2">Sharing Room Price (R/month)</label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                          <input
+                            type="number"
+                            value={formData.sharingRoomPrice}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, sharingRoomPrice: e.target.value }))}
+                            className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                            placeholder="2500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {!formData.hasSingleRooms && !formData.hasSharingRooms && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                    <p className="text-yellow-300 text-sm">
+                      Please select at least one room type to continue.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

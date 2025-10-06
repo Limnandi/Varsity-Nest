@@ -10,7 +10,11 @@ import {
   CreditCard, 
   Save,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Settings,
+  Trash2
 } from "lucide-react"
 
 interface ProviderSettings {
@@ -69,9 +73,12 @@ export default function ProviderSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [accommodations, setAccommodations] = useState<any[]>([])
+  const [accommodationsLoading, setAccommodationsLoading] = useState(false)
 
   useEffect(() => {
     fetchSettings()
+    fetchAccommodations()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchSettings = async () => {
@@ -129,6 +136,68 @@ export default function ProviderSettings() {
 
   const handleSettingChange = (key: keyof ProviderSettings, value: boolean | number | string) => {
     setSettings(prev => ({ ...prev, [key]: value }))
+  }
+
+  const fetchAccommodations = async () => {
+    try {
+      setAccommodationsLoading(true)
+      const response = await fetch('/api/provider/accommodations', {
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch accommodations')
+      }
+
+      const data = await response.json()
+      setAccommodations(data.accommodations || [])
+    } catch (err) {
+      console.error('Accommodations fetch error:', err)
+    } finally {
+      setAccommodationsLoading(false)
+    }
+  }
+
+  const handleToggleAccommodationStatus = async (id: string, isActive: boolean) => {
+    try {
+      const response = await fetch(`/api/accommodations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !isActive })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update accommodation status')
+      }
+
+      setAccommodations(prev => prev.map(acc => 
+        acc.id === id ? { ...acc, is_active: !isActive } : acc
+      ))
+    } catch (err) {
+      console.error('Accommodation status update error:', err)
+      alert('Failed to update accommodation status')
+    }
+  }
+
+  const handleDeleteAccommodation = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this accommodation? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/accommodations/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete accommodation')
+      }
+
+      setAccommodations(prev => prev.filter(acc => acc.id !== id))
+    } catch (err) {
+      console.error('Accommodation deletion error:', err)
+      alert('Failed to delete accommodation')
+    }
   }
 
   if (isLoading) {
@@ -509,6 +578,92 @@ export default function ProviderSettings() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Accommodation Management */}
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 col-span-1 lg:col-span-2">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 border border-indigo-500/50 bg-indigo-500/10 rounded-xl">
+                  <Settings className="w-6 h-6 text-indigo-400" />
+                </div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                  Accommodation Management
+                </h2>
+              </div>
+
+              {accommodationsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-20 bg-gray-800 rounded-xl animate-pulse"></div>
+                  ))}
+                </div>
+              ) : accommodations.length === 0 ? (
+                <div className="text-center py-12">
+                  <Building className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">No accommodations found</h3>
+                  <p className="text-neutral-400 mb-6">You haven&apos;t created any accommodations yet.</p>
+                  <a
+                    href="/provider/accommodations/new"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02]"
+                  >
+                    <Building className="w-4 h-4" />
+                    Create Your First Accommodation
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {accommodations.map((accommodation) => (
+                    <div key={accommodation.id} className="border border-white/10 bg-black/20 rounded-xl p-6 hover:bg-black/30 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-white">{accommodation.name}</h3>
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              accommodation.is_active 
+                                ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                                : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                            }`}>
+                              {accommodation.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              accommodation.is_published 
+                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+                                : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                            }`}>
+                              {accommodation.is_published ? 'Published' : 'Draft'}
+                            </span>
+                          </div>
+                          <p className="text-neutral-400 text-sm mb-2">{accommodation.address}</p>
+                          <div className="flex items-center gap-4 text-sm text-neutral-300">
+                            <span>Status: {accommodation.accreditation_status?.replace('_', ' ')}</span>
+                            <span>Rooms: {accommodation.available_rooms || 0}/{accommodation.total_rooms || 0}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleAccommodationStatus(accommodation.id, accommodation.is_active)}
+                            className={`p-2 rounded-lg transition-all duration-300 ${
+                              accommodation.is_active
+                                ? 'bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30'
+                                : 'bg-green-500/20 text-green-300 hover:bg-green-500/30 border border-green-500/30'
+                            }`}
+                            title={accommodation.is_active ? 'Deactivate' : 'Activate'}
+                          >
+                            {accommodation.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAccommodation(accommodation.id)}
+                            className="p-2 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/30 transition-all duration-300"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import type { SessionUser } from "@/lib/stackauth"
 // Removed direct database import - using API endpoint instead
-import { Plus, Edit, Eye, Trash2, MapPin, Users, Star } from "lucide-react"
+import { Plus, Edit, Eye, Trash2, MapPin, Users, Star, Globe, EyeOff } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Building } from "lucide-react" // Import Building component
@@ -113,6 +113,27 @@ export default function ProviderAccommodations() {
     }
   }
 
+  const handlePublishToggle = async (id: string | number, isPublished: boolean) => {
+    try {
+      const res = await fetch(`/api/accommodations/${id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: !isPublished })
+      })
+      if (!res.ok) throw new Error('Publish toggle failed')
+      const updated = await res.json()
+      setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { 
+        ...a, 
+        is_published: updated.is_published,
+        listing_status: updated.listing_status,
+        published_at: updated.published_at,
+        unpublished_at: updated.unpublished_at
+      } : a)))
+    } catch (e) {
+      alert('Failed to update publication status')
+    }
+  }
+
   return (
     <AuthGuard requiredRole="provider">
       <DashboardLayout userRole="provider">
@@ -163,13 +184,20 @@ export default function ProviderAccommodations() {
                       fill
                       className="object-cover" 
                     />
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute top-3 right-3 flex flex-col gap-2">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           accommodation.is_open ? "bg-green-500 text-white" : "bg-red-500 text-white"
                         }`}
                       >
                         {accommodation.is_open ? "Available" : "Full"}
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          accommodation.is_published ? "bg-blue-500 text-white" : "bg-gray-500 text-white"
+                        }`}
+                      >
+                        {accommodation.is_published ? "Published" : "Draft"}
                       </span>
                     </div>
                   </div>
@@ -182,10 +210,37 @@ export default function ProviderAccommodations() {
                       <span>{accommodation.address}</span>
                     </div>
 
-                    <div className="flex items-center text-neutral-300 text-sm mb-4">
+                    <div className="flex items-center text-neutral-300 text-sm mb-2">
                       <Users className="w-4 h-4 mr-2 text-green-400" />
                       <span>
                         {accommodation.available_rooms ?? 0}/{accommodation.total_rooms ?? 0} rooms available
+                      </span>
+                    </div>
+
+                    {/* Room Types */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {accommodation.has_single_rooms && (
+                        <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full border border-indigo-500/30">
+                          Single: {formatZar(Number(accommodation.single_room_price) || 0)}/month
+                        </span>
+                      )}
+                      {accommodation.has_sharing_rooms && (
+                        <span className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full border border-purple-500/30">
+                          Sharing: {formatZar(Number(accommodation.sharing_room_price) || 0)}/month
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Accreditation Status */}
+                    <div className="flex items-center text-sm mb-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        accommodation.accreditation_status === 'accredited' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                        accommodation.accreditation_status === 'provisionally_accredited' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                        'bg-red-500/20 text-red-300 border border-red-500/30'
+                      }`}>
+                        {accommodation.accreditation_status === 'accredited' ? 'Accredited' :
+                         accommodation.accreditation_status === 'provisionally_accredited' ? 'Provisionally Accredited' :
+                         'Non-Accredited'}
                       </span>
                     </div>
 
@@ -237,28 +292,53 @@ export default function ProviderAccommodations() {
                       </div>
                     </div>
 
-                    <div className="flex space-x-2">
-                      <Link
-                        href={`/listing/${accommodation.id}`}
-                        className="flex-1 bg-white/10 text-white px-4 py-3 rounded-lg hover:bg-white/20 transition-all duration-300 text-center flex items-center justify-center space-x-2 border border-white/20"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>View</span>
-                      </Link>
-                      <Link
-                        href={`/provider/accommodations/edit/${accommodation.id}`}
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/20"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span>Edit</span>
-                      </Link>
+                    <div className="space-y-3">
+                      {/* Publish/Unpublish Button */}
                       <button
-                        onClick={() => handleDelete(accommodation.id)}
-                        className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg shadow-red-500/20"
+                        onClick={() => handlePublishToggle(accommodation.id, accommodation.is_published)}
+                        className={`w-full px-4 py-3 rounded-lg transition-all duration-300 text-center flex items-center justify-center space-x-2 font-semibold ${
+                          accommodation.is_published
+                            ? 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 shadow-lg shadow-orange-500/20'
+                            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/20'
+                        }`}
                       >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Delete</span>
+                        {accommodation.is_published ? (
+                          <>
+                            <EyeOff className="w-4 h-4" />
+                            <span>Unpublish</span>
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="w-4 h-4" />
+                            <span>Publish</span>
+                          </>
+                        )}
                       </button>
+
+                      {/* Action Buttons */}
+                      <div className="flex space-x-2">
+                        <Link
+                          href={`/listing/${accommodation.id}`}
+                          className="flex-1 bg-white/10 text-white px-4 py-3 rounded-lg hover:bg-white/20 transition-all duration-300 text-center flex items-center justify-center space-x-2 border border-white/20"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>View</span>
+                        </Link>
+                        <Link
+                          href={`/provider/accommodations/edit/${accommodation.id}`}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/20"
+                        >
+                          <Edit className="w-4 h-4" />
+                          <span>Edit</span>
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(accommodation.id)}
+                          className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg shadow-red-500/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
