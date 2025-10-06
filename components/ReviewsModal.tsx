@@ -413,11 +413,15 @@ export default function ReviewsModal({
           setReportingReviewId(null)
           setReportingReviewAuthor("")
         }}
-        reviewId={reportingReviewId!}
-        reviewAuthor={reportingReviewAuthor}
-        reporterType="student"
-        reporterName={currentStudent?.name || ""}
-        reporterId={currentStudent?.id || ""}
+        itemType="review"
+        itemAuthor={reportingReviewAuthor}
+        onSubmit={async (reason: string, description: string) => {
+          // TODO: Implement report submission
+          console.log('Report submitted:', { reason, description, reviewId: reportingReviewId })
+          setShowReportModal(false)
+          setReportingReviewId(null)
+          setReportingReviewAuthor("")
+        }}
       />
     </>
   )

@@ -1,193 +1,157 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
-import { X, AlertTriangle, Flag, MessageSquare, Trash2, Ban } from "lucide-react"
-import { StudentAuthService } from "@/lib/student-auth"
+import { X, AlertTriangle, Flag } from "lucide-react"
 
 interface ReportModalProps {
   isOpen: boolean
   onClose: () => void
-  reviewId: number
-  reviewAuthor: string
-  reporterType: "student" | "provider"
-  reporterName: string
-  reporterId: string
+  onSubmit: (reason: string, description: string) => Promise<void>
+  itemType: "review" | "reply"
+  itemAuthor: string
 }
 
-const reportReasons = [
-  { id: "inappropriate", label: "Inappropriate Language", icon: Ban },
-  { id: "spam", label: "Spam or Fake Review", icon: Trash2 },
-  { id: "harassment", label: "Harassment or Bullying", icon: AlertTriangle },
-  { id: "false_info", label: "False Information", icon: Flag },
-  { id: "personal_attack", label: "Personal Attack", icon: MessageSquare },
-  { id: "other", label: "Other", icon: Flag },
-]
-
-export default function ReportModal({
-  isOpen,
-  onClose,
-  reviewId,
-  reviewAuthor,
-  reporterType,
-  reporterName,
-  reporterId,
+export default function ReportModal({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  itemType, 
+  itemAuthor 
 }: ReportModalProps) {
-  const [selectedReason, setSelectedReason] = useState("")
+  const [reason, setReason] = useState("")
   const [description, setDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+
+  const reportReasons = [
+    { value: "spam", label: "Spam or misleading content" },
+    { value: "inappropriate", label: "Inappropriate or offensive content" },
+    { value: "fake", label: "Fake or fraudulent review" },
+    { value: "harassment", label: "Harassment or bullying" },
+    { value: "other", label: "Other violation" }
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedReason) return
+    if (!reason) return
 
     setIsSubmitting(true)
-
     try {
-      // Submit the report
-      StudentAuthService.submitReport(
-        reviewId,
-        reporterId,
-        reporterType,
-        reporterName,
-        selectedReason,
-        description || "No additional details provided",
-      )
-
-      setSubmitted(true)
-      setTimeout(() => {
-        onClose()
-        resetForm()
-      }, 2000)
+      await onSubmit(reason, description)
+      handleClose()
     } catch (error) {
-      console.error("Failed to submit report:", error)
+      console.error('Report submission failed:', error)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const resetForm = () => {
-    setSelectedReason("")
-    setDescription("")
-    setSubmitted(false)
-    setIsSubmitting(false)
-  }
-
   const handleClose = () => {
+    setReason("")
+    setDescription("")
+    setIsSubmitting(false)
     onClose()
-    resetForm()
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl max-w-md w-full mx-4 overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center space-x-2">
-            <Flag className="w-5 h-5 text-red-600" />
-            <h2 className="text-xl font-bold">Report Review</h2>
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-red-500/20 max-w-md w-full mx-4">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-red-500/20 border border-red-500/50 rounded-full flex items-center justify-center">
+            <Flag className="w-5 h-5 text-red-400" />
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <h2 className="text-xl font-bold text-white">Report {itemType}</h2>
+            <p className="text-sm text-neutral-400">Help us maintain quality content</p>
+          </div>
         </div>
 
-        <div className="p-6">
-          {submitted ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Flag className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Report Submitted</h3>
-              <p className="text-gray-600">
-                Thank you for helping keep our community safe. We&apos;ll review this report and take appropriate action.
+        <div className="mb-6 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+          <p className="text-sm text-neutral-300">
+            <span className="font-medium">Reporting content by:</span> {itemAuthor}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-3">
+              Why are you reporting this {itemType}? *
+            </label>
+            <div className="space-y-2">
+              {reportReasons.map((option) => (
+                <label
+                  key={option.value}
+                  className="flex items-center p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="reason"
+                    value={option.value}
+                    checked={reason === option.value}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="w-4 h-4 text-red-500 bg-black/20 border-white/20 focus:ring-red-500 focus:ring-2"
+                  />
+                  <span className="ml-3 text-sm text-neutral-300">{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Additional details (optional)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Please provide any additional context that might help us understand the issue..."
+              className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+              rows={3}
+              maxLength={500}
+            />
+            <div className="text-xs text-neutral-400 mt-1">
+              {description.length}/500 characters
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={!reason || isSubmitting}
+              className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-red-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-red-500/20 hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-6 py-3 border border-white/20 bg-black/20 backdrop-blur-xl text-white rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-6 p-4 border border-yellow-500/20 bg-yellow-500/10 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-yellow-300 font-medium">Report Guidelines</p>
+              <p className="text-xs text-yellow-200 mt-1">
+                Reports are reviewed by our moderation team. False reports may result in account restrictions.
               </p>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">
-                  <strong>Reporting review by:</strong> {reviewAuthor}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Reports are reviewed by our moderation team within 24 hours.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Why are you reporting this review?
-                </label>
-                <div className="space-y-2">
-                  {reportReasons.map((reason) => {
-                    const IconComponent = reason.icon
-                    return (
-                      <label
-                        key={reason.id}
-                        className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                          selectedReason === reason.id ? "border-red-500 bg-red-50" : "border-gray-200 hover:bg-gray-50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="reason"
-                          value={reason.id}
-                          checked={selectedReason === reason.id}
-                          onChange={(e) => setSelectedReason(e.target.value)}
-                          className="sr-only"
-                        />
-                        <IconComponent className="w-4 h-4 text-gray-500 mr-3" />
-                        <span className="text-sm font-medium text-gray-700">{reason.label}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Additional Details (Optional)</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                  rows={3}
-                  placeholder="Provide any additional context that might help our review..."
-                />
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="flex items-start space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-yellow-800 font-medium">Important</p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      False reports may result in restrictions on your account. Only report content that genuinely
-                      violates our community guidelines.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!selectedReason || isSubmitting}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit Report"}
-                </button>
-              </div>
-            </form>
-          )}
+          </div>
         </div>
       </div>
     </div>
