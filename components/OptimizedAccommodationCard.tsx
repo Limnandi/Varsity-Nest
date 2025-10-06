@@ -64,7 +64,7 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
   )
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
+    <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl overflow-hidden text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
       <div className="relative h-48 overflow-hidden">
         <Image
           src={image || "/placeholder.jpg"}
@@ -77,17 +77,22 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           priority={false}
         />
-        {!imageLoaded && <div className="absolute inset-0 bg-gray-300 animate-pulse"></div>}
+        {!imageLoaded && <div className="absolute inset-0 bg-gray-800/50 animate-pulse"></div>}
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {featured && (
-            <span className="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full">
-              FEATURED
+            <span className="px-3 py-1 bg-gradient-to-r from-yellow-400/90 to-orange-500/90 backdrop-blur-sm text-white text-xs font-bold rounded-full border border-yellow-400/30">
+              ⭐ FEATURED
             </span>
           )}
           <span
-            className={`px-2 py-1 rounded-full text-xs font-semibold ${
-              isOpen ? "bg-green-500 text-white" : "bg-red-500 text-white"
+            className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm border ${
+              isOpen 
+                ? "bg-green-500/20 text-green-300 border-green-500/50" 
+                : "bg-red-500/20 text-red-300 border-red-500/50"
             }`}
           >
             {isOpen ? "Available" : "Full"}
@@ -96,66 +101,71 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
 
         <button
           onClick={handleFavoriteToggle}
-          className="absolute top-3 right-3 p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 transition-all"
+          className="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/10 transition-all duration-300"
         >
-          <Heart className={`w-4 h-4 ${isFavorited ? "text-red-500 fill-current" : "text-gray-600"}`} />
+          <Heart className={`w-4 h-4 ${isFavorited ? "text-red-400 fill-current" : "text-white/80"}`} />
         </button>
 
         {isOpen && (
-          <div className="absolute bottom-3 right-3 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+          <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs border border-white/20">
             {availableRooms}/{totalRooms} rooms
           </div>
         )}
       </div>
 
-      <div className="p-5">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="font-bold text-lg mb-1 group-hover:text-blue-600 transition-colors">{title}</h3>
-          {verified && <Shield className="w-5 h-5 text-green-500 flex-shrink-0" />}
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-3">
+          <h3 className="font-bold text-xl mb-1 group-hover:text-blue-300 transition-colors text-white">{title}</h3>
+          {verified && (
+            <div className="p-2 border border-green-500/50 bg-green-500/10 rounded-lg">
+              <Shield className="w-5 h-5 text-green-400" />
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center text-gray-600 text-sm mb-2">
-          <MapPin className="w-4 h-4 mr-1" />
+        <div className="flex items-center text-neutral-300 text-sm mb-3">
+          <MapPin className="w-4 h-4 mr-2 text-blue-400" />
           <span className="truncate">{address}</span>
         </div>
 
-        <div className="flex items-center text-gray-600 text-sm mb-3">
-          <Users className="w-4 h-4 mr-1" />
+        <div className="flex items-center text-neutral-300 text-sm mb-4">
+          <Users className="w-4 h-4 mr-2 text-purple-400" />
           <span>{distance}</span>
         </div>
 
-        <div className="flex flex-wrap gap-1 mb-3">
+        <div className="flex flex-wrap gap-2 mb-4">
           {displayAmenities.map((amenity: string) => (
-            <span key={amenity} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
+            <span key={amenity} className="px-3 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30">
               {amenity}
             </span>
           ))}
           {remainingAmenities > 0 && (
-            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+            <span className="px-3 py-1 bg-neutral-500/20 text-neutral-400 text-xs rounded-full border border-neutral-500/30">
               +{remainingAmenities} more
             </span>
           )}
         </div>
 
-        <div className="flex items-center mb-3">
+        <div className="flex items-center mb-4">
           <div className="flex items-center">
             {stars.map((i: number) => (
-              <Star key={i} className={`w-4 h-4 ${i < rating ? "text-yellow-400 fill-current" : "text-gray-300"}`} />
+              <Star key={i} className={`w-4 h-4 ${i < rating ? "text-yellow-400 fill-current" : "text-neutral-600"}`} />
             ))}
           </div>
-          <span className="ml-2 text-sm text-gray-600">({reviewCount} reviews)</span>
+          <span className="ml-2 text-sm text-neutral-400">({reviewCount} reviews)</span>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold text-green-600">{formatZar(price)}</span>
-            <span className="text-gray-500 text-sm">/month</span>
+            <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">{formatZar(price)}</span>
+            <span className="text-neutral-400 text-sm">/month</span>
           </div>
           <Link
             href={`/listing/${id}`}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-md"
+            className="group/btn relative bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
           >
-            View Details
+            <span className="relative z-10">View Details</span>
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
           </Link>
         </div>
       </div>

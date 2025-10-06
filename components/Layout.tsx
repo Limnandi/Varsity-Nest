@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
 import FloatingActionButton from "./FloatingActionButton"
@@ -11,7 +11,21 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const pathname = usePathname() || ""
+  const [pathname, setPathname] = useState("")
+  
+  useEffect(() => {
+    // Use window.location.pathname as a fallback
+    const getPathname = () => {
+      if (typeof window !== 'undefined') {
+        setPathname(window.location.pathname)
+      }
+    }
+    
+    getPathname()
+    // Listen for route changes
+    window.addEventListener('popstate', getPathname)
+    return () => window.removeEventListener('popstate', getPathname)
+  }, [])
 
   // Don't render main layout for dashboard/admin/auth pages
   const isDashboardArea =

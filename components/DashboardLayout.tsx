@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
   Menu,
   X,
@@ -65,8 +64,19 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
   const navItems = userRole === "admin" ? adminNavItems : providerNavItems
 
   const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
-    const pathname = usePathname()
-    const isActive = pathname === href
+    const [isActive, setIsActive] = useState(false)
+    
+    useEffect(() => {
+      const checkActive = () => {
+        if (typeof window !== 'undefined') {
+          setIsActive(window.location.pathname === href)
+        }
+      }
+      checkActive()
+      // Listen for route changes
+      window.addEventListener('popstate', checkActive)
+      return () => window.removeEventListener('popstate', checkActive)
+    }, [href])
     return (
       <Link
         href={href}
