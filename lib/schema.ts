@@ -124,6 +124,57 @@ export const reviews = pgTable("reviews", {
   rating: integer("rating").notNull(),
   comment: text("comment"),
   isVerified: boolean("is_verified").default(false),
+  helpfulVotes: integer("helpful_votes").default(0),
+  totalVotes: integer("total_votes").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Review helpfulness votes table
+export const reviewHelpfulness = pgTable("review_helpfulness", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  reviewId: varchar("review_id", { length: 255 }).notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  isHelpful: boolean("is_helpful").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Review replies table
+export const reviewReplies = pgTable("review_replies", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  reviewId: varchar("review_id", { length: 255 }).notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  comment: text("comment").notNull(),
+  helpfulVotes: integer("helpful_votes").default(0),
+  totalVotes: integer("total_votes").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Review reports table
+export const reviewReports = pgTable("review_reports", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  reviewId: varchar("review_id", { length: 255 }).notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  reporterId: varchar("reporter_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 100 }).notNull().$type<"spam" | "inappropriate" | "fake" | "harassment" | "other">(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).notNull().$type<"pending" | "reviewed" | "resolved" | "dismissed">().default("pending"),
+  adminId: varchar("admin_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Reply reports table
+export const replyReports = pgTable("reply_reports", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  replyId: varchar("reply_id", { length: 255 }).notNull().references(() => reviewReplies.id, { onDelete: "cascade" }),
+  reporterId: varchar("reporter_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 100 }).notNull().$type<"spam" | "inappropriate" | "fake" | "harassment" | "other">(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).notNull().$type<"pending" | "reviewed" | "resolved" | "dismissed">().default("pending"),
+  adminId: varchar("admin_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+  adminNotes: text("admin_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })

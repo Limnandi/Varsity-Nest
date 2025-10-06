@@ -100,9 +100,63 @@ CREATE TABLE IF NOT EXISTS reviews (
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     is_verified BOOLEAN DEFAULT false,
+    helpful_votes INTEGER DEFAULT 0,
+    total_votes INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(student_id, accommodation_id)
+);
+
+-- Review helpfulness votes table
+CREATE TABLE IF NOT EXISTS review_helpfulness (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    review_id VARCHAR(255) NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+    student_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    is_helpful BOOLEAN NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(review_id, student_id)
+);
+
+-- Review replies table
+CREATE TABLE IF NOT EXISTS review_replies (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    review_id VARCHAR(255) NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+    student_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    comment TEXT NOT NULL,
+    helpful_votes INTEGER DEFAULT 0,
+    total_votes INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Review reports table
+CREATE TABLE IF NOT EXISTS review_reports (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    review_id VARCHAR(255) NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+    reporter_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    reason VARCHAR(100) NOT NULL CHECK (reason IN ('spam', 'inappropriate', 'fake', 'harassment', 'other')),
+    description TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed')),
+    admin_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+    admin_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(review_id, reporter_id)
+);
+
+-- Reply reports table
+CREATE TABLE IF NOT EXISTS reply_reports (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    reply_id VARCHAR(255) NOT NULL REFERENCES review_replies(id) ON DELETE CASCADE,
+    reporter_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    reason VARCHAR(100) NOT NULL CHECK (reason IN ('spam', 'inappropriate', 'fake', 'harassment', 'other')),
+    description TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed')),
+    admin_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+    admin_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(reply_id, reporter_id)
 );
 
 -- Payments table
