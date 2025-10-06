@@ -13,6 +13,12 @@ interface AccommodationCardProps {
   rating: number
   reviewCount: number
   price: number
+  priceRange?: { min: number; max: number }
+  roomTypes?: Array<{
+    type: 'single' | 'sharing'
+    price: number
+    availableCount: number
+  }>
   isOpen: boolean
   image: string
   amenities: string[]
@@ -30,6 +36,8 @@ export default function AccommodationCard({
   rating,
   reviewCount,
   price,
+  priceRange,
+  roomTypes,
   isOpen,
   image,
   amenities,
@@ -132,8 +140,22 @@ export default function AccommodationCard({
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold text-green-600">{formatZar(price)}</span>
-            <span className="text-gray-500 text-sm">/month</span>
+            {priceRange ? (
+              <div>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatZar(priceRange.min)}
+                  {priceRange.min !== priceRange.max && (
+                    <span className="text-lg text-gray-500"> - {formatZar(priceRange.max)}</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">per month</div>
+              </div>
+            ) : (
+              <div>
+                <span className="text-2xl font-bold text-green-600">{formatZar(price)}</span>
+                <span className="text-gray-500 text-sm">/month</span>
+              </div>
+            )}
           </div>
           <Link
             href={`/listing/${id}`}
@@ -142,6 +164,28 @@ export default function AccommodationCard({
             View Details
           </Link>
         </div>
+        
+        {/* Room Types Preview */}
+        {roomTypes && roomTypes.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="text-xs text-gray-500 mb-2">Room types available:</div>
+            <div className="flex flex-wrap gap-1">
+              {roomTypes.slice(0, 3).map((roomType, index) => (
+                <span
+                  key={index}
+                  className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full"
+                >
+                  {roomType.type} - {formatZar(roomType.price)}
+                </span>
+              ))}
+              {roomTypes.length > 3 && (
+                <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full">
+                  +{roomTypes.length - 3} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
