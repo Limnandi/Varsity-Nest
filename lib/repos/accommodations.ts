@@ -25,6 +25,14 @@ export interface DbAccommodation {
   available_rooms?: number | null
   total_rooms?: number | null
   is_verified?: boolean | null
+  is_published?: boolean | null
+  listing_status?: string | null
+  has_single_rooms?: boolean | null
+  has_sharing_rooms?: boolean | null
+  single_room_price?: number | null
+  sharing_room_price?: number | null
+  published_at?: string | null
+  unpublished_at?: string | null
 }
 
 export async function fetchFeaturedAccommodations(limit = 9): Promise<DbAccommodation[]> {
@@ -224,6 +232,12 @@ export async function insertAccommodation(payload: {
   available_rooms?: number
   total_rooms?: number
   is_verified?: boolean
+  has_single_rooms?: boolean
+  has_sharing_rooms?: boolean
+  single_room_price?: number
+  sharing_room_price?: number
+  listing_status?: string
+  is_published?: boolean
 }) {
   const [accommodation] = await secureDb.db
     .insert(schema.accommodations)
@@ -243,6 +257,12 @@ export async function insertAccommodation(payload: {
       availableRooms: payload.available_rooms ?? 0,
       totalRooms: payload.total_rooms ?? 0,
       isVerified: payload.is_verified ?? false,
+      hasSingleRooms: payload.has_single_rooms ?? false,
+      hasSharingRooms: payload.has_sharing_rooms ?? false,
+      singleRoomPrice: payload.single_room_price ?? 0,
+      sharingRoomPrice: payload.sharing_room_price ?? 0,
+      listingStatus: payload.listing_status ?? 'draft',
+      isPublished: payload.is_published ?? false,
       isActive: true
     })
     .returning()

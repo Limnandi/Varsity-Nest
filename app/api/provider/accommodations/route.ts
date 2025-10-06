@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/database"
+import { getCurrentUserFromRequest } from "@/lib/auth-server"
 
 export async function GET(request: NextRequest) {
   try {
+    // Get current user from session
+    const user = await getCurrentUserFromRequest(request)
+    if (!user || user.role !== 'provider') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const providerId = searchParams.get('providerId')
     const limit = searchParams.get('limit') || '200'
 
-    if (!providerId) {
-      return NextResponse.json(
-        { error: "Provider ID is required" },
-        { status: 400 }
-      )
+    // Get provider ID from providers table
+    const providerResult = await query`
+      SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
+    `
+
+    if (providerResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
     }
+
+    const providerId = providerResult.rows[0].id
 
     // Fetch accommodations for the provider
     const accommodationsResult = await query`
@@ -36,7 +46,16 @@ export async function GET(request: NextRequest) {
         a.review_count,
         a.is_open,
         a.created_at,
-        a.updated_at
+        a.updated_at,
+        a.accreditation_status,
+        a.is_published,
+        a.listing_status,
+        a.has_single_rooms,
+        a.has_sharing_rooms,
+        a.single_room_price,
+        a.sharing_room_price,
+        a.published_at,
+        a.unpublished_at
       FROM accommodations a
       WHERE a.provider_id = ${providerId}
       ORDER BY a.created_at DESC
@@ -63,7 +82,16 @@ export async function GET(request: NextRequest) {
       review_count: acc.review_count,
       is_open: acc.is_open,
       created_at: acc.created_at,
-      updated_at: acc.updated_at
+      updated_at: acc.updated_at,
+      accreditation_status: acc.accreditation_status,
+      is_published: acc.is_published,
+      listing_status: acc.listing_status,
+      has_single_rooms: acc.has_single_rooms,
+      has_sharing_rooms: acc.has_sharing_rooms,
+      single_room_price: acc.single_room_price,
+      sharing_room_price: acc.sharing_room_price,
+      published_at: acc.published_at,
+      unpublished_at: acc.unpublished_at
     }))
 
     return NextResponse.json({ accommodations })

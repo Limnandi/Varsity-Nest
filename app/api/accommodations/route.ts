@@ -98,6 +98,10 @@ export async function POST(request: NextRequest) {
         available_rooms: Number(form.get('available_rooms') || 0),
         total_rooms: Number(form.get('total_rooms') || 0),
         is_verified: String(form.get('is_verified') || 'false') === 'true',
+        has_single_rooms: String(form.get('has_single_rooms') || 'false') === 'true',
+        has_sharing_rooms: String(form.get('has_sharing_rooms') || 'false') === 'true',
+        single_room_price: Number(form.get('single_room_price') || 0),
+        sharing_room_price: Number(form.get('sharing_room_price') || 0),
       }
       
       // Validate the form data
@@ -195,6 +199,12 @@ export async function POST(request: NextRequest) {
       available_rooms: payload.available_rooms ?? 0,
       total_rooms: payload.total_rooms ?? 0,
       is_verified: Boolean(payload.is_verified),
+      has_single_rooms: Boolean(payload.has_single_rooms),
+      has_sharing_rooms: Boolean(payload.has_sharing_rooms),
+      single_room_price: Number(payload.single_room_price) || 0,
+      sharing_room_price: Number(payload.sharing_room_price) || 0,
+      listing_status: 'draft',
+      is_published: false,
     })
 
     return NextResponse.json(record, { status: 201 })

@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           COUNT(*) as total_bookings,
           COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as active_bookings,
           COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings,
-          COALESCE(SUM(CASE WHEN status = 'confirmed' THEN amount ELSE 0 END), 0) as total_revenue
+          COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_amount ELSE 0 END), 0) as total_revenue
         FROM bookings b
         JOIN accommodations a ON b.accommodation_id = a.id
         WHERE a.provider_id = ${providerId}
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       const reviewsResult = await query`
         SELECT 
           COUNT(*) as total_reviews,
-          COALESCE(AVG(rating), 0) as average_review_rating
+          COALESCE(AVG(r.rating), 0) as average_review_rating
         FROM reviews r
         JOIN accommodations a ON r.accommodation_id = a.id
         WHERE a.provider_id = ${providerId}

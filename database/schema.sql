@@ -396,6 +396,20 @@ ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20);
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS accommodation_type VARCHAR(50);
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS price_per_month DECIMAL(10,2);
 
+-- Listing management system additions
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS room_types JSONB DEFAULT '[]';
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS single_room_price DECIMAL(10,2);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS sharing_room_price DECIMAL(10,2);
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS has_single_rooms BOOLEAN DEFAULT false;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS has_sharing_rooms BOOLEAN DEFAULT false;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS unpublished_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS listing_status VARCHAR(20) DEFAULT 'draft' CHECK (listing_status IN ('draft', 'published', 'unpublished', 'archived'));
+
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_accommodations_featured ON accommodations(featured) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_accommodations_created_at ON accommodations(created_at);
+CREATE INDEX IF NOT EXISTS idx_accommodations_published ON accommodations(is_published) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_accommodations_listing_status ON accommodations(listing_status);
+CREATE INDEX IF NOT EXISTS idx_accommodations_accreditation_status ON accommodations(accreditation_status);
