@@ -140,7 +140,31 @@ export const verifyToken = async (_token: string): Promise<SessionUser | null> =
 
 // User management functions
 export const getAllStudents = async () => {
-  return []
+  try {
+    const { secureDb } = await import('./database-secure')
+    const schema = await import('./schema')
+    const { eq } = await import('drizzle-orm')
+
+    const rows = await secureDb.db
+      .select({
+        id: (schema as any).students.userId,
+        studentNumber: (schema as any).students.studentNumber,
+        university: (schema as any).students.university,
+        firstName: (schema as any).users.firstName,
+        lastName: (schema as any).users.lastName,
+        email: (schema as any).users.email,
+        isActive: (schema as any).users.isActive,
+        emailVerified: (schema as any).users.emailVerified,
+        createdAt: (schema as any).users.createdAt
+      })
+      .from((schema as any).students)
+      .leftJoin((schema as any).users, eq((schema as any).students.userId, (schema as any).users.id))
+
+    return rows
+  } catch (error) {
+    console.error('getAllStudents error:', error)
+    return []
+  }
 }
 
 export const toggleUserStatus = async (_userId: string, _isActive: boolean) => {
