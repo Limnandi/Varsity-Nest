@@ -28,21 +28,25 @@ export default function CheckEmailPage() {
     setResendSuccess(false)
 
     try {
-      // Get user's contact channels
-      const contactChannels = await user.listContactChannels()
-      const emailChannel = contactChannels.find(
-        channel => channel.type === 'email' && channel.value === user.primaryEmail
-      )
+      // Call server-side endpoint which will use the Stack server app to send the email
+      const resp = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, email: user.primaryEmail })
+      })
 
-      if (emailChannel) {
-        await emailChannel.sendVerificationEmail()
+      const json = await resp.json()
+      if (!resp.ok) {
+        console.error('Server resend failed:', json)
+        setResendError(json.error || 'Failed to resend verification email')
+      } else if (json.success) {
         setResendSuccess(true)
       } else {
-        setResendError("Email channel not found. Please contact support.")
+        setResendError(json.error || 'Failed to resend verification email')
       }
     } catch (error: any) {
-      console.error("Failed to resend verification email:", error)
-      setResendError(error.message || "Failed to resend verification email. Please try again.")
+      console.error('Failed to call resend endpoint:', error)
+      setResendError(error?.message || 'Failed to resend verification email. Please try again later.')
     } finally {
       setIsResending(false)
     }
