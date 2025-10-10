@@ -28,7 +28,23 @@ const baseSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
 
   // Email
-  RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
+    // RESEND_API_KEY may be omitted in dev/test; in production it should be provided.
+    RESEND_API_KEY: z.preprocess((v) => {
+      if (typeof v === 'string') {
+        const t = v.trim()
+        return t === '' ? undefined : t
+      }
+      return v
+    }, z.string().min(1).optional()),
+  // Optional override for Resend 'from' address. Use a verified sending address in production.
+  // Accept empty string as unset by preprocessing to avoid accidental invalid env values.
+  RESEND_FROM: z.preprocess((v) => {
+    if (typeof v === 'string') {
+      const t = v.trim()
+      return t === '' ? undefined : t
+    }
+    return v
+  }, z.string().email().optional()),
 
   // Security / Auth
   NEXTAUTH_SECRET: z.string().optional(),
@@ -70,18 +86,23 @@ if (!REDIS_URL || !REDIS_TOKEN) {
   throw new Error("Redis configuration is missing: set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_URL and KV_REST_API_TOKEN)")
 }
 
-// In production, enforce stricter requirements
-if (envRaw.NODE_ENV === "production") {
-  // Sentry is strongly recommended in production
-  if (!envRaw.SENTRY_DSN) {
-    throw new Error("SENTRY_DSN is required in production")
-  }
+  // In production, enforce stricter requirements
+  if (envRaw.NODE_ENV === "production") {
+    // Sentry is strongly recommended in production
+    if (!envRaw.SENTRY_DSN) {
+      throw new Error("SENTRY_DSN is required in production")
+    }
 
-  // Require explicit CORS origins
-  if (!envRaw.ALLOWED_ORIGINS || envRaw.ALLOWED_ORIGINS.trim().length === 0) {
-    throw new Error("ALLOWED_ORIGINS is required in production (comma-separated list)")
+    // Require explicit CORS origins
+    if (!envRaw.ALLOWED_ORIGINS || envRaw.ALLOWED_ORIGINS.trim().length === 0) {
+      throw new Error("ALLOWED_ORIGINS is required in production (comma-separated list)")
+    }
+
+    // NOTE: RESEND configuration is optional for test/dev CI. In production,
+    // it's recommended to set RESEND_API_KEY and RESEND_FROM to a verified
+    // sending address, but we do not enforce it here to keep environments
+    // flexible for deployments that use Stack's sending instead.
   }
-}
 
 // Derive commonly used config values
 const APP_URL = envRaw.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
@@ -107,6 +128,7 @@ export const env = {
 
   // Email
   RESEND_API_KEY: envRaw.RESEND_API_KEY,
+  RESEND_FROM: envRaw.RESEND_FROM || undefined,
 
   // Auth
   NEXTAUTH_SECRET: envRaw.NEXTAUTH_SECRET,
