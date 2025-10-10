@@ -125,25 +125,10 @@ export default function ProviderRegistrationPage() {
           console.log('🔵 Email channel:', emailChannel ? 'Found' : 'Not found')
           
           if (emailChannel) {
-            console.log('🔵 Sending verification email (server-side)...')
-            // Use server-side endpoint to centralize send and capture server errors
-            try {
-              const resp = await fetch('/api/auth/resend-verification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser.id, email }),
-              })
-
-              if (!resp.ok) {
-                const body = await resp.json().catch(() => null)
-                console.error('❌ Server resend endpoint returned non-OK:', resp.status, body)
-              } else {
-                const body = await resp.json().catch(() => null)
-                console.log('✅ Server resend endpoint result:', body)
-              }
-            } catch (err) {
-              console.error('❌ Failed to call server resend endpoint:', err)
-            }
+            console.log('🔵 Sending verification email...')
+            // CRITICAL: Send without callbackUrl parameter - just use the default from StackAuth config
+            await emailChannel.sendVerificationEmail()
+            console.log('✅ Verification email sent successfully to:', email)
           } else {
             console.warn('⚠️ Email channel not found for:', email)
             console.warn('Available channels:', contactChannels)

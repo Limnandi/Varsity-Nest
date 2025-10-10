@@ -5,7 +5,6 @@ import { useStackApp, useUser } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
-import { StudentAuthService } from '@/lib/student-auth'
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
 
 export default function StudentRegistrationPage() {
@@ -34,12 +33,6 @@ export default function StudentRegistrationPage() {
         throw new Error('Passwords do not match')
       }
 
-      // Quick client-side whitelist check
-      const domainCheck = StudentAuthService.isEmailWhitelisted(email)
-      if (!domainCheck.isValid) {
-        throw new Error('Email domain not whitelisted for student registration')
-      }
-
       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       const signupResult = await app.signUpWithCredential({ 
         email, 
@@ -58,38 +51,46 @@ export default function StudentRegistrationPage() {
         await user?.update({ displayName: name })
       } catch {}
       
-      // Persist user in our database (server-side) so sessions and admin views work
+      // IMPORTANT: Manually trigger verification email (required for custom SMTP)
+      // We MUST wait for this to complete before redirecting
       try {
-        // Wait briefly for StackAuth to create the user record
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        console.log('🔵 Starting manual verification email send for:', email)
+        
+        // Get the newly created user (wait for StackAuth to create the user)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        console.log('🔵 Fetching user from StackAuth...')
+        
         const currentUser = await app.getUser()
-
-        const payload = {
-          stackUserId: currentUser?.id || null,
-          email,
-          name,
-          studentNumber: String(form.get('studentNumber') || ''),
-          university: String(form.get('university') || '')
-        }
-
-        try {
-          const resp = await fetch('/api/auth/register/student', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          })
-
-          if (!resp.ok) {
-            console.warn('Server student registration returned non-OK:', resp.status)
+        console.log('🔵 Current user:', currentUser ? 'Found' : 'Not found')
+        
+        if (currentUser) {
+          console.log('🔵 Fetching contact channels...')
+          const contactChannels = await currentUser.listContactChannels()
+          console.log('🔵 Contact channels found:', contactChannels.length)
+          
+          const emailChannel = contactChannels.find(
+            (channel: any) => channel.type === 'email' && channel.value === email
+          )
+          console.log('🔵 Email channel:', emailChannel ? 'Found' : 'Not found')
+          
+          if (emailChannel) {
+            console.log('🔵 Sending verification email...')
+            // CRITICAL: Send without callbackUrl parameter - just use the default from StackAuth config
+            await emailChannel.sendVerificationEmail()
+            console.log('✅ Verification email sent successfully to:', email)
+          } else {
+            console.warn('⚠️ Email channel not found for:', email)
+            console.warn('Available channels:', contactChannels)
           }
-        } catch (e) {
-          console.error('Failed to call server student registration endpoint:', e)
+        } else {
+          console.warn('⚠️ No current user found after signup')
         }
-      } catch (e) {
-        console.error('Error persisting student to server:', e)
+      } catch (emailError) {
+        console.error('❌ Failed to send verification email:', emailError)
+        // Don't throw - user is created, they can resend from check-email page
       }
-
-      // Redirect to check-email page after signup (verification email may be sent by server/webhook)
+      
+      // Redirect to check-email page after successful registration (AFTER email is sent)
       router.push('/auth/check-email')
     } catch (error: any) {
       setState({ 
