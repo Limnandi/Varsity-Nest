@@ -28,18 +28,19 @@ export default function CheckEmailPage() {
     setResendSuccess(false)
 
     try {
-      // Get user's contact channels
-      const contactChannels = await user.listContactChannels()
-      const emailChannel = contactChannels.find(
-        channel => channel.type === 'email' && channel.value === user.primaryEmail
-      )
+      // Use existing resend-verification API
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: (user as any).id })
+      })
 
-      if (emailChannel) {
-        await emailChannel.sendVerificationEmail()
-        setResendSuccess(true)
-      } else {
-        setResendError("Email channel not found. Please contact support.")
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to send verification email')
       }
+
+      setResendSuccess(true)
     } catch (error: any) {
       console.error("Failed to resend verification email:", error)
       setResendError(error.message || "Failed to resend verification email. Please try again.")

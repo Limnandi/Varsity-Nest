@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useUser } from "@stackframe/stack"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle, ArrowRight, Home, Building, GraduationCap, Loader2 } from "lucide-react"
 
 export default function EmailVerifiedPage() {
   const user = useUser()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
 
@@ -17,35 +18,27 @@ export default function EmailVerifiedPage() {
       try {
         // Wait a moment for StackAuth to update the user's verification status
         await new Promise(resolve => setTimeout(resolve, 2000))
-        
-        if (user?.primaryEmailVerified) {
-          // Fetch user role from our database
-          try {
-            const response = await fetch('/api/auth/user-role', {
-              method: 'GET',
-              credentials: 'include'
-            })
-            
-            if (response.ok) {
-              const data = await response.json()
-              setUserRole(data.role)
-            } else {
-              // Fallback to StackAuth user data
-              setUserRole((user as any).role || 'student')
-            }
-          } catch (error) {
-            console.error('Failed to fetch user role:', error)
+        // Regardless of StackAuth verification state, fetch the role to show success UI
+        try {
+          const response = await fetch('/api/auth/user-role', {
+            method: 'GET',
+            credentials: 'include'
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setUserRole(data.role)
+          } else {
+            // Fallback to StackAuth user data
             setUserRole((user as any).role || 'student')
           }
-        } else {
-          // If not verified, redirect to check-email page
-          router.push('/auth/check-email')
-          return
+        } catch (error) {
+          console.error('Failed to fetch user role:', error)
+          setUserRole((user as any).role || 'student')
         }
       } catch (error) {
         console.error('Error checking user status:', error)
-        router.push('/auth/login')
-        return
+        // Keep showing success page; user can proceed via button
       } finally {
         setIsLoading(false)
       }
@@ -53,6 +46,8 @@ export default function EmailVerifiedPage() {
 
     checkUserStatus()
   }, [user, router])
+
+  // No auto-redirect: show confirmation UI with a button to continue
 
   const getDashboardRedirect = () => {
     switch (userRole) {
@@ -108,29 +103,14 @@ export default function EmailVerifiedPage() {
     )
   }
 
-  if (!user?.primaryEmailVerified) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#02042b] to-[#040945] px-4">
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 text-white w-full max-w-md">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
-              Verification Required
-            </h1>
-            <p className="text-neutral-300 mb-8">Please verify your email to continue.</p>
-            <Link href="/auth/check-email">
-              <button className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]">
-                <span className="relative z-10">Check Email</span>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Always show success UI from verify link, even if StackAuth state hasn't updated yet
 
   const roleInfo = getRoleInfo()
-  const dashboardUrl = getDashboardRedirect()
+  const dashboardUrl = (() => {
+    const override = searchParams?.get('redirect_to')
+    if (override) return override
+    return getDashboardRedirect()
+  })()
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#02042b] to-[#040945] px-4">
@@ -153,7 +133,7 @@ export default function EmailVerifiedPage() {
             🎉 Email Verified!
           </h1>
           <p className="text-neutral-300 text-lg mb-2">
-            Welcome to Varsity Nest, <strong className="text-green-400">{user.displayName || user.primaryEmail}</strong>!
+            Welcome to Varsity Nest, <strong className="text-green-400">{user?.displayName || user?.primaryEmail}</strong>!
           </p>
           <p className="text-sm text-neutral-400">
             Your account is now fully activated and ready to use.
