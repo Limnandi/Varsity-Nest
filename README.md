@@ -37,7 +37,7 @@ Create `.env.local` (never commit). All variables are validated at startup in `l
 
 ### Server (required)
 - `NODE_ENV` — `development` | `production` | `test`
-- `NEXT_PUBLIC_APP_URL` — Public app base URL (e.g., https://varsitynest.space)
+- `NEXT_PUBLIC_APP_URL` — Public app base URL (e.g., https://www.varsitynest.space)
 - `DATABASE_URL` — Neon Postgres connection string
 - `UPSTASH_REDIS_REST_URL` (or `KV_REST_API_URL`)
 - `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_TOKEN`)
