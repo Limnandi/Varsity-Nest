@@ -28,6 +28,10 @@ export function getStackServerApp() {
         projectId: publicEnv.STACK_PROJECT_ID,
         secretServerKey: env.STACK_SECRET_SERVER_KEY as string,
         tokenStore: "nextjs-cookie",
+        oauthScopesOnSignIn: {
+          // Request basic profile/email scopes so Google identity can be linked seamlessly
+          google: ["openid", "email", "profile"],
+        },
         urls: {
           oauthCallback: "/handler/oauth-callback",
           error: "/handler/error",
