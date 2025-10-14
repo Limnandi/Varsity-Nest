@@ -51,46 +51,26 @@ export default function StudentRegistrationPage() {
         await user?.update({ displayName: name })
       } catch {}
       
-      // IMPORTANT: Manually trigger verification email (required for custom SMTP)
-      // We MUST wait for this to complete before redirecting
+      // Ensure user exists in Neon DB and send verification email
       try {
-        console.log('🔵 Starting manual verification email send for:', email)
-        
-        // Get the newly created user (wait for StackAuth to create the user)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        console.log('🔵 Fetching user from StackAuth...')
-        
+        // Wait briefly for the user record to be available, then fetch user id
+        await new Promise(resolve => setTimeout(resolve, 1000))
         const currentUser = await app.getUser()
-        console.log('🔵 Current user:', currentUser ? 'Found' : 'Not found')
-        
-        if (currentUser) {
-          console.log('🔵 Fetching contact channels...')
-          const contactChannels = await currentUser.listContactChannels()
-          console.log('🔵 Contact channels found:', contactChannels.length)
-          
-          const emailChannel = contactChannels.find(
-            (channel: any) => channel.type === 'email' && channel.value === email
-          )
-          console.log('🔵 Email channel:', emailChannel ? 'Found' : 'Not found')
-          
-          if (emailChannel) {
-            console.log('🔵 Sending verification email...')
-            // CRITICAL: Send without callbackUrl parameter - just use the default from StackAuth config
-            await emailChannel.sendVerificationEmail()
-            console.log('✅ Verification email sent successfully to:', email)
-          } else {
-            console.warn('⚠️ Email channel not found for:', email)
-            console.warn('Available channels:', contactChannels)
-          }
-        } else {
-          console.warn('⚠️ No current user found after signup')
+        if (currentUser?.id) {
+          await fetch('/api/auth/ensure-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id, fullName: name })
+          })
+          await fetch('/api/auth/resend-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+          })
         }
-      } catch (emailError) {
-        console.error('❌ Failed to send verification email:', emailError)
-        // Don't throw - user is created, they can resend from check-email page
-      }
+      } catch {}
       
-      // Redirect to check-email page after successful registration (AFTER email is sent)
+      // Redirect to check-email page after successful registration
       router.push('/auth/check-email')
     } catch (error: any) {
       setState({ 
