@@ -17,6 +17,7 @@ export default function Footer() {
                   width={100}
                   height={60}
                   className="object-contain"
+                  style={{ height: 'auto' }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm"></div>
               </div>

@@ -3,7 +3,7 @@
 ## Overview
 Varsity Nest is a Next.js 15 application for student accommodation discovery and provider management. It includes server-side routed pages, authenticated provider and admin dashboards, payments via PayFast, analytics, and strong security and performance defaults.
 
-- Framework: Next.js 15 (App Router)
+- Framework: Next.js 15 - App Router
 - Language: TypeScript
 - UI: Tailwind CSS, shadcn/ui-based primitives, Lucide icons
 - Auth: StackAuth (`@stackframe/stack`)

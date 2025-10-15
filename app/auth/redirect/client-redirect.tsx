@@ -12,7 +12,7 @@ export default function ClientRedirect() {
     const handleRedirect = async () => {
       try {
         // Get current user session from secure API
-        const response = await fetch('/api/auth/session')
+        const response = await fetch('/api/auth/session', { credentials: 'include' })
         
         if (response.ok) {
           const result = await response.json()

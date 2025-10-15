@@ -41,6 +41,7 @@ export async function createSecureSession(user: SecureUser): Promise<string> {
     sessionId,
     role: user.role,
     email: user.email,
+    emailVerified: user.emailVerified,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()

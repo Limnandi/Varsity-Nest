@@ -15,16 +15,19 @@ export default function Navbar() {
   })
 
   useEffect(() => {
-    // Fetch admin settings from API
+    // Fetch admin settings from API; ignore unauthorized
     const fetchAdminSettings = async () => {
       try {
-        const response = await fetch('/api/admin/settings')
+        const response = await fetch('/api/admin/settings', { credentials: 'include' })
         if (response.ok) {
           const { settings } = await response.json()
           setAdminSettings({
             showProvisionallyAccredited: settings.show_provisionally_accredited ?? true,
             showNonAccredited: settings.show_non_accredited ?? true,
           })
+        } else if (response.status === 401 || response.status === 403) {
+          // Ignore unauthorized in UI; keep defaults
+          return
         }
       } catch (error) {
         console.error('Error fetching admin settings:', error)
@@ -74,7 +77,8 @@ export default function Navbar() {
                   alt="Varsity Nest Logo"
                   width={40}
                   height={40}
-                  className="w-10 h-10 object-contain relative z-10"
+                  className="object-contain relative z-10"
+                  style={{ width: 'auto', height: 'auto' }}
                 />
                 
                 {/* Animated shine effect */}
