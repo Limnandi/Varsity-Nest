@@ -12,23 +12,30 @@ export default function LogoutPage() {
   useEffect(() => {
     const handleLogout = async () => {
       try {
-        // Call secure logout API
-        const response = await fetch('/api/auth/secure-logout', {
+        // Call secure logout API to clear custom session
+        await fetch('/api/auth/secure-logout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
         })
 
-        if (response.ok) {
-          // Redirect to login page
-          router.push('/auth/login?message=logged-out')
-        } else {
-          setError('Logout failed. Please try again.')
+        // Clear StackAuth session using the signOut method
+        const { getStackClientApp } = await import('@/lib/stack')
+        const clientApp = getStackClientApp()
+        const currentUser = await clientApp.getUser()
+        
+        if (currentUser) {
+          await currentUser.signOut()
         }
+
+        // Redirect to home page
+        router.push('/')
       } catch (error) {
         console.error('Logout error:', error)
-        setError('Logout failed. Please try again.')
+        setError('Failed to logout properly. Redirecting to home page...')
+        // Fallback: redirect to home page
+        setTimeout(() => router.push('/'), 2000)
       } finally {
         setIsLoggingOut(false)
       }

@@ -56,13 +56,21 @@ export default function StudentRegistrationPage() {
       // Automatically determine university from email domain
       const university = getUniversityFromEmail(email)
 
-       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-      const signupResult = await app.signUpWithCredential({ 
+      const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      
+      // Add timeout to signup call
+      const signupPromise = app.signUpWithCredential({ 
         email, 
         password,
         verificationCallbackUrl: `${callbackBase}/auth/check-email`,
         noRedirect: true,
       })
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Registration timeout. Please try again.')), 30000)
+      )
+      
+      const signupResult = await Promise.race([signupPromise, timeoutPromise])
       
       // Check result status (official SDK pattern)
       if ((signupResult as any).status === "error") {
@@ -82,7 +90,8 @@ export default function StudentRegistrationPage() {
             console.warn('Failed to update Stack Auth display name:', updateError)
           }
           
-          await fetch('/api/auth/ensure-user', {
+          // Add timeout to ensure-user API call
+          const ensureUserPromise = fetch('/api/auth/ensure-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -93,17 +102,35 @@ export default function StudentRegistrationPage() {
               university: university
             })
           })
-          await fetch('/api/auth/resend-verification', {
+          
+          const ensureUserTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Database update timeout')), 10000)
+          )
+          
+          await Promise.race([ensureUserPromise, ensureUserTimeout])
+          
+          // Add timeout to verification email API call
+          const verificationPromise = fetch('/api/auth/resend-verification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.id })
           })
+          
+          const verificationTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Verification email timeout')), 10000)
+          )
+          
+          await Promise.race([verificationPromise, verificationTimeout])
         }
-      } catch {}
+      } catch (dbError) {
+        console.warn('Database operations failed:', dbError)
+        // Don't throw here, registration was successful
+      }
       
       // Redirect to check-email page after successful registration
       router.push('/auth/check-email')
     } catch (error: any) {
+      console.error('Registration error:', error)
       setState({ 
         error: error.message || 'Registration failed. Please try again.' 
       })
@@ -114,8 +141,7 @@ export default function StudentRegistrationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
-      <div className="max-w-md w-full">
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 max-w-2xl w-full">
           {/* Home Button */}
           <Link 
             href="/" 
@@ -146,115 +172,124 @@ export default function StudentRegistrationPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Full Name *</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="John Doe"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Full Name *</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="John Doe"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">University Email *</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="student@ufs4life.ac.za"
+                  />
+                </div>
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">University Email *</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="student@ufs4life.ac.za"
-                />
-              </div>
-              <p className="text-xs text-neutral-500 mt-2">
+            
+            <div className="text-center">
+              <p className="text-xs text-neutral-500">
                 Use your university email address. Only whitelisted domains are allowed for registration.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="Enter password (min 8 characters)"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="Enter password (min 8 characters)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {/* Password Strength Indicator */}
+                <div className="mt-3">
+                  <PasswordStrengthIndicator password={password} show={password.length > 0} />
+                </div>
               </div>
-              {/* Password Strength Indicator */}
-              <div className="mt-3">
-                <PasswordStrengthIndicator password={password} show={password.length > 0} />
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    required
+                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  required
-                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="Confirm your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Cell Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <input
+                    type="tel"
+                    name="cellNumber"
+                    value={cellNumber}
+                    onChange={handleCellNumberChange}
+                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="012 345 6789"
+                  />
+                </div>
+                <p className="text-xs text-neutral-500 mt-2">
+                  Enter your cell number
+                </p>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Cell Number</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type="tel"
-                  name="cellNumber"
-                  value={cellNumber}
-                  onChange={handleCellNumberChange}
-                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="012 345 6789"
-                />
-              </div>
-              <p className="text-xs text-neutral-500 mt-2">
-                Enter your cell number
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Student Number *</label>
-              <div className="relative">
-                <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type="text"
-                  name="studentNumber"
-                  required
-                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="e.g., 2023123456"
-                />
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-3">Student Number *</label>
+                <div className="relative">
+                  <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    name="studentNumber"
+                    required
+                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="e.g., 2023123456"
+                  />
+                </div>
               </div>
             </div>
 
@@ -263,7 +298,13 @@ export default function StudentRegistrationPage() {
               disabled={isPending}
               className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span className="relative z-10">
+              <span className="relative z-10 flex items-center justify-center">
+                {isPending && (
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
                 {isPending ? "Creating Account..." : "Create Account"}
               </span>
               <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -272,13 +313,15 @@ export default function StudentRegistrationPage() {
             <div className="text-center">
               <p className="text-sm text-neutral-400">
                 Already have an account?{" "}
-                <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <Link
+                  href="/auth/login"
+                  className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                >
                   Sign in here
                 </Link>
               </p>
             </div>
           </form>
-        </div>
       </div>
     </div>
   )
