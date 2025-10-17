@@ -22,9 +22,24 @@ function splitFullName(fullName?: string): { firstName: string; lastName: string
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, fullName, firstName: providedFirstName, lastName: providedLastName } = await request.json()
+    const { 
+      userId, 
+      fullName, 
+      firstName: providedFirstName, 
+      lastName: providedLastName,
+      cellNumber,
+      studentNumber,
+      university
+    } = await request.json()
     if (!userId || typeof userId !== 'string') {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+    }
+    
+    // Validate required fields for students
+    if (!studentNumber || !university) {
+      return NextResponse.json({ 
+        error: 'studentNumber and university are required for student registration' 
+      }, { status: 400 })
     }
     const app = getStackServerApp()
 
@@ -71,6 +86,9 @@ export async function POST(request: NextRequest) {
           firstName: firstName,
           lastName: lastName,
           role: role as any,
+          phone: cellNumber,
+          studentNumber: studentNumber,
+          institution: university,
           updatedAt: new Date(),
         })
         .where(eq(schema.users.id, stackUser.id))
@@ -84,6 +102,9 @@ export async function POST(request: NextRequest) {
           firstName: firstName,
           lastName: lastName,
           role: role as any,
+          phone: cellNumber,
+          studentNumber: studentNumber,
+          institution: university,
           emailVerified: !!stackUser.primaryEmailVerified,
           isActive: true,
           createdAt: new Date(),
@@ -96,6 +117,9 @@ export async function POST(request: NextRequest) {
             firstName: firstName,
             lastName: lastName,
             role: role as any,
+            phone: cellNumber,
+            studentNumber: studentNumber,
+            institution: university,
             updatedAt: new Date(),
           }
         })

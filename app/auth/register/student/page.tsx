@@ -1,21 +1,36 @@
 "use client"
 
 import { useState } from "react"
-import { useStackApp, useUser } from "@stackframe/stack"
+import { useStackApp } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
+import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home, Phone } from "lucide-react"
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
 
 export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [password, setPassword] = useState("")
+  const [cellNumber, setCellNumber] = useState("")
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
   const app = useStackApp()
-  const user = useUser({ or: 'return-null' })
   const router = useRouter()
+
+  // Handle cell number input change
+  const handleCellNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCellNumber(value)
+  }
+
+  // Get university from email domain
+  const getUniversityFromEmail = (email: string) => {
+    const domain = email.split('@')[1]?.toLowerCase()
+    if (domain === 'ufs4life.ac.za') {
+      return 'UFS'
+    }
+    return 'CUT' // Default to CUT for other whitelisted domains
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -28,12 +43,20 @@ export default function StudentRegistrationPage() {
       const email = String(form.get('email') || '')
       const password = String(form.get('password') || '')
       const confirmPassword = String(form.get('confirmPassword') || '')
+      const studentNumber = String(form.get('studentNumber') || '')
 
       if (password !== confirmPassword) {
         throw new Error('Passwords do not match')
       }
 
-      const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      if (!studentNumber || studentNumber.trim().length === 0) {
+        throw new Error('Student number is required')
+      }
+
+      // Automatically determine university from email domain
+      const university = getUniversityFromEmail(email)
+
+       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       const signupResult = await app.signUpWithCredential({ 
         email, 
         password,
@@ -46,21 +69,29 @@ export default function StudentRegistrationPage() {
         throw new Error((signupResult as any).error?.message || 'Registration failed')
       }
       
-      // Set Stack display name after signup
-      try {
-        await user?.update({ displayName: name })
-      } catch {}
-      
       // Ensure user exists in Neon DB and send verification email
       try {
         // Wait briefly for the user record to be available, then fetch user id
         await new Promise(resolve => setTimeout(resolve, 1000))
         const currentUser = await app.getUser()
         if (currentUser?.id) {
+          // Update Stack Auth user with display name
+          try {
+            await currentUser.update({ displayName: name })
+          } catch (updateError) {
+            console.warn('Failed to update Stack Auth display name:', updateError)
+          }
+          
           await fetch('/api/auth/ensure-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id, fullName: name })
+            body: JSON.stringify({ 
+              userId: currentUser.id, 
+              fullName: name,
+              cellNumber: cellNumber,
+              studentNumber: studentNumber,
+              university: university
+            })
           })
           await fetch('/api/auth/resend-verification', {
             method: 'POST',
@@ -196,6 +227,24 @@ export default function StudentRegistrationPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-3">Cell Number</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                <input
+                  type="tel"
+                  name="cellNumber"
+                  value={cellNumber}
+                  onChange={handleCellNumberChange}
+                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                  placeholder="012 345 6789"
+                />
+              </div>
+              <p className="text-xs text-neutral-500 mt-2">
+                Enter your cell number
+              </p>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-neutral-300 mb-3">Student Number *</label>
               <div className="relative">
                 <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
@@ -207,19 +256,6 @@ export default function StudentRegistrationPage() {
                   placeholder="e.g., 2023123456"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">University *</label>
-              <select
-                name="university"
-                required
-                className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-              >
-                <option value="">Select your university</option>
-                <option value="UFS">University of the Free State (UFS)</option>
-                <option value="CUT">Central University of Technology (CUT)</option>
-              </select>
             </div>
 
             <button
