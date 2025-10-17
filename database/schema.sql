@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20),
     student_number VARCHAR(50),
     institution VARCHAR(100),
+    profile_image_url VARCHAR(500),
+    profile_image_cloudinary_id VARCHAR(255),
     is_active BOOLEAN DEFAULT true,
     email_verified BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -407,9 +409,60 @@ ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH 
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS unpublished_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS listing_status VARCHAR(20) DEFAULT 'draft' CHECK (listing_status IN ('draft', 'published', 'unpublished', 'archived'));
 
+-- Student wishlist table
+CREATE TABLE IF NOT EXISTS student_wishlist (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    student_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    accommodation_id VARCHAR(255) NOT NULL REFERENCES accommodations(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(student_id, accommodation_id)
+);
+
+-- Student preferences table
+CREATE TABLE IF NOT EXISTS student_preferences (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    student_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    email_notifications BOOLEAN DEFAULT true,
+    sms_notifications BOOLEAN DEFAULT false,
+    marketing_emails BOOLEAN DEFAULT false,
+    profile_visibility VARCHAR(20) DEFAULT 'public' CHECK (profile_visibility IN ('public', 'private', 'friends')),
+    show_phone_number BOOLEAN DEFAULT false,
+    show_student_number BOOLEAN DEFAULT false,
+    two_factor_auth BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(student_id)
+);
+
+-- Student profile updates audit table
+CREATE TABLE IF NOT EXISTS student_profile_audit (
+    id VARCHAR(255) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    student_id VARCHAR(255) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    field_name VARCHAR(100) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    updated_by VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_accommodations_featured ON accommodations(featured) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_accommodations_created_at ON accommodations(created_at);
 CREATE INDEX IF NOT EXISTS idx_accommodations_published ON accommodations(is_published) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_accommodations_listing_status ON accommodations(listing_status);
 CREATE INDEX IF NOT EXISTS idx_accommodations_accreditation_status ON accommodations(accreditation_status);
+
+-- Student wishlist indexes
+CREATE INDEX IF NOT EXISTS idx_student_wishlist_student ON student_wishlist(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_wishlist_accommodation ON student_wishlist(accommodation_id);
+CREATE INDEX IF NOT EXISTS idx_student_wishlist_created_at ON student_wishlist(created_at);
+
+-- Student preferences indexes
+CREATE INDEX IF NOT EXISTS idx_student_preferences_student ON student_preferences(student_id);
+
+-- Student profile audit indexes
+CREATE INDEX IF NOT EXISTS idx_student_profile_audit_student ON student_profile_audit(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_profile_audit_created_at ON student_profile_audit(created_at);
+
+-- Create triggers for updated_at on student_preferences
+CREATE TRIGGER update_student_preferences_updated_at BEFORE UPDATE ON student_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

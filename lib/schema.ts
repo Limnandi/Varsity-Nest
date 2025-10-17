@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   phone: varchar("phone", { length: 20 }),
   studentNumber: varchar("student_number", { length: 50 }),
   institution: varchar("institution", { length: 100 }),
+  profileImageUrl: varchar("profile_image_url", { length: 500 }),
+  profileImageCloudinaryId: varchar("profile_image_cloudinary_id", { length: 255 }),
   isActive: boolean("is_active").default(true),
   emailVerified: boolean("email_verified").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -300,4 +302,38 @@ export const fileQuarantines = pgTable("file_quarantines", {
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow().notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   status: varchar("status", { length: 20 }).notNull().$type<"quarantined" | "released" | "deleted">(),
+})
+
+// Student wishlist table
+export const studentWishlist = pgTable("student_wishlist", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  accommodationId: varchar("accommodation_id", { length: 255 }).notNull().references(() => accommodations.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Student preferences table
+export const studentPreferences = pgTable("student_preferences", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }).unique(),
+  emailNotifications: boolean("email_notifications").default(true),
+  smsNotifications: boolean("sms_notifications").default(false),
+  marketingEmails: boolean("marketing_emails").default(false),
+  profileVisibility: varchar("profile_visibility", { length: 20 }).default("public").$type<"public" | "private" | "friends">(),
+  showPhoneNumber: boolean("show_phone_number").default(false),
+  showStudentNumber: boolean("show_student_number").default(false),
+  twoFactorAuth: boolean("two_factor_auth").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Student profile audit table
+export const studentProfileAudit = pgTable("student_profile_audit", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  fieldName: varchar("field_name", { length: 100 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  updatedBy: varchar("updated_by", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
