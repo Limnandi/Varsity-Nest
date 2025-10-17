@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useStackApp, useUser } from "@stackframe/stack"
+import { useStackApp } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X, Home } from "lucide-react"
@@ -19,7 +19,6 @@ export default function ProviderRegistrationPage() {
   const [emailCheckMessage, setEmailCheckMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const app = useStackApp()
-  const user = useUser({ or: 'return-null' })
   const router = useRouter()
 
   // Check email availability with debounce
@@ -94,23 +93,25 @@ export default function ProviderRegistrationPage() {
         throw new Error(errorMessage)
       }
       
-      // Set Stack display name from first/last name
-      try {
-        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
-        if (fullName) {
-          await user?.update({ displayName: fullName })
-        }
-      } catch {}
-      
       // Ensure user exists in Neon DB and send verification email
       try {
         await new Promise(resolve => setTimeout(resolve, 1000))
         const currentUser = await app.getUser()
         if (currentUser?.id) {
+          // Update Stack Auth user with display name
+          try {
+            const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+            if (fullName) {
+              await currentUser.update({ displayName: fullName })
+            }
+          } catch (updateError) {
+            console.warn('Failed to update Stack Auth display name:', updateError)
+          }
+          
           await fetch('/api/auth/ensure-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
+            body: JSON.stringify({ userId: currentUser.id, fullName: [firstName, lastName].filter(Boolean).join(' ').trim() })
           })
           await fetch('/api/auth/resend-verification', {
             method: 'POST',
