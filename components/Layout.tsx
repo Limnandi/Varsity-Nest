@@ -24,6 +24,9 @@ export default function Layout({ children }: LayoutProps) {
     "/privacy", // Privacy policy
     "/terms", // Terms of service
     "/listing", // Individual listing pages
+    "/student/profile", // Student profile page
+    "/student/settings", // Student settings page
+    "/student/wishlist", // Student wishlist page
   ]
 
   // Check if current page is a public page
@@ -35,7 +38,6 @@ export default function Layout({ children }: LayoutProps) {
   const isDashboardArea =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/provider") ||
-    pathname.startsWith("/student") ||
     pathname.startsWith("/auth") ||
     pathname === "/unauthorized"
 

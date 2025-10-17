@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChevronDown, Menu, X } from "lucide-react"
+import StudentAuthProvider from "./StudentAuthProvider"
+import StudentAuthSection from "./StudentAuthSection"
 
 export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -13,6 +15,8 @@ export default function Navbar() {
     showProvisionallyAccredited: true,
     showNonAccredited: true,
   })
+  
+  // Student authentication is now handled by StudentAuthProvider
 
   useEffect(() => {
     // Fetch admin settings from API; ignore unauthorized
@@ -173,24 +177,13 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Right side - Auth Buttons / User Menu */}
+          {/* Right side - Auth Buttons / Student Profile */}
           <div className="flex items-center space-x-3">
-            {/* Basic navigation buttons */}
-            <Link
-              href="/auth/login"
-              className="hidden sm:inline-flex items-center px-6 py-3 border border-white/20 text-white rounded-xl hover:bg-white/10 transition-all duration-300 font-medium group relative overflow-hidden"
-            >
-              <span className="relative z-10">Sign In</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-            </Link>
-            <Link
-              href="/auth/register"
-              className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 overflow-hidden"
-            >
-              <span className="relative z-10">Get Started</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-            </Link>
+            <StudentAuthProvider>
+              {() => (
+                <StudentAuthSection />
+              )}
+            </StudentAuthProvider>
 
             {/* Mobile menu button */}
             <button
@@ -209,6 +202,15 @@ export default function Navbar() {
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-black/40 backdrop-blur-2xl border-t border-white/10 py-6 animate-in slide-in-from-top-2 duration-300">
             <div className="space-y-2">
+              {/* Student Profile Section (Mobile) */}
+              <StudentAuthProvider>
+                {() => (
+                  <div className="px-4 py-3 border-b border-white/10 mb-4">
+                    <StudentAuthSection />
+                  </div>
+                )}
+              </StudentAuthProvider>
+
               <Link
                 href="/"
                 className="block px-4 py-3 text-white hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 font-medium rounded-xl mx-2 group relative overflow-hidden"
@@ -272,6 +274,15 @@ export default function Navbar() {
                 <span className="relative z-10">Contact</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
               </Link>
+
+              {/* Student-specific mobile menu items */}
+              <StudentAuthProvider>
+                {() => (
+                  <div className="px-4 py-2 border-t border-white/10 mt-4">
+                    <StudentAuthSection />
+                  </div>
+                )}
+              </StudentAuthProvider>
             </div>
           </div>
         )}

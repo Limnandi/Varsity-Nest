@@ -1,5 +1,9 @@
+import LoadingSpinner from "@/components/LoadingSpinner"
+
 export default function Loading() {
-  // Stack uses React Suspense, which will render this page while user data is being fetched.
-  // See: https://nextjs.org/docs/app/api-reference/file-conventions/loading
-  return <></>;
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] flex items-center justify-center">
+      <LoadingSpinner />
+    </div>
+  )
 }
