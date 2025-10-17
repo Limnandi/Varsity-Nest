@@ -125,6 +125,38 @@ export async function POST(request: NextRequest) {
         })
     }
 
+    // Create student record if role is student
+    if (role === 'student') {
+      const existingStudent = await secureDb.db
+        .select({ id: schema.students.id })
+        .from(schema.students)
+        .where(eq(schema.students.userId, stackUser.id))
+        .limit(1)
+
+      if (existingStudent.length === 0) {
+        await secureDb.db
+          .insert(schema.students)
+          .values({
+            id: crypto.randomUUID(),
+            userId: stackUser.id,
+            studentNumber: studentNumber,
+            university: university as 'UFS' | 'CUT',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+      } else {
+        // Update existing student record
+        await secureDb.db
+          .update(schema.students)
+          .set({
+            studentNumber: studentNumber,
+            university: university as 'UFS' | 'CUT',
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.students.userId, stackUser.id))
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('ensure-user error', error)
