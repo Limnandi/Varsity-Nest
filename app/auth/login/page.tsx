@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { OAuthButton, useStackApp } from "@stackframe/stack"
+import { useStackApp } from "@stackframe/stack"
+// import { OAuthButton, useStackApp } from "@stackframe/stack" // OAuthButton temporarily disabled
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 import { publicEnv } from "@/lib/env.client"
+import EmailVerificationModal from "@/components/EmailVerificationModal"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -15,6 +17,12 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
   const [isPending, setIsPending] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [verificationData, setVerificationData] = useState<{
+    userId: string
+    firstName?: string
+    lastName?: string
+  } | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const recaptchaRef = useRef<ReCAPTCHA>(null)
@@ -36,6 +44,25 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
+  const checkEmailVerification = async (email: string) => {
+    try {
+      const response = await fetch('/api/auth/check-email-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return data
+      }
+      return null
+    } catch (error) {
+      console.error('Error checking email verification:', error)
+      return null
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -54,6 +81,22 @@ export default function LoginPage() {
     setError("")
 
     try {
+      // First check email verification status
+      const verificationStatus = await checkEmailVerification(email)
+      
+      if (verificationStatus && !verificationStatus.emailVerified) {
+        // Email not verified, show modal
+        setVerificationData({
+          userId: verificationStatus.userId,
+          firstName: verificationStatus.firstName,
+          lastName: verificationStatus.lastName
+        })
+        setShowVerificationModal(true)
+        setIsPending(false)
+        recaptchaRef.current?.reset()
+        return
+      }
+
       // Try StackAuth first for OAuth users
       try {
         const result = await app.signInWithCredential({ email, password })
@@ -115,6 +158,11 @@ export default function LoginPage() {
     } catch (e: any) {
       setError(e.message || "Could not send reset email")
     }
+  }
+
+  const closeVerificationModal = () => {
+    setShowVerificationModal(false)
+    setVerificationData(null)
   }
 
   return (
@@ -231,6 +279,8 @@ export default function LoginPage() {
             </button>
 
             <div className="flex items-center justify-between">
+              {/* Google Sign-In temporarily disabled */}
+              {/*
               <div className="group relative w-full">
                 <div className="!w-full !px-6 !py-3 !bg-black/20 !text-white !border !border-white/20 !rounded-xl !font-medium !shadow-lg !hover:bg-white/5 !hover:shadow-blue-500/20 !transition-all !duration-300 !hover:scale-105 !active:scale-95 !flex !items-center !justify-center !space-x-3 !backdrop-blur-xl">
                   <OAuthButton 
@@ -240,6 +290,7 @@ export default function LoginPage() {
                 </div>
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
               </div>
+              */}
               <button
                 type="button"
                 onClick={handleForgotPassword}
@@ -260,6 +311,18 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+
+      {/* Email Verification Modal */}
+      {verificationData && (
+        <EmailVerificationModal
+          isOpen={showVerificationModal}
+          onClose={closeVerificationModal}
+          email={email}
+          userId={verificationData.userId}
+          firstName={verificationData.firstName}
+          lastName={verificationData.lastName}
+        />
+      )}
     </div>
   )
 }
