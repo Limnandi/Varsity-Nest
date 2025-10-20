@@ -34,7 +34,7 @@ export default function LoginPage() {
     const errorParam = searchParams.get('error')
     
     if (verified === 'true') {
-      setSuccessMessage("✅ Email verified successfully! You can now sign in.")
+      setSuccessMessage("Email verified successfully! You can now sign in.")
       // Clear the URL parameter after showing message
       window.history.replaceState({}, '', '/auth/login')
     }
