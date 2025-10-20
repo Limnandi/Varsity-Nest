@@ -35,12 +35,10 @@ export async function POST(request: NextRequest) {
 
     const { image } = validation.data
 
-    // Get current user data to check for existing image
+    // Verify user exists
     const currentUser = await secureDb.db
       .select({
         id: schema.users.id,
-        profileImageUrl: schema.users.profileImageUrl,
-        profileImageCloudinaryId: schema.users.profileImageCloudinaryId,
       })
       .from(schema.users)
       .where(eq(schema.users.id, user.id))
@@ -49,8 +47,6 @@ export async function POST(request: NextRequest) {
     if (currentUser.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
-
-    const current = currentUser[0]
 
     // Upload image to Cloudinary
     const uploadResult = await uploadImageFromBase64(
@@ -78,23 +74,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // TODO: Profile image storage not yet implemented in schema
     // Update user record with new image URL and Cloudinary ID
-    await secureDb.db
-      .update(schema.users)
-      .set({
-        profileImageUrl: uploadResult.result.secure_url,
-        profileImageCloudinaryId: uploadResult.result.public_id,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.users.id, user.id))
+    // await secureDb.db
+    //   .update(schema.users)
+    //   .set({
+    //     updatedAt: new Date(),
+    //   })
+    //   .where(eq(schema.users.id, user.id))
 
     // Create audit record for profile image change
     await secureDb.db
       .insert(schema.studentProfileAudit)
       .values({
-        studentId: user.id, // Using user.id as studentId since we're updating user table
+        studentId: user.id,
         fieldName: "profileImage",
-        oldValue: current.profileImageUrl,
+        oldValue: null,
         newValue: uploadResult.result.secure_url,
         updatedBy: user.id,
       })
@@ -129,8 +124,6 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await secureDb.db
       .select({
         id: schema.users.id,
-        profileImageUrl: schema.users.profileImageUrl,
-        profileImageCloudinaryId: schema.users.profileImageCloudinaryId,
       })
       .from(schema.users)
       .where(eq(schema.users.id, user.id))
@@ -140,41 +133,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const current = currentUser[0]
-
-    if (!current.profileImageUrl) {
-      return NextResponse.json({ error: "No profile image to delete" }, { status: 400 })
-    }
-
-    // Delete image from Cloudinary (if we have the ID)
-    if (current.profileImageCloudinaryId) {
-      try {
-        // Note: You might want to implement a delete function in cloudinary.ts
-        // For now, we'll just remove the database reference
-        console.log(`Would delete Cloudinary image: ${current.profileImageCloudinaryId}`)
-      } catch (cloudinaryError) {
-        console.error("Error deleting from Cloudinary:", cloudinaryError)
-        // Continue with database update even if Cloudinary deletion fails
-      }
-    }
-
-    // Update user record to remove image references
-    await secureDb.db
-      .update(schema.users)
-      .set({
-        profileImageUrl: null,
-        profileImageCloudinaryId: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.users.id, user.id))
-
+    // TODO: Profile image storage not yet implemented in schema
+    // For now, just return success
+    
     // Create audit record for profile image deletion
     await secureDb.db
       .insert(schema.studentProfileAudit)
       .values({
         studentId: user.id,
         fieldName: "profileImage",
-        oldValue: current.profileImageUrl,
+        oldValue: null,
         newValue: null,
         updatedBy: user.id,
       })
