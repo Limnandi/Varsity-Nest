@@ -28,7 +28,7 @@ if (typeof window !== 'undefined') {
 
 export const metadata: Metadata = {
   title: "Varsity Nest",
-  description: "Find your perfect student home in Bloemfontein",
+  description: "Off-Campus Living Made Simple",
 }
 
 export default function RootLayout({
