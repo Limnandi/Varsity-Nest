@@ -3,7 +3,7 @@
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import StudentProfileDropdown from "./StudentProfileDropdown"
 import Link from "next/link"
-import { LogIn, User } from "lucide-react"
+import { LogIn, User, UserPlus } from "lucide-react"
 
 export default function StudentAuthSection() {
   const { user: studentUser, isAuthenticated: isStudentAuthenticated, isLoading: isStudentLoading } = useStudentAuth()
@@ -62,8 +62,15 @@ export default function StudentAuthSection() {
 
   return (
     <>
-      {/* Desktop Login Button */}
-      <div className="hidden lg:block">
+      {/* Desktop Auth Buttons */}
+      <div className="hidden lg:flex items-center space-x-3">
+        <Link
+          href="/auth/register"
+          className="flex items-center space-x-2 px-4 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all duration-300 font-medium border border-white/20 hover:border-white/30 hover:scale-105 active:scale-95"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Sign Up</span>
+        </Link>
         <Link
           href="/auth/login"
           className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
@@ -73,8 +80,15 @@ export default function StudentAuthSection() {
         </Link>
       </div>
 
-      {/* Mobile Login Button */}
-      <div className="lg:hidden">
+      {/* Mobile Auth Buttons */}
+      <div className="lg:hidden flex items-center space-x-2">
+        <Link
+          href="/auth/register"
+          className="flex items-center space-x-2 px-4 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all duration-300 font-medium border border-white/20"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Sign Up</span>
+        </Link>
         <Link
           href="/auth/login"
           className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium"
