@@ -8,15 +8,14 @@ export default function HeroSection() {
         {/* Main Hero Content */}
         <div className="mb-16">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 drop-shadow-2xl tracking-tight">
-            Find Your Perfect
+            Off-Campus Living
             <span className="block bg-gradient-to-r from-blue-400 via-purple-500 to-blue-600 bg-clip-text text-transparent mt-2">
-              Student Home
+              Made Simple
             </span>
-            <span className="block text-3xl md:text-5xl mt-4 text-blue-300 font-light">in Beautiful Bloemfontein</span>
           </h1>
           <p className="text-xl md:text-2xl text-neutral-300 drop-shadow-lg mb-12 max-w-4xl mx-auto leading-relaxed">
             Discover quality, verified off-campus accommodations in the heart of the Free State. Safe, comfortable, and
-            close to UFS and CUT campuses.
+            close to campus.
           </p>
 
           {/* CTA Buttons */}
