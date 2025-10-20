@@ -23,15 +23,6 @@ export default function StudentRegistrationPage() {
     setCellNumber(value)
   }
 
-  // Get university from email domain
-  const getUniversityFromEmail = (email: string) => {
-    const domain = email.split('@')[1]?.toLowerCase()
-    if (domain === 'ufs4life.ac.za') {
-      return 'UFS'
-    }
-    return 'CUT' // Default to CUT for other whitelisted domains
-  }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsPending(true)
@@ -46,15 +37,36 @@ export default function StudentRegistrationPage() {
       const studentNumber = String(form.get('studentNumber') || '')
 
       if (password !== confirmPassword) {
-        throw new Error('Passwords do not match')
+        setState({ error: 'Passwords do not match' })
+        setIsPending(false)
+        return
       }
 
       if (!studentNumber || studentNumber.trim().length === 0) {
-        throw new Error('Student number is required')
+        setState({ error: 'Student number is required' })
+        setIsPending(false)
+        return
       }
 
-      // Automatically determine university from email domain
-      const university = getUniversityFromEmail(email)
+      // Validate email domain against whitelisted domains in database
+      const domainValidationResponse = await fetch('/api/auth/validate-domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      const domainValidation = await domainValidationResponse.json()
+
+      if (!domainValidation.isValid) {
+        setState({ 
+          error: domainValidation.error || 'Please use your university email address.' 
+        })
+        setIsPending(false)
+        return
+      }
+
+      // Use the university from database validation
+      const university = domainValidation.university
 
       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       
@@ -74,7 +86,11 @@ export default function StudentRegistrationPage() {
       
       // Check result status (official SDK pattern)
       if ((signupResult as any).status === "error") {
-        throw new Error((signupResult as any).error?.message || 'Registration failed')
+        setState({ 
+          error: (signupResult as any).error?.message || 'Registration failed' 
+        })
+        setIsPending(false)
+        return
       }
       
       // Ensure user exists in Neon DB and send verification email
@@ -104,7 +120,7 @@ export default function StudentRegistrationPage() {
           })
           
           const ensureUserTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Database update timeout')), 10000)
+            setTimeout(() => reject(new Error('Database update timeout')), 20000)
           )
           
           await Promise.race([ensureUserPromise, ensureUserTimeout])
@@ -117,7 +133,7 @@ export default function StudentRegistrationPage() {
           })
           
           const verificationTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Verification email timeout')), 10000)
+            setTimeout(() => reject(new Error('Verification email timeout')), 15000)
           )
           
           await Promise.race([verificationPromise, verificationTimeout])
@@ -204,7 +220,7 @@ export default function StudentRegistrationPage() {
             
             <div className="text-center">
               <p className="text-xs text-neutral-500">
-                Use your university email address. Only whitelisted domains are allowed for registration.
+                Enter your university email address.
               </p>
             </div>
 
