@@ -10,12 +10,20 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // TODO: whitelisted_domains table doesn't exist in schema
-    // This functionality needs to be implemented properly
-    return NextResponse.json({ 
-      error: 'Whitelisted domains functionality not implemented yet',
-      domains: [] 
-    }, { status: 501 })
+    const result = await query`
+      SELECT id, domain, university, created_at, is_active
+      FROM whitelisted_domains
+      ORDER BY created_at DESC
+    `
+    const domains = result.rows.map((row: any) => ({
+      id: row.id,
+      domain: row.domain,
+      university: row.university,
+      createdAt: row.created_at,
+      isActive: row.is_active,
+    }))
+
+    return NextResponse.json({ domains })
   } catch (error) {
     console.error('Error fetching domains:', error)
     return NextResponse.json({ error: 'Failed to fetch domains' }, { status: 500 })
@@ -49,17 +57,41 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'update') {
-      // TODO: whitelisted_domains table doesn't exist in schema
-      return NextResponse.json({ 
-        error: 'Whitelisted domains functionality not implemented yet' 
-      }, { status: 501 })
+      if (!_domainId) {
+        return NextResponse.json({ error: 'domainId is required' }, { status: 400 })
+      }
+      const _formattedDomain = domain.startsWith('@') ? domain : `@${domain}`
+      const updated = await query`
+        UPDATE whitelisted_domains
+        SET domain = ${_formattedDomain}, university = ${university}, updated_at = NOW()
+        WHERE id = ${_domainId}
+        RETURNING id, domain, university, created_at, is_active
+      `
+      const row = updated.rows?.[0]
+      if (!row) return NextResponse.json({ error: 'Domain not found' }, { status: 404 })
+      return NextResponse.json({
+        domain: {
+          id: row.id,
+          domain: row.domain,
+          university: row.university,
+          createdAt: row.created_at,
+          isActive: row.is_active,
+        }
+      })
     }
 
     if (action === 'toggle') {
-      // TODO: whitelisted_domains table doesn't exist in schema
-      return NextResponse.json({ 
-        error: 'Whitelisted domains functionality not implemented yet' 
-      }, { status: 501 })
+      if (!_domainId || typeof _isActive !== 'boolean') {
+        return NextResponse.json({ error: 'domainId and isActive required' }, { status: 400 })
+      }
+      const toggled = await query`
+        UPDATE whitelisted_domains
+        SET is_active = ${_isActive}, updated_at = NOW()
+        WHERE id = ${_domainId}
+        RETURNING id
+      `
+      if (toggled.rowCount === 0) return NextResponse.json({ error: 'Domain not found' }, { status: 404 })
+      return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -84,10 +116,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Domain ID required' }, { status: 400 })
     }
 
-    // TODO: whitelisted_domains table doesn't exist in schema
-    return NextResponse.json({ 
-      error: 'Whitelisted domains functionality not implemented yet' 
-    }, { status: 501 })
+    const deleted = await query`
+      DELETE FROM whitelisted_domains WHERE id = ${domainId}
+    `
+    if (deleted.rowCount === 0) return NextResponse.json({ error: 'Domain not found' }, { status: 404 })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting domain:', error)
     return NextResponse.json({ error: 'Failed to delete domain' }, { status: 500 })
