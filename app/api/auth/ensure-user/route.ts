@@ -3,12 +3,17 @@ import { secureDb } from "@/lib/database-secure"
 import * as schema from "@/lib/schema"
 import { eq } from "drizzle-orm"
 import { getStackServerApp } from "@/lib/stack"
+import { DomainValidationService } from "@/lib/domain-validation"
 
-function inferRoleFromEmail(email: string): 'student' | 'provider' | 'admin' {
+async function inferRoleFromEmail(email: string): Promise<'student' | 'provider' | 'admin'> {
   const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
   const lower = email.toLowerCase()
   if (adminEmails.includes(lower)) return 'admin'
-  if (lower.endsWith('@ufs4life.ac.za') || lower.endsWith('@cut.ac.za')) return 'student'
+  
+  // Check if email domain is whitelisted for students
+  const domainValidation = await DomainValidationService.isEmailWhitelisted(lower)
+  if (domainValidation.isValid) return 'student'
+  
   return 'provider'
 }
 
@@ -48,7 +53,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found in StackAuth' }, { status: 404 })
     }
 
-    const role = inferRoleFromEmail(stackUser.primaryEmail)
+    const role = await inferRoleFromEmail(stackUser.primaryEmail)
+    
+    // Additional validation: Ensure student registrations use whitelisted domains
+    if (studentNumber && university) {
+      const domainValidation = await DomainValidationService.isEmailWhitelisted(stackUser.primaryEmail)
+      if (!domainValidation.isValid) {
+        return NextResponse.json({ 
+          error: 'Email domain not whitelisted for student registration. Please use a valid university email address.' 
+        }, { status: 403 })
+      }
+      // Ensure role is student if they're registering as student
+      if (role !== 'student') {
+        return NextResponse.json({ 
+          error: 'Email domain not whitelisted for student registration.' 
+        }, { status: 403 })
+      }
+    }
+    
     // Determine names with precedence: explicit body -> fullName -> StackAuth fields -> displayName -> email local-part
     let firstName = (providedFirstName as string | undefined) || ''
     let lastName = (providedLastName as string | undefined) || ''
@@ -120,6 +142,7 @@ export async function POST(request: NextRequest) {
             phone: cellNumber,
             studentNumber: studentNumber,
             institution: university,
+            emailVerified: !!stackUser.primaryEmailVerified,
             updatedAt: new Date(),
           }
         })
