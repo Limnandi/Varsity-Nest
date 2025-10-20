@@ -242,6 +242,10 @@ export function createAuthMiddleware(requiredRole?: string) {
       return { error: 'Account deactivated', status: 403 }
     }
     
+    if (!user.emailVerified) {
+      return { error: 'Email not verified', status: 403 }
+    }
+    
     if (requiredRole && !hasRequiredRole(user.role, requiredRole)) {
       return { error: 'Insufficient permissions', status: 403 }
     }
