@@ -84,7 +84,8 @@ export default function CheckEmailPage() {
         <div className="space-y-6">
           <div className="text-center text-sm text-neutral-400">
             <p>Click the link in your email to verify your account and complete your registration.</p>
-            <p className="mt-2">The link will expire in 5 minutes.</p>
+            <p className="mt-2">The link will expire in 30 minutes.</p>
+            <p className="mt-2 text-xs text-neutral-500">Email delivery may take a few minutes. Please check your inbox and spam folder.</p>
           </div>
 
           {resendSuccess && (
