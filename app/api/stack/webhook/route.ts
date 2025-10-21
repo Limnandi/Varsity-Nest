@@ -78,31 +78,61 @@ export async function POST(request: NextRequest) {
             console.log(` Student user created: ${primaryEmail}`)
           }
           
-          // Insert user with proper column names and required fields
-          await secureDb.db
-            .insert(schema.users)
-            .values({
-              id,
-              email: primaryEmail,
-              password: 'stackauth', // Placeholder for StackAuth users
-              firstName: firstName || '',
-              lastName: lastName || '',
-              role: role as any,
-              emailVerified: false,
-              isActive: true
-            })
-            .onConflictDoUpdate({
-              target: schema.users.id,
-              set: {
+          // Check if user exists by email with different ID
+          const [existingByEmail] = await secureDb.db
+            .select({ id: schema.users.id })
+            .from(schema.users)
+            .where(eq(schema.users.email, primaryEmail))
+            .limit(1)
+          
+          if (existingByEmail && existingByEmail.id !== id) {
+            console.warn(` Email ${primaryEmail} exists with different ID. Deleting old ID: ${existingByEmail.id}, using StackAuth ID: ${id}`)
+            await secureDb.db
+              .delete(schema.users)
+              .where(eq(schema.users.id, existingByEmail.id))
+          }
+          
+          // Check if user exists by ID
+          const [existingById] = await secureDb.db
+            .select({ id: schema.users.id })
+            .from(schema.users)
+            .where(eq(schema.users.id, id))
+            .limit(1)
+          
+          if (existingById) {
+            // Update existing user
+            await secureDb.db
+              .update(schema.users)
+              .set({
                 email: primaryEmail,
                 firstName: firstName || '',
                 lastName: lastName || '',
                 role: role as any,
                 updatedAt: new Date()
-              }
-            })
-          
-          console.log(` User synced to database: ${id} (${primaryEmail}) with role: ${role}`)
+              })
+              .where(eq(schema.users.id, id))
+            console.log(` User updated in database: ${id} (${primaryEmail})`)
+          } else {
+            // Insert new user
+            await secureDb.db
+              .insert(schema.users)
+              .values({
+                id,
+                email: primaryEmail,
+                password: 'stackauth',
+                firstName: firstName || '',
+                lastName: lastName || '',
+                role: role as any,
+                phone: null,
+                studentNumber: null,
+                institution: null,
+                emailVerified: false,
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              })
+            console.log(` User created in database: ${id} (${primaryEmail}) with role: ${role}`)
+          }
         } catch (error) {
           console.error('Failed to sync user to database:', error)
           console.error('User data:', { id, primaryEmail, firstName, lastName })

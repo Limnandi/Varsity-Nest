@@ -94,10 +94,12 @@ export default function ProviderRegistrationPage() {
       }
       
       // Ensure user exists in Neon DB and send verification email
+      let stackUserId: string | null = null
       try {
         await new Promise(resolve => setTimeout(resolve, 1000))
         const currentUser = await app.getUser()
         if (currentUser?.id) {
+          stackUserId = currentUser.id
           // Update Stack Auth user with display name
           try {
             const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
@@ -108,21 +110,23 @@ export default function ProviderRegistrationPage() {
             console.warn('Failed to update Stack Auth display name:', updateError)
           }
           
-          await fetch('/api/auth/ensure-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id, fullName: [firstName, lastName].filter(Boolean).join(' ').trim() })
-          })
           await fetch('/api/auth/resend-verification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.id })
           })
         }
-      } catch {}
+      } catch (error) {
+        console.warn('Error getting StackAuth user:', error)
+      }
+
+      if (!stackUserId) {
+        throw new Error('Failed to get user ID from StackAuth. Please try again.')
+      }
 
       // Build multipart form for server registration (DB + docs)
       const payload = new FormData()
+      payload.set('userId', stackUserId)
       payload.set('email', email)
       payload.set('firstName', firstName)
       payload.set('lastName', lastName)

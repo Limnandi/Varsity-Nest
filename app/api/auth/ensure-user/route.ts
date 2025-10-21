@@ -93,6 +93,20 @@ export async function POST(request: NextRequest) {
       lastName = split.lastName
     }
 
+    // Check if user exists by email with different ID (clean up old records)
+    const [existingByEmail] = await secureDb.db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.email, stackUser.primaryEmail))
+      .limit(1)
+    
+    if (existingByEmail && existingByEmail.id !== stackUser.id) {
+      console.warn(`Email ${stackUser.primaryEmail} exists with different ID. Deleting old ID: ${existingByEmail.id}, using StackAuth ID: ${stackUser.id}`)
+      await secureDb.db
+        .delete(schema.users)
+        .where(eq(schema.users.id, existingByEmail.id))
+    }
+    
     // Upsert into users table
     const existing = await secureDb.db
       .select({ id: schema.users.id })
@@ -131,20 +145,6 @@ export async function POST(request: NextRequest) {
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: schema.users.id,
-          set: {
-            email: stackUser.primaryEmail,
-            firstName: firstName,
-            lastName: lastName,
-            role: role as any,
-            phone: cellNumber,
-            studentNumber: studentNumber,
-            institution: university,
-            emailVerified: !!stackUser.primaryEmailVerified,
-            updatedAt: new Date(),
-          }
         })
     }
 
