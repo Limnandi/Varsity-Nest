@@ -2,7 +2,7 @@ import { pgTable, text, timestamp, boolean, integer, decimal, jsonb, varchar, bi
 
 // Users table - matches actual database schema
 export const users = pgTable("users", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   firstName: varchar("first_name", { length: 100 }).notNull(),
@@ -19,7 +19,7 @@ export const users = pgTable("users", {
 
 // Students table
 export const students = pgTable("students", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   studentNumber: varchar("student_number", { length: 50 }).notNull(),
   university: varchar("university", { length: 10 }).notNull().$type<"UFS" | "CUT">(),
@@ -33,7 +33,7 @@ export const students = pgTable("students", {
 
 // Providers table - matches actual database schema
 export const providers = pgTable("providers", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   businessName: varchar("business_name", { length: 200 }).notNull(),
   businessRegistration: varchar("business_registration", { length: 100 }),
@@ -63,7 +63,7 @@ export const providers = pgTable("providers", {
 
 // Accommodations table - matches actual database schema
 export const accommodations = pgTable("accommodations", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   address: text("address").notNull(),
@@ -103,7 +103,7 @@ export const accommodations = pgTable("accommodations", {
 
 // Bookings table
 export const bookings = pgTable("bookings", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   studentId: varchar("student_id", { length: 255 }).references(() => students.id, { onDelete: "cascade" }),
   accommodationId: varchar("accommodation_id", { length: 255 }).references(() => accommodations.id, { onDelete: "cascade" }),
   checkInDate: timestamp("check_in_date", { mode: "date" }).notNull(),
@@ -118,7 +118,7 @@ export const bookings = pgTable("bookings", {
 
 // Reviews table
 export const reviews = pgTable("reviews", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   studentId: varchar("student_id", { length: 255 }).references(() => students.id, { onDelete: "cascade" }),
   accommodationId: varchar("accommodation_id", { length: 255 }).references(() => accommodations.id, { onDelete: "cascade" }),
   rating: integer("rating").notNull(),
@@ -132,7 +132,7 @@ export const reviews = pgTable("reviews", {
 
 // Review helpfulness votes table
 export const reviewHelpfulness = pgTable("review_helpfulness", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   reviewId: varchar("review_id", { length: 255 }).notNull().references(() => reviews.id, { onDelete: "cascade" }),
   studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
   isHelpful: boolean("is_helpful").notNull(),
@@ -141,7 +141,7 @@ export const reviewHelpfulness = pgTable("review_helpfulness", {
 
 // Review replies table
 export const reviewReplies = pgTable("review_replies", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   reviewId: varchar("review_id", { length: 255 }).notNull().references(() => reviews.id, { onDelete: "cascade" }),
   studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
   comment: text("comment").notNull(),
@@ -153,7 +153,7 @@ export const reviewReplies = pgTable("review_replies", {
 
 // Review reports table
 export const reviewReports = pgTable("review_reports", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   reviewId: varchar("review_id", { length: 255 }).notNull().references(() => reviews.id, { onDelete: "cascade" }),
   reporterId: varchar("reporter_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
   reason: varchar("reason", { length: 100 }).notNull().$type<"spam" | "inappropriate" | "fake" | "harassment" | "other">(),
@@ -167,7 +167,7 @@ export const reviewReports = pgTable("review_reports", {
 
 // Reply reports table
 export const replyReports = pgTable("reply_reports", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   replyId: varchar("reply_id", { length: 255 }).notNull().references(() => reviewReplies.id, { onDelete: "cascade" }),
   reporterId: varchar("reporter_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
   reason: varchar("reason", { length: 100 }).notNull().$type<"spam" | "inappropriate" | "fake" | "harassment" | "other">(),
@@ -181,7 +181,7 @@ export const replyReports = pgTable("reply_reports", {
 
 // Payments table
 export const payments = pgTable("payments", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("ZAR"),
@@ -195,7 +195,7 @@ export const payments = pgTable("payments", {
 
 // Reports table
 export const reports = pgTable("reports", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   reporterId: varchar("reporter_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   reportedAccommodationId: varchar("reported_accommodation_id", { length: 255 }).references(() => accommodations.id, { onDelete: "cascade" }),
   reportType: varchar("report_type", { length: 50 }).notNull(),
@@ -218,7 +218,7 @@ export const adminSettings = pgTable("admin_settings", {
 
 // Admin activities table
 export const adminActivities = pgTable("admin_activities", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   activityType: varchar("activity_type", { length: 50 }).notNull(),
   message: text("message").notNull(),
   adminId: varchar("admin_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
@@ -233,7 +233,7 @@ export const webhookEvents = pgTable("webhook_events", {
 
 // Payment transactions table
 export const paymentTransactions = pgTable("payment_transactions", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   providerId: varchar("provider_id", { length: 255 }).references(() => providers.id, { onDelete: "set null" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("ZAR"),
@@ -248,7 +248,7 @@ export const paymentTransactions = pgTable("payment_transactions", {
 
 // Payment audit logs table
 export const paymentAuditLogs = pgTable("payment_audit_logs", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   transactionId: varchar("transaction_id", { length: 255 }).notNull(),
   action: varchar("action", { length: 50 }).notNull().$type<"created" | "updated" | "completed" | "failed" | "cancelled" | "reconciled">(),
   oldStatus: varchar("old_status", { length: 20 }),
@@ -263,7 +263,7 @@ export const paymentAuditLogs = pgTable("payment_audit_logs", {
 
 // Payment reconciliations table
 export const paymentReconciliations = pgTable("payment_reconciliations", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   transactionId: varchar("transaction_id", { length: 255 }).notNull(),
   expectedAmount: decimal("expected_amount", { precision: 10, scale: 2 }).notNull(),
   actualAmount: decimal("actual_amount", { precision: 10, scale: 2 }).notNull(),
@@ -274,7 +274,7 @@ export const paymentReconciliations = pgTable("payment_reconciliations", {
 })
 
 export const fileUploadAudits = pgTable("file_upload_audits", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
   fileName: varchar("file_name", { length: 255 }).notNull(),
   fileSize: bigint("file_size", { mode: "number" }).notNull(),
@@ -290,7 +290,7 @@ export const fileUploadAudits = pgTable("file_upload_audits", {
 })
 
 export const fileQuarantines = pgTable("file_quarantines", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => `uuid_generate_v4()::text`),
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
   originalFileName: varchar("original_file_name", { length: 255 }).notNull(),
   quarantinedFileName: varchar("quarantined_file_name", { length: 255 }).notNull(),
   reason: text("reason").notNull(),
@@ -300,4 +300,38 @@ export const fileQuarantines = pgTable("file_quarantines", {
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow().notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   status: varchar("status", { length: 20 }).notNull().$type<"quarantined" | "released" | "deleted">(),
+})
+
+// Student wishlist table
+export const studentWishlist = pgTable("student_wishlist", {
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  accommodationId: varchar("accommodation_id", { length: 255 }).notNull().references(() => accommodations.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Student preferences table
+export const studentPreferences = pgTable("student_preferences", {
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }).unique(),
+  emailNotifications: boolean("email_notifications").default(true),
+  smsNotifications: boolean("sms_notifications").default(false),
+  marketingEmails: boolean("marketing_emails").default(false),
+  profileVisibility: varchar("profile_visibility", { length: 20 }).default("public").$type<"public" | "private" | "friends">(),
+  showPhoneNumber: boolean("show_phone_number").default(false),
+  showStudentNumber: boolean("show_student_number").default(false),
+  twoFactorAuth: boolean("two_factor_auth").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Student profile audit table
+export const studentProfileAudit = pgTable("student_profile_audit", {
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
+  studentId: varchar("student_id", { length: 255 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  fieldName: varchar("field_name", { length: 100 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  updatedBy: varchar("updated_by", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })

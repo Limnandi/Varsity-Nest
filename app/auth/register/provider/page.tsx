@@ -94,10 +94,12 @@ export default function ProviderRegistrationPage() {
       }
       
       // Ensure user exists in Neon DB and send verification email
+      let stackUserId: string | null = null
       try {
         await new Promise(resolve => setTimeout(resolve, 1000))
         const currentUser = await app.getUser()
         if (currentUser?.id) {
+          stackUserId = currentUser.id
           // Update Stack Auth user with display name
           try {
             const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
@@ -108,21 +110,23 @@ export default function ProviderRegistrationPage() {
             console.warn('Failed to update Stack Auth display name:', updateError)
           }
           
-          await fetch('/api/auth/ensure-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id, fullName: [firstName, lastName].filter(Boolean).join(' ').trim() })
-          })
           await fetch('/api/auth/resend-verification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.id })
           })
         }
-      } catch {}
+      } catch (error) {
+        console.warn('Error getting StackAuth user:', error)
+      }
+
+      if (!stackUserId) {
+        throw new Error('Failed to get user ID from StackAuth. Please try again.')
+      }
 
       // Build multipart form for server registration (DB + docs)
       const payload = new FormData()
+      payload.set('userId', stackUserId)
       payload.set('email', email)
       payload.set('firstName', firstName)
       payload.set('lastName', lastName)
@@ -217,9 +221,8 @@ export default function ProviderRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 max-w-2xl w-full">
           {/* Home Button */}
           <Link 
             href="/" 
@@ -227,12 +230,12 @@ export default function ProviderRegistrationPage() {
           >
             <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
           </Link>
-          <div className="text-center mb-8">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_theme(colors.purple.500/40%)] mb-6">
-              <Building className="w-10 h-10 text-purple-400" />
+          <div className="text-center mb-6">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl border border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_theme(colors.purple.500/40%)] mb-4">
+              <Building className="w-8 h-8 text-purple-400" />
             </div>
-            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Provider Registration</h1>
-            <p className="text-neutral-300 text-lg">Join Varsity Nest as an accommodation provider</p>
+            <h1 className="text-2xl font-semibold text-white mb-2">Create Provider Account</h1>
+            <p className="text-sm text-neutral-400">Register as a service provider</p>
           </div>
 
           {state?.error && (
@@ -495,13 +498,15 @@ export default function ProviderRegistrationPage() {
             <div className="text-center">
               <p className="text-sm text-neutral-400">
                 Already have an account?{" "}
-                <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <Link
+                  href="/auth/login"
+                  className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                >
                   Sign in here
                 </Link>
               </p>
             </div>
           </form>
-        </div>
       </div>
     </div>
   )

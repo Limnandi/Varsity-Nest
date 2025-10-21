@@ -294,6 +294,71 @@ export async function uploadDocument(file: File, folder = "varsity-nest/document
   return result.result
 }
 
+export async function uploadImageFromBase64(
+  base64Data: string,
+  options: {
+    folder?: string
+    public_id?: string
+    transformation?: any
+    userId?: string
+    purpose?: 'accommodation' | 'document' | 'profile' | 'accreditation'
+  } = {}
+): Promise<{
+  success: boolean
+  result?: any
+  error?: string
+  warnings?: string[]
+}> {
+  try {
+    const {
+      folder = "varsity-nest",
+      public_id,
+      transformation,
+      userId = "unknown",
+      purpose = "profile"
+    } = options
+
+    // Upload base64 data to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(
+      `data:image/jpeg;base64,${base64Data}`,
+      {
+        folder,
+        public_id,
+        resource_type: "image",
+        use_filename: false,
+        unique_filename: true,
+        overwrite: true,
+        transformation: transformation || {
+          width: 400,
+          height: 400,
+          crop: "fill",
+          gravity: "face",
+          quality: "auto",
+          format: "auto"
+        },
+        tags: [`user:${userId}`, `purpose:${purpose}`, 'profile-image'],
+        context: {
+          uploaded_by: userId,
+          upload_purpose: purpose,
+          source: "base64"
+        }
+      }
+    )
+
+    return {
+      success: true,
+      result: uploadResult,
+      warnings: []
+    }
+  } catch (error) {
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-base64-upload', userId: options.userId })
+    return {
+      success: false,
+      error: "Failed to upload image from base64 data"
+    }
+  }
+}
+
 export async function deleteImage(publicId: string) {
   try {
     const result = await cloudinary.uploader.destroy(publicId)

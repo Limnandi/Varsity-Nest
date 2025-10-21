@@ -6,8 +6,8 @@ const resend = new Resend(env.RESEND_API_KEY)
 
 export async function storeOTP(email: string, otp: string, type: "registration" | "password_reset" = "registration") {
   const key = `otp:${type}:${email}`
-  await redis.setex(key, 300, otp) // 5 minutes expiry
-  await redis.setex(`${key}:attempts`, 300, "0") // Track attempts
+  await redis.setex(key, 1800, otp) // 30 minutes expiry
+  await redis.setex(`${key}:attempts`, 1800, "0") // Track attempts
 }
 
 export function generateOTP(): string {
@@ -132,7 +132,7 @@ export async function incrementOTPAttempts(
 ): Promise<number> {
   const key = `otp:${type}:${email}:attempts`
   const attempts = await redis.incr(key)
-  await redis.expire(key, 300) // Reset expiry
+  await redis.expire(key, 1800) // Reset expiry (30 minutes)
   return attempts
 }
 

@@ -21,6 +21,7 @@ export class DomainValidationService {
 
       // Query database for active whitelisted domains
       const result = await query`SELECT university FROM whitelisted_domains WHERE domain = ${emailDomain} AND is_active = true LIMIT 1`
+      
       const row = result.rows?.[0]
       if (row) {
         return { 

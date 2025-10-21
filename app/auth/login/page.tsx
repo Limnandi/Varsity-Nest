@@ -34,7 +34,7 @@ export default function LoginPage() {
     const errorParam = searchParams.get('error')
     
     if (verified === 'true') {
-      setSuccessMessage("✅ Email verified successfully! You can now sign in.")
+      setSuccessMessage("Email verified successfully! You can now sign in.")
       // Clear the URL parameter after showing message
       window.history.replaceState({}, '', '/auth/login')
     }
@@ -167,8 +167,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
-      <div className="max-w-md w-full">
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 max-w-md w-full">
           {/* Home Button */}
           <Link 
             href="/" 
@@ -300,17 +299,18 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="text-center">
-              <p className="text-sm text-neutral-400">
-                Don&apos;t have an account?{" "}
-                <a href="/auth/register" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                  Register here
-                </a>
-              </p>
-            </div>
+          <div className="text-center">
+            <p className="text-sm text-neutral-400">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/auth/register"
+                className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Register here
+              </Link>
+            </p>
+          </div>
           </form>
-        </div>
-      </div>
 
       {/* Email Verification Modal */}
       {verificationData && (
@@ -323,6 +323,7 @@ export default function LoginPage() {
           lastName={verificationData.lastName}
         />
       )}
+      </div>
     </div>
   )
 }

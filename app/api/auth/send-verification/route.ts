@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Generate a unique verification token and store the mapping
     const verificationToken = (await import('crypto')).randomBytes(24).toString('hex')
-    await redis.set(`verify:${verificationToken}`, userId, { ex: 60 * 5 }) // 5 minutes expiry
+    await redis.set(`verify:${verificationToken}`, userId, { ex: 60 * 30 }) // 30 minutes expiry
 
     // Send verification code using StackAuth's REST API
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.varsitynest.space'

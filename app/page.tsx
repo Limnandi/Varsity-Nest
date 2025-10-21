@@ -18,9 +18,9 @@ export default async function Home() {
       <div className="py-20 px-4 bg-gradient-to-b from-[#040945] to-[#02042b]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold text-white mb-6 drop-shadow-2xl tracking-tight">Featured Accommodations</h2>
+            <h2 className="text-5xl font-bold text-white mb-6 drop-shadow-2xl tracking-tight">Top Picks Right Now</h2>
             <p className="text-xl text-neutral-300 drop-shadow-lg mb-8 max-w-3xl mx-auto leading-relaxed">
-              Hand-picked premium properties for discerning students in Bloemfontein
+              Premium properties for discerning students
             </p>
           </div>
 

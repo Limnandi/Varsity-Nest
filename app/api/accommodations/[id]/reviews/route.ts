@@ -41,9 +41,12 @@ export async function GET(
     const avgRating = avgRatingResult.rows[0]?.average_rating || 0
     const totalReviews = avgRatingResult.rows[0]?.total_reviews || 0
 
+    // Ensure avgRating is a number before calling toFixed
+    const numericAvgRating = typeof avgRating === 'number' ? avgRating : parseFloat(avgRating) || 0
+
     return NextResponse.json({
       reviews,
-      averageRating: parseFloat(avgRating.toFixed(1)),
+      averageRating: parseFloat(numericAvgRating.toFixed(1)),
       totalReviews: parseInt(totalReviews)
     })
 
@@ -94,19 +97,23 @@ export async function POST(
       )
     }
 
-    // Get student ID
-    const studentResult = await query`
+    // Get student ID, create if doesn't exist
+    let studentResult = await query`
       SELECT id FROM students WHERE user_id = ${user.id}
     `
 
+    let studentId: string
     if (studentResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: "Student profile not found" },
-        { status: 404 }
-      )
+      // Student record doesn't exist, create it
+      const insertResult = await query`
+        INSERT INTO students (id, user_id, student_number, university)
+        VALUES (gen_random_uuid()::text, ${user.id}, ${user.studentNumber || 'N/A'}, ${user.institution === 'UFS' ? 'UFS' : 'CUT'})
+        RETURNING id
+      `
+      studentId = insertResult.rows[0].id
+    } else {
+      studentId = studentResult.rows[0].id
     }
-
-    const studentId = studentResult.rows[0].id
 
     // Check if student has already reviewed this accommodation
     const existingReview = await query`
@@ -127,6 +134,38 @@ export async function POST(
       VALUES (${studentId}, ${id}, ${rating}, ${comment || ''}, false)
       RETURNING id, rating, comment, created_at
     `
+
+    console.log(`[REVIEWS] Review inserted successfully for accommodation ${id}`)
+
+    // Update accommodation's rating and review_count
+    try {
+      const statsResult = await query`
+        SELECT 
+          ROUND(AVG(rating)::numeric, 0) as avg_rating,
+          COUNT(*) as total_reviews
+        FROM reviews 
+        WHERE accommodation_id = ${id}
+      `
+
+      const avgRating = statsResult.rows[0]?.avg_rating || 0
+      const totalReviews = statsResult.rows[0]?.total_reviews || 0
+
+      console.log(`[REVIEWS] Calculated stats for accommodation ${id}: rating=${avgRating}, count=${totalReviews}`)
+
+      const updateResult = await query`
+        UPDATE accommodations 
+        SET 
+          rating = ${avgRating},
+          review_count = ${totalReviews},
+          updated_at = NOW()
+        WHERE id = ${id}
+      `
+
+      console.log(`[REVIEWS] Accommodation ${id} updated successfully. Rows affected: ${updateResult.rowCount}`)
+    } catch (updateError) {
+      console.error(`[REVIEWS] Failed to update accommodation stats for ${id}:`, updateError)
+      // Don't fail the whole request if stats update fails
+    }
 
     return NextResponse.json({
       success: true,

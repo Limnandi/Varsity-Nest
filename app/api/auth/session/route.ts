@@ -13,6 +13,15 @@ export const GET = ApiMiddleware.withMiddleware(
       if (!user) {
         const stackUser = await getCurrentUserFromStackAuth()
         if (stackUser) {
+          // Check email verification for StackAuth users
+          if (!stackUser.emailVerified) {
+            return await ApiErrorResponseBuilder.createAuthorizationErrorResponse(
+              "Email not verified. Please verify your email to continue.",
+              request,
+              { component: 'session_get' }
+            )
+          }
+          
           const sessionToken = await createSecureSession(stackUser)
           const bootstrap = ApiMiddleware.createResponse(
             {
@@ -62,6 +71,14 @@ export const GET = ApiMiddleware.withMiddleware(
       if (!user.isActive) {
         return await ApiErrorResponseBuilder.createAuthorizationErrorResponse(
           "Account deactivated",
+          request,
+          { component: 'session_get' }
+        )
+      }
+
+      if (!user.emailVerified) {
+        return await ApiErrorResponseBuilder.createAuthorizationErrorResponse(
+          "Email not verified. Please verify your email to continue.",
           request,
           { component: 'session_get' }
         )

@@ -3,6 +3,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { providerFormDataSchema, validateRequest } from "@/lib/validation-schemas"
+import { getStackServerApp } from "@/lib/stack"
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +13,16 @@ export async function POST(request: NextRequest) {
     if (contentType.includes('multipart/form-data')) {
       // Provider registration documents and DB linkage after client StackAuth signup
       const form = await request.formData()
+      
+      // Get userId from form data (passed from client after StackAuth signup)
+      const userId = String(form.get('userId') || '')
+      
+      if (!userId) {
+        return NextResponse.json({ 
+          error: 'User ID required',
+          details: 'User ID must be provided from StackAuth signup.'
+        }, { status: 400 })
+      }
       
       // Validate and sanitize form data
       const formData = {
@@ -36,11 +47,46 @@ export async function POST(request: NextRequest) {
       }
 
       const { email, firstName, lastName, phone, companyName, address } = validation.data
-
-      // Check if user already has a provider account
-      let [user] = await secureDb.db
+      
+      console.log(`Provider registration - StackAuth user ID from client: ${userId}`)
+      
+      // Verify the userId exists in StackAuth
+      const app = getStackServerApp()
+      let stackUser
+      try {
+        stackUser = await app.getUser(userId)
+        if (!stackUser) {
+          return NextResponse.json({ 
+            error: 'Invalid user',
+            details: 'User not found in StackAuth.'
+          }, { status: 404 })
+        }
+        console.log(`Provider registration - Verified StackAuth user: ${stackUser.id} (${stackUser.primaryEmail})`)
+      } catch (error) {
+        console.error('Error verifying StackAuth user:', error)
+        return NextResponse.json({ 
+          error: 'Authentication error',
+          details: 'Could not verify user in StackAuth.'
+        }, { status: 401 })
+      }
+      
+      // Check if user exists by ID
+      let [userById] = await secureDb.db
         .select({ 
           id: schema.users.id,
+          email: schema.users.email,
+          role: schema.users.role,
+          isActive: schema.users.isActive
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, userId))
+        .limit(1)
+      
+      // Check if user exists by email (might have different ID from old registration)
+      let [userByEmail] = await secureDb.db
+        .select({ 
+          id: schema.users.id,
+          email: schema.users.email,
           role: schema.users.role,
           isActive: schema.users.isActive
         })
@@ -48,11 +94,22 @@ export async function POST(request: NextRequest) {
         .where(eq(schema.users.email, email))
         .limit(1)
       
-      let userId: string
+      // Handle case where email exists with different ID
+      if (userByEmail && userByEmail.id !== userId) {
+        console.warn(`Email ${email} exists with different ID. Old ID: ${userByEmail.id}, New StackAuth ID: ${userId}`)
+        // Delete the old user record with the wrong ID
+        await secureDb.db
+          .delete(schema.users)
+          .where(eq(schema.users.id, userByEmail.id))
+        console.log(`Deleted old user record with ID: ${userByEmail.id}`)
+        userByEmail = undefined
+      }
+      
+      const user = userById || userByEmail
       
       // If user exists and is already a provider, reject duplicate registration
       if (user && user.role === 'provider') {
-        console.warn(`Duplicate provider registration attempt: ${email}`)
+        console.warn(`Duplicate provider registration attempt: ${email} (ID: ${userId})`)
         return NextResponse.json({ 
           error: 'Email already registered as a provider',
           details: 'This email is already associated with a provider account. Please log in instead.'
@@ -60,74 +117,45 @@ export async function POST(request: NextRequest) {
       }
       
       if (!user) {
-        // User not created by webhook yet, create it now
-        console.log(`Creating user in database: ${email}`)
-        const { randomUUID } = await import('crypto')
-        const newUserId = randomUUID()
+        // User not created by webhook yet, create it now using StackAuth ID
+        console.log(`Creating user in database with StackAuth ID: ${userId} (${email})`)
+        console.log(`StackAuth user email verification status: ${stackUser.primaryEmailVerified}`)
         
-        const insertResult = await secureDb.db
+        await secureDb.db
           .insert(schema.users)
           .values({
-            id: newUserId,
+            id: userId,
             email: email,
-            password: 'stackauth', // Placeholder for StackAuth users
+            password: 'stackauth',
             firstName: firstName,
             lastName: lastName,
             role: 'provider',
-            phone: phone || null, // Users table allows NULL for phone
-            emailVerified: false,
+            phone: phone || null,
+            studentNumber: null,
+            institution: null,
+            emailVerified: !!stackUser.primaryEmailVerified,
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date()
           })
-          .onConflictDoUpdate({
-            target: schema.users.email,
-            set: {
-              firstName: firstName,
-              lastName: lastName,
-              phone: phone || null, // Users table allows NULL for phone
-              updatedAt: new Date()
-            }
-          })
-          .returning({ id: schema.users.id })
         
-        // If conflict occurred, get the existing user's ID
-        if (insertResult && insertResult.length > 0) {
-          userId = insertResult[0].id
-          console.log(`User created/updated with ID: ${userId}`)
-        } else {
-          // Fallback: query for the user by email
-          const [existingUser] = await secureDb.db
-            .select({ id: schema.users.id })
-            .from(schema.users)
-            .where(eq(schema.users.email, email))
-            .limit(1)
-          
-          if (existingUser) {
-            userId = existingUser.id
-            console.log(`Found existing user ID: ${userId}`)
-          } else {
-            userId = newUserId
-            console.log(`Using new user ID: ${userId}`)
-          }
-        }
+        console.log(`SUCCESS: User created in Neon with ID: ${userId}`)
       } else {
-        userId = user.id
-        console.log(`Using existing user ID: ${userId}`)
-      }
-      
-      // Update user role to provider if it wasn't set
-      if (user) {
+        // Update existing user to provider role
+        console.log(`Updating existing user (${user.id}) to provider role`)
         await secureDb.db
           .update(schema.users)
           .set({
             role: 'provider',
             firstName: firstName,
             lastName: lastName,
-            phone: phone || null, // Users table allows NULL for phone
+            phone: phone || null,
+            studentNumber: null,
+            institution: null,
             updatedAt: new Date()
           })
           .where(eq(schema.users.id, userId))
+        console.log(`SUCCESS: User ${userId} updated to provider role`)
       }
 
       // Create or update provider record (manual upsert because userId is not unique)
@@ -138,8 +166,11 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       const providerId = (await import('crypto')).randomUUID()
+      
+      console.log(`Creating provider record with userId: ${userId}`)
 
       if (existingProvider && existingProvider.length > 0) {
+        console.log(`Updating existing provider record for userId: ${userId}`)
         await secureDb.db
           .update(schema.providers)
           .set({
@@ -151,7 +182,9 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date(),
           })
           .where(eq(schema.providers.userId, userId))
+        console.log(`SUCCESS: Provider record updated for userId: ${userId}`)
       } else {
+        console.log(`Creating new provider record with providerId: ${providerId}, userId: ${userId}`)
         await secureDb.db
           .insert(schema.providers)
           .values({
@@ -166,6 +199,7 @@ export async function POST(request: NextRequest) {
             createdAt: new Date(),
             updatedAt: new Date(),
           })
+        console.log(`SUCCESS: Provider record created with userId: ${userId}`)
       }
 
       // Upload up to 2 documents securely

@@ -41,6 +41,10 @@ export async function requireAuth(requiredRole?: string) {
     throw new Error('Account deactivated')
   }
   
+  if (!user.emailVerified) {
+    throw new Error('Email not verified')
+  }
+  
   if (requiredRole && !hasRequiredRole(user.role, requiredRole)) {
     throw new Error('Insufficient permissions')
   }

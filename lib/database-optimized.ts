@@ -124,10 +124,23 @@ export class OptimizedAccommodationRepository {
     try {
       const cached = await redis.get(cacheKey)
       if (cached) {
-        return JSON.parse(cached as string)
+        // Handle case where cache is corrupted
+        if (typeof cached === 'string') {
+          return JSON.parse(cached)
+        } else {
+          // Corrupted cache entry, delete it
+          console.warn(`[CACHE] Corrupted cache entry for ${cacheKey}, deleting...`)
+          await redis.del(cacheKey)
+        }
       }
     } catch (error) {
-      console.warn(`Cache get error for ${cacheKey}:`, error)
+      console.warn(`[CACHE] Cache get error for ${cacheKey}:`, error)
+      // Delete corrupted cache entry
+      try {
+        await redis.del(cacheKey)
+      } catch (delError) {
+        console.warn(`[CACHE] Failed to delete corrupted cache key ${cacheKey}`)
+      }
     }
     
     const result = await QueryMonitor.executeWithMonitoring(
@@ -196,7 +209,7 @@ export class OptimizedAccommodationRepository {
         }
         return value
       })
-      await redis.setex(cacheKey, this.CACHE_TTL, serializedResult)
+      await redis.set(cacheKey, serializedResult, { ex: this.CACHE_TTL })
     } catch (error) {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }
@@ -215,10 +228,23 @@ export class OptimizedAccommodationRepository {
     try {
       const cached = await redis.get(cacheKey)
       if (cached) {
-        return JSON.parse(cached as string)
+        // Handle case where cache is corrupted
+        if (typeof cached === 'string') {
+          return JSON.parse(cached)
+        } else {
+          // Corrupted cache entry, delete it
+          console.warn(`[CACHE] Corrupted cache entry for ${cacheKey}, deleting...`)
+          await redis.del(cacheKey)
+        }
       }
     } catch (error) {
-      console.warn(`Cache get error for ${cacheKey}:`, error)
+      console.warn(`[CACHE] Cache get error for ${cacheKey}:`, error)
+      // Delete corrupted cache entry
+      try {
+        await redis.del(cacheKey)
+      } catch (delError) {
+        console.warn(`[CACHE] Failed to delete corrupted cache key ${cacheKey}`)
+      }
     }
     
     const result = await QueryMonitor.executeWithMonitoring(
@@ -288,7 +314,7 @@ export class OptimizedAccommodationRepository {
         }
         return value
       })
-      await redis.setex(cacheKey, this.CACHE_TTL, serializedResult)
+      await redis.set(cacheKey, serializedResult, { ex: this.CACHE_TTL })
     } catch (error) {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }
@@ -305,10 +331,23 @@ export class OptimizedAccommodationRepository {
     try {
       const cached = await redis.get(cacheKey)
       if (cached) {
-        return JSON.parse(cached as string)
+        // Handle case where cache is corrupted
+        if (typeof cached === 'string') {
+          return JSON.parse(cached)
+        } else {
+          // Corrupted cache entry, delete it
+          console.warn(`[CACHE] Corrupted cache entry for ${cacheKey}, deleting...`)
+          await redis.del(cacheKey)
+        }
       }
     } catch (error) {
-      console.warn(`Cache get error for ${cacheKey}:`, error)
+      console.warn(`[CACHE] Cache get error for ${cacheKey}:`, error)
+      // Delete corrupted cache entry
+      try {
+        await redis.del(cacheKey)
+      } catch (delError) {
+        console.warn(`[CACHE] Failed to delete corrupted cache key ${cacheKey}`)
+      }
     }
     
     const result = await QueryMonitor.executeWithMonitoring(
@@ -335,7 +374,7 @@ export class OptimizedAccommodationRepository {
         }
         return value
       })
-      await redis.setex(cacheKey, this.CACHE_TTL, serializedResult)
+      await redis.set(cacheKey, serializedResult, { ex: this.CACHE_TTL })
     } catch (error) {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }

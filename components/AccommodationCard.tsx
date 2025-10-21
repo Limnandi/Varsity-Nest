@@ -3,8 +3,10 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Star, MapPin, Users, Shield, Heart } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { formatZar } from "@/lib/utils"
+import { useStudentAuth } from "@/hooks/useStudentAuth"
+import { toast } from "sonner"
 
 interface AccommodationCardProps {
   id: string | number
@@ -49,6 +51,83 @@ export default function AccommodationCard({
 }: AccommodationCardProps) {
   const [isFavorited, setIsFavorited] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const { user: studentUser, isAuthenticated } = useStudentAuth()
+
+  // Check if accommodation is in wishlist on component mount
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!isAuthenticated || !studentUser) return
+      
+      try {
+        // Use a more efficient approach - check if this specific accommodation is in wishlist
+        const response = await fetch(`/api/student/wishlist?accommodationId=${id}&limit=1`)
+        if (response.ok) {
+          const result = await response.json()
+          // If accommodationId is provided, the API will only return items for that accommodation
+          const isInWishlist = result.data?.items?.length > 0
+          setIsFavorited(isInWishlist)
+        }
+      } catch (error) {
+        console.error('Error checking wishlist status:', error)
+      }
+    }
+
+    checkWishlistStatus()
+  }, [id, isAuthenticated, studentUser])
+
+  const handleWishlistToggle = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!isAuthenticated || !studentUser) {
+      toast.error("Please log in to save accommodations to your wishlist")
+      return
+    }
+
+    if (isLoading) return
+
+    setIsLoading(true)
+    
+    try {
+      if (isFavorited) {
+        // Remove from wishlist
+        const response = await fetch(`/api/student/wishlist?accommodationId=${id}`, {
+          method: 'DELETE',
+        })
+        
+        if (response.ok) {
+          setIsFavorited(false)
+          toast.success("Removed from wishlist")
+        } else {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to remove from wishlist')
+        }
+      } else {
+        // Add to wishlist
+        const response = await fetch('/api/student/wishlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ accommodationId: String(id) }),
+        })
+        
+        if (response.ok) {
+          setIsFavorited(true)
+          toast.success("Added to wishlist")
+        } else {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to add to wishlist')
+        }
+      }
+    } catch (error: any) {
+      console.error('Wishlist operation failed:', error)
+      toast.error(error.message || 'Something went wrong')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl overflow-hidden text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
@@ -87,13 +166,15 @@ export default function AccommodationCard({
 
         {/* Favorite Button */}
         <button
-          onClick={(e) => {
-            e.preventDefault()
-            setIsFavorited(!isFavorited)
-          }}
-          className="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/10 transition-all duration-300"
+          onClick={handleWishlistToggle}
+          disabled={isLoading}
+          className={`absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/10 transition-all duration-300 ${
+            isLoading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          <Heart className={`w-4 h-4 ${isFavorited ? "text-red-400 fill-current" : "text-white/80"}`} />
+          <Heart className={`w-4 h-4 ${isFavorited ? "text-red-400 fill-current" : "text-white/80"} ${
+            isLoading ? 'animate-pulse' : ''
+          }`} />
         </button>
 
         {/* Availability Badge */}
