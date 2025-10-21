@@ -135,6 +135,38 @@ export async function POST(
       RETURNING id, rating, comment, created_at
     `
 
+    console.log(`[REVIEWS] Review inserted successfully for accommodation ${id}`)
+
+    // Update accommodation's rating and review_count
+    try {
+      const statsResult = await query`
+        SELECT 
+          ROUND(AVG(rating)::numeric, 0) as avg_rating,
+          COUNT(*) as total_reviews
+        FROM reviews 
+        WHERE accommodation_id = ${id}
+      `
+
+      const avgRating = statsResult.rows[0]?.avg_rating || 0
+      const totalReviews = statsResult.rows[0]?.total_reviews || 0
+
+      console.log(`[REVIEWS] Calculated stats for accommodation ${id}: rating=${avgRating}, count=${totalReviews}`)
+
+      const updateResult = await query`
+        UPDATE accommodations 
+        SET 
+          rating = ${avgRating},
+          review_count = ${totalReviews},
+          updated_at = NOW()
+        WHERE id = ${id}
+      `
+
+      console.log(`[REVIEWS] Accommodation ${id} updated successfully. Rows affected: ${updateResult.rowCount}`)
+    } catch (updateError) {
+      console.error(`[REVIEWS] Failed to update accommodation stats for ${id}:`, updateError)
+      // Don't fail the whole request if stats update fails
+    }
+
     return NextResponse.json({
       success: true,
       review: reviewResult.rows[0]
