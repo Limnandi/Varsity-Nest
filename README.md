@@ -100,6 +100,8 @@ pnpm dev
 ## Caching & OTP (Redis)
 - Upstash Redis client in `lib/redis.ts` (singleton)
 - OTP helpers: `storeOTP`, `getOTP`, `deleteOTP`, attempts tracking
+- Email verification tokens valid for 30 minutes
+- OTP attempts rate-limited per session
 
 ## File Uploads (Cloudinary)
 - Facade in `lib/cloudinary.ts` with secure wrappers:
@@ -112,9 +114,10 @@ pnpm dev
 - **Wishlist Functionality**: Heart button integration on accommodation cards, wishlist page with search/filter
 - **Settings & Preferences**: Notification preferences, privacy settings, profile visibility controls
 - **Authentication**: Student-specific auth hook with session management and role-based access
-- **Database Integration**: Proper foreign key relationships between users, students, and wishlist tables
-- **API Endpoints**: RESTful APIs for profile, settings, wishlist, and profile image management
-- **UI Components**: Reusable components for student auth, profile management, and wishlist integration
+- **Review System**: Students can rate and review accommodations with automatic rating aggregation
+- **Database Integration**: Proper foreign key relationships between users, students, wishlist, and reviews tables
+- **API Endpoints**: RESTful APIs for profile, settings, wishlist, profile image, and review management
+- **UI Components**: Reusable components for student auth, profile management, wishlist, and review integration
 
 ## Observability
 - Sentry initialized in `lib/sentry.ts`
@@ -144,10 +147,12 @@ pnpm dev
   - Settings for notifications and privacy preferences
   - Wishlist functionality with heart button integration
   - Student-specific authentication and session management
-- **Admin**: `app/admin/*` (analytics, domains, reports, students)
+  - Review and rating system for accommodations
+- **Admin**: `app/admin/*` (analytics, domains, reports, students, rating sync)
+  - Admin sync endpoint for accommodation ratings at `/api/admin/sync-ratings`
 - **Provider**: `app/provider/*` (accommodations, billing, dashboard)
-- **Public**: `app/page.tsx`, `app/listing/[id]` (accommodation discovery with wishlist)
-- **API**: `app/api/*` (auth, admin, provider, student, payfast, docs)
+- **Public**: `app/page.tsx`, `app/listing/[id]` (accommodation discovery with wishlist and reviews)
+- **API**: `app/api/*` (auth, admin, provider, student, payfast, docs, reviews)
 
 ## Gotchas & Tips
 - Params in Next.js 15 can be Promises in route/page handlers; await them before destructuring.
@@ -158,6 +163,8 @@ pnpm dev
 - Student authentication requires proper foreign key relationships between `users` and `students` tables.
 - Wishlist functionality uses `students.id` (not `users.id`) for foreign key constraints.
 - Student components should be wrapped in `StudentAuthProvider` for proper Suspense boundaries.
+- Reviews automatically update accommodation `rating` and `review_count` columns via triggers in the API.
+- Rating sync endpoint available at `/api/admin/sync-ratings` for manual synchronization if needed.
 
 ## Security Defaults
 - CORS headers set in `next.config.mjs` for `/api/*`
@@ -174,4 +181,5 @@ pnpm dev
 6. For DB: inspect `database/schema.sql` and `lib/schema.ts`
 7. For student features: check `hooks/useStudentAuth.ts` and `app/student/*`
 8. For wishlist: examine `components/AccommodationCard.tsx` and `app/api/student/wishlist/`
+9. For reviews: check `app/api/accommodations/[id]/reviews/route.ts` and rating sync logic
 
