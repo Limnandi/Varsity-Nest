@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, Bell, Shield, Eye, EyeOff, Save, Key, Mail, Smartphone } from "lucide-react"
+import { Settings, Bell, Shield, Eye, Save, Mail, Smartphone } from "lucide-react"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import { Toaster, toast } from "sonner"
 
@@ -22,17 +22,17 @@ export default function StudentSettingsPage() {
     twoFactorAuth: false
   })
 
-  // Password change state
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: ""
-  })
-  const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false
-  })
+  // Password change state - commented out for now
+  // const [passwordData, setPasswordData] = useState({
+  //   currentPassword: "",
+  //   newPassword: "",
+  //   confirmPassword: ""
+  // })
+  // const [showPasswords, setShowPasswords] = useState({
+  //   current: false,
+  //   new: false,
+  //   confirm: false
+  // })
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -68,41 +68,42 @@ export default function StudentSettingsPage() {
     }
   }
 
-  const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords don't match")
-      return
-    }
-    if (passwordData.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters long")
-      return
-    }
+  // Password change handler - commented out for now
+  // const handleChangePassword = async () => {
+  //   if (passwordData.newPassword !== passwordData.confirmPassword) {
+  //     toast.error("New passwords don't match")
+  //     return
+  //   }
+  //   if (passwordData.newPassword.length < 8) {
+  //     toast.error("Password must be at least 8 characters long")
+  //     return
+  //   }
 
-    setIsSaving(true)
-    try {
-      const response = await fetch('/api/student/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(passwordData),
-      })
+  //   setIsSaving(true)
+  //   try {
+  //     const response = await fetch('/api/student/change-password', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(passwordData),
+  //     })
 
-      if (response.ok) {
-        const result = await response.json()
-        toast.success(result.message || "Password changed successfully!")
-        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-      } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to change password")
-      }
-    } catch (error) {
-      console.error('Password change error:', error)
-      toast.error("Failed to change password")
-    } finally {
-      setIsSaving(false)
-    }
-  }
+  //     if (response.ok) {
+  //       const result = await response.json()
+  //       toast.success(result.message || "Password changed successfully!")
+  //       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+  //     } else {
+  //       const error = await response.json()
+  //       toast.error(error.message || "Failed to change password")
+  //     }
+  //   } catch (error) {
+  //     console.error('Password change error:', error)
+  //     toast.error("Failed to change password")
+  //   } finally {
+  //     setIsSaving(false)
+  //   }
+  // }
 
   if (isLoading) {
     return (
@@ -265,7 +266,8 @@ export default function StudentSettingsPage() {
             </div>
           </div>
 
-          {/* Security Settings */}
+          {/* Security Settings - Commented out for now, will tighten later */}
+          {/*
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-6 text-white lg:col-span-2">
             <h2 className="text-xl font-bold mb-6 bg-gradient-to-r from-red-400 to-orange-500 bg-clip-text text-transparent flex items-center">
               <Key className="w-5 h-5 mr-2" />
@@ -273,7 +275,7 @@ export default function StudentSettingsPage() {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Change Password */}
+              Change Password
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Change Password</h3>
                 <div className="space-y-4">
@@ -348,7 +350,7 @@ export default function StudentSettingsPage() {
                 </div>
               </div>
 
-              {/* Two-Factor Authentication */}
+              Two-Factor Authentication
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Two-Factor Authentication</h3>
                 <div className="space-y-4">
@@ -378,6 +380,8 @@ export default function StudentSettingsPage() {
               </div>
             </div>
           </div>
+          */}
+          {/* End Security Settings */}
         </div>
 
         {/* Save Button */}

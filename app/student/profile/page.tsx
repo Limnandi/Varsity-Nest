@@ -39,7 +39,7 @@ export default function StudentProfilePage() {
         course: studentUser.course || "",
         emergencyContactName: studentUser.emergencyContactName || "",
         emergencyContactPhone: studentUser.emergencyContactPhone || "",
-        phone: "" // This would come from the user table
+        phone: studentUser.phone || ""
       })
     }
   }, [studentUser])
@@ -98,7 +98,7 @@ export default function StudentProfilePage() {
         course: studentUser.course || "",
         emergencyContactName: studentUser.emergencyContactName || "",
         emergencyContactPhone: studentUser.emergencyContactPhone || "",
-        phone: ""
+        phone: studentUser.phone || ""
       })
     }
     setIsEditing(false)
