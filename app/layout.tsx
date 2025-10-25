@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Layout from "@/components/Layout"
@@ -29,6 +29,11 @@ if (typeof window !== 'undefined') {
 export const metadata: Metadata = {
   title: "Varsity Nest",
   description: "Off-Campus Living Made Simple",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 }
 
 export default function RootLayout({
