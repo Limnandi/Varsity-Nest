@@ -89,10 +89,10 @@
     border-color: hsl(var(--border));
   }
   html {
-    background-color: hsl(var(--background));
+    background-color: transparent;
   }
   body {
-    background-color: hsl(var(--background));
+    background-color: transparent;
     color: hsl(var(--foreground));
   }
 }
