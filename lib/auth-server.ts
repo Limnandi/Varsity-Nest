@@ -22,6 +22,8 @@ export interface SecureUser {
   course?: string
   emergencyContactName?: string
   emergencyContactPhone?: string
+  profileImageUrl?: string
+  profileImageCloudinaryId?: string
 }
 
 export interface SecureSession {
@@ -155,7 +157,7 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
     // Get user data from database
     const userResult = await query`
       SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.student_number, u.institution, 
-             u.is_active, u.email_verified, u.created_at, u.updated_at,
+             u.is_active, u.email_verified, u.created_at, u.updated_at, u.profile_image_url, u.profile_image_cloudinary_id,
              s.university, s.year_of_study, s.course, s.emergency_contact_name, s.emergency_contact_phone
       FROM users u
       LEFT JOIN students s ON u.id = s.user_id
@@ -186,6 +188,8 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
       course: user.course,
       emergencyContactName: user.emergency_contact_name,
       emergencyContactPhone: user.emergency_contact_phone,
+      profileImageUrl: user.profile_image_url,
+      profileImageCloudinaryId: user.profile_image_cloudinary_id,
     }
   } catch (error) {
     console.error('StackAuth user fetch failed:', error)

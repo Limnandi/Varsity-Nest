@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   phone: varchar("phone", { length: 20 }),
   studentNumber: varchar("student_number", { length: 50 }),
   institution: varchar("institution", { length: 100 }),
+  profileImageUrl: varchar("profile_image_url", { length: 500 }),
+  profileImageCloudinaryId: varchar("profile_image_cloudinary_id", { length: 255 }),
   isActive: boolean("is_active").default(true),
   emailVerified: boolean("email_verified").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
