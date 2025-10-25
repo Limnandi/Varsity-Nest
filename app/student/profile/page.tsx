@@ -122,7 +122,7 @@ export default function StudentProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     )
@@ -133,13 +133,13 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] p-8">
+    <div className="min-h-screen px-4 py-6 sm:px-6 sm:py-8">
       <div className="max-w-4xl mx-auto">
         <Toaster richColors position="top-center" />
         
         {/* Header */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 text-white mb-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-6 sm:p-8 text-white mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6">
             <div className="flex items-center space-x-4">
               <ProfileImageUpload
                 currentImageUrl={studentUser.profileImageUrl}
@@ -166,7 +166,7 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Profile Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Personal Information */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-6 text-white">
             <h2 className="text-xl font-bold mb-6 bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent flex items-center">
@@ -339,7 +339,7 @@ export default function StudentProfilePage() {
             Quick Actions
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Link
               href="/student/wishlist"
               className="group flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-105"
@@ -383,17 +383,17 @@ export default function StudentProfilePage() {
 
         {/* Save/Cancel Buttons */}
         {isEditing && (
-          <div className="flex justify-end space-x-4 mt-8">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-8">
             <button
               onClick={handleCancel}
-              className="px-6 py-3 border border-white/20 text-white rounded-xl hover:bg-white/10 transition-all duration-300 font-medium"
+              className="w-full sm:w-auto px-6 py-3 border border-white/20 text-white rounded-xl hover:bg-white/10 transition-all duration-300 font-medium"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-medium shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-medium shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
               <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
