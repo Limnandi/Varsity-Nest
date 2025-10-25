@@ -1,15 +1,41 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
+var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cooked, raw) {
+    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
+    return cooked;
 };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -50,6 +76,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.approveProvider = approveProvider;
 exports.rejectProvider = rejectProvider;
 exports.viewProviderDocuments = viewProviderDocuments;
+exports.getPendingProviders = getPendingProviders;
+exports.getAllProviders = getAllProviders;
+exports.getCurrentProviders = getCurrentProviders;
+exports.deleteProvider = deleteProvider;
 exports.getDashboardStats = getDashboardStats;
 exports.getTopAccommodations = getTopAccommodations;
 exports.getRecentActivity = getRecentActivity;
@@ -59,7 +89,9 @@ if (typeof window !== 'undefined') {
     throw new Error('Admin operations cannot be performed in client-side code. ' +
         'This module should only be imported in server components, API routes, or server actions.');
 }
-var database_1 = require("./database");
+var database_secure_1 = require("./database-secure");
+var drizzle_orm_1 = require("drizzle-orm");
+var schema = __importStar(require("./schema"));
 function approveProvider(providerId) {
     return __awaiter(this, void 0, void 0, function () {
         var error_1;
@@ -67,7 +99,15 @@ function approveProvider(providerId) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, database_1.query)("UPDATE providers SET \n        is_verified = true,\n        is_active = true\n      WHERE id = $1", [providerId])];
+                    return [4 /*yield*/, database_secure_1.secureDb.db
+                            .update(schema.providers)
+                            .set({
+                            isVerified: true,
+                            isActive: true,
+                            registrationStatus: 'approved',
+                            updatedAt: new Date()
+                        })
+                            .where((0, drizzle_orm_1.eq)(schema.providers.id, providerId))];
                 case 1:
                     _a.sent();
                     return [2 /*return*/, { success: true }];
@@ -87,7 +127,15 @@ function rejectProvider(providerId) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, database_1.query)("UPDATE providers SET \n        is_active = false,\n        rejection_reason = 'Manual rejection by admin'\n      WHERE id = $1", [providerId])];
+                    return [4 /*yield*/, database_secure_1.secureDb.db
+                            .update(schema.providers)
+                            .set({
+                            isActive: false,
+                            rejectionReason: 'Manual rejection by admin',
+                            registrationStatus: 'rejected',
+                            updatedAt: new Date()
+                        })
+                            .where((0, drizzle_orm_1.eq)(schema.providers.id, providerId))];
                 case 1:
                     _a.sent();
                     return [2 /*return*/, { success: true }];
@@ -102,18 +150,21 @@ function rejectProvider(providerId) {
 }
 function viewProviderDocuments(providerId) {
     return __awaiter(this, void 0, void 0, function () {
-        var result, error_3;
-        var _a;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var provider, error_3;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
                 case 0:
-                    _b.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, database_1.query)("SELECT documents FROM providers WHERE id = $1", [providerId])];
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, database_secure_1.secureDb.db
+                            .select({ documents: schema.providers.documents })
+                            .from(schema.providers)
+                            .where((0, drizzle_orm_1.eq)(schema.providers.id, providerId))
+                            .limit(1)];
                 case 1:
-                    result = _b.sent();
-                    return [2 /*return*/, ((_a = result.rows[0]) === null || _a === void 0 ? void 0 : _a.documents) || []];
+                    provider = (_a.sent())[0];
+                    return [2 /*return*/, (provider === null || provider === void 0 ? void 0 : provider.documents) || []];
                 case 2:
-                    error_3 = _b.sent();
+                    error_3 = _a.sent();
                     console.error("Failed to fetch provider documents:", error_3);
                     return [2 /*return*/, []];
                 case 3: return [2 /*return*/];
@@ -121,34 +172,203 @@ function viewProviderDocuments(providerId) {
         });
     });
 }
+function getPendingProviders() {
+    return __awaiter(this, void 0, void 0, function () {
+        var allProviders, error_4;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, getAllProviders()];
+                case 1:
+                    allProviders = _a.sent();
+                    return [2 /*return*/, allProviders.filter(function (provider) {
+                            return (provider.status === 'pending' && provider.isActive === false) ||
+                                (provider.status === 'pending' && provider.isVerified === false) ||
+                                provider.status === 'rejected';
+                        })];
+                case 2:
+                    error_4 = _a.sent();
+                    console.error("Failed to fetch pending providers:", error_4);
+                    return [2 /*return*/, []];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+function getAllProviders() {
+    return __awaiter(this, void 0, void 0, function () {
+        var providers, error_5;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, database_secure_1.secureDb.db
+                            .select({
+                            id: schema.providers.id,
+                            businessName: schema.providers.businessName,
+                            contactPerson: schema.providers.contactPerson,
+                            contactEmail: schema.providers.contactEmail,
+                            contactPhone: schema.providers.contactPhone,
+                            address: schema.providers.address,
+                            registrationStatus: schema.providers.registrationStatus,
+                            createdAt: schema.providers.createdAt,
+                            isActive: schema.providers.isActive,
+                            isVerified: schema.providers.isVerified,
+                            documents: schema.providers.documents,
+                            firstName: schema.users.firstName,
+                            lastName: schema.users.lastName,
+                            email: schema.users.email
+                        })
+                            .from(schema.providers)
+                            .innerJoin(schema.users, (0, drizzle_orm_1.eq)(schema.providers.userId, schema.users.id))
+                            .where((0, drizzle_orm_1.eq)(schema.users.role, 'provider'))
+                            .orderBy((0, drizzle_orm_1.desc)(schema.providers.createdAt))];
+                case 1:
+                    providers = _a.sent();
+                    return [2 /*return*/, providers.map(function (row) { return ({
+                            id: row.id,
+                            name: "".concat(row.firstName, " ").concat(row.lastName),
+                            email: row.contactEmail,
+                            companyName: row.businessName,
+                            submittedAt: row.createdAt,
+                            status: row.registrationStatus || 'pending',
+                            phone: row.contactPhone,
+                            address: row.address,
+                            isActive: row.isActive,
+                            isVerified: row.isVerified,
+                            documents: row.documents || []
+                        }); })];
+                case 2:
+                    error_5 = _a.sent();
+                    console.error("Failed to fetch all providers:", error_5);
+                    return [2 /*return*/, []];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+function getCurrentProviders() {
+    return __awaiter(this, void 0, void 0, function () {
+        var allProviders, error_6;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, getAllProviders()];
+                case 1:
+                    allProviders = _a.sent();
+                    return [2 /*return*/, allProviders.filter(function (provider) {
+                            return provider.status === 'approved' ||
+                                (provider.status === 'pending' && provider.isActive === true) ||
+                                (provider.status === 'pending' && provider.isVerified === true);
+                        })];
+                case 2:
+                    error_6 = _a.sent();
+                    console.error("Failed to fetch current providers:", error_6);
+                    return [2 /*return*/, []];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+function deleteProvider(providerId) {
+    return __awaiter(this, void 0, void 0, function () {
+        var error_7;
+        var _this = this;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, database_secure_1.secureDb.withTransaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
+                            var provider;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0: return [4 /*yield*/, tx.db
+                                            .select({ userId: schema.providers.userId })
+                                            .from(schema.providers)
+                                            .where((0, drizzle_orm_1.eq)(schema.providers.id, providerId))
+                                            .limit(1)];
+                                    case 1:
+                                        provider = (_a.sent())[0];
+                                        if (!provider) {
+                                            return [2 /*return*/, { success: false, error: "Provider not found" }];
+                                        }
+                                        // Delete provider and user (cascade should handle this, but being explicit)
+                                        return [4 /*yield*/, tx.db.delete(schema.providers).where((0, drizzle_orm_1.eq)(schema.providers.id, providerId))];
+                                    case 2:
+                                        // Delete provider and user (cascade should handle this, but being explicit)
+                                        _a.sent();
+                                        return [4 /*yield*/, tx.db.delete(schema.users).where((0, drizzle_orm_1.eq)(schema.users.id, provider.userId))];
+                                    case 3:
+                                        _a.sent();
+                                        return [2 /*return*/, { success: true }];
+                                }
+                            });
+                        }); })];
+                case 1: 
+                // Use transaction to ensure atomicity
+                return [2 /*return*/, _a.sent()];
+                case 2:
+                    error_7 = _a.sent();
+                    console.error("Failed to delete provider:", error_7);
+                    return [2 /*return*/, { success: false, error: "Failed to delete provider" }];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
 function getDashboardStats() {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, currentStats, previousStats, current, previous, error_4;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var thirtyDaysAgo, _a, totalStats, recentStats, totalAccommodations, totalProviders, totalViews, totalAccommodations30, totalProviders30, totalViews30, error_8;
+        var _b, _c, _d, _e, _f, _g;
+        return __generator(this, function (_h) {
+            switch (_h.label) {
                 case 0:
-                    _b.trys.push([0, 2, , 3]);
+                    _h.trys.push([0, 2, , 3]);
+                    thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
                     return [4 /*yield*/, Promise.all([
-                            (0, database_1.query)("SELECT\n        COUNT(*) as totalAccommodations,\n        COUNT(DISTINCT provider_id) as totalProviders,\n        SUM(price) as totalRevenue,\n        SUM(view_count) as totalViews\n      FROM accommodations"),
-                            (0, database_1.query)("SELECT\n        COUNT(*) as totalAccommodations,\n        COUNT(DISTINCT provider_id) as totalProviders,\n        SUM(price) as totalRevenue,\n        SUM(view_count) as totalViews\n      FROM accommodations\n      WHERE created_at >= NOW() - INTERVAL '30 days'")
+                            // Total stats
+                            database_secure_1.secureDb.db
+                                .select({
+                                totalAccommodations: (0, drizzle_orm_1.count)(schema.accommodations.id),
+                                totalProviders: (0, drizzle_orm_1.count)(schema.providers.id),
+                                totalViews: (0, drizzle_orm_1.sum)(schema.accommodations.viewCount)
+                            })
+                                .from(schema.accommodations)
+                                .leftJoin(schema.providers, (0, drizzle_orm_1.eq)(schema.accommodations.providerId, schema.providers.id)),
+                            // Recent stats (last 30 days)
+                            database_secure_1.secureDb.db
+                                .select({
+                                totalAccommodations: (0, drizzle_orm_1.count)(schema.accommodations.id),
+                                totalProviders: (0, drizzle_orm_1.count)(schema.providers.id),
+                                totalViews: (0, drizzle_orm_1.sum)(schema.accommodations.viewCount)
+                            })
+                                .from(schema.accommodations)
+                                .leftJoin(schema.providers, (0, drizzle_orm_1.eq)(schema.accommodations.providerId, schema.providers.id))
+                                .where((0, drizzle_orm_1.sql)(templateObject_1 || (templateObject_1 = __makeTemplateObject(["", " >= ", ""], ["", " >= ", ""])), schema.accommodations.createdAt, thirtyDaysAgo))
                         ])];
                 case 1:
-                    _a = _b.sent(), currentStats = _a[0], previousStats = _a[1];
-                    current = currentStats.rows[0];
-                    previous = previousStats.rows[0];
+                    _a = _h.sent(), totalStats = _a[0], recentStats = _a[1];
+                    totalAccommodations = Number(((_b = totalStats[0]) === null || _b === void 0 ? void 0 : _b.totalAccommodations) || 0);
+                    totalProviders = Number(((_c = totalStats[0]) === null || _c === void 0 ? void 0 : _c.totalProviders) || 0);
+                    totalViews = Number(((_d = totalStats[0]) === null || _d === void 0 ? void 0 : _d.totalViews) || 0);
+                    totalAccommodations30 = Number(((_e = recentStats[0]) === null || _e === void 0 ? void 0 : _e.totalAccommodations) || 0);
+                    totalProviders30 = Number(((_f = recentStats[0]) === null || _f === void 0 ? void 0 : _f.totalProviders) || 0);
+                    totalViews30 = Number(((_g = recentStats[0]) === null || _g === void 0 ? void 0 : _g.totalViews) || 0);
                     return [2 /*return*/, {
-                            totalAccommodations: current.totalAccommodations,
-                            totalProviders: current.totalProviders,
-                            totalRevenue: current.totalRevenue,
-                            totalViews: current.totalViews,
-                            accommodationsChange: calculateChange(current.totalAccommodations, previous.totalAccommodations),
-                            providersChange: calculateChange(current.totalProviders, previous.totalProviders),
-                            revenueChange: calculateChange(current.totalRevenue, previous.totalRevenue),
-                            viewsChange: calculateChange(current.totalViews, previous.totalViews)
+                            totalAccommodations: totalAccommodations,
+                            totalProviders: totalProviders,
+                            totalRevenue: 0, // TODO: Implement revenue calculation
+                            totalViews: totalViews,
+                            accommodationsChange: calculateChange(totalAccommodations, totalAccommodations30),
+                            providersChange: calculateChange(totalProviders, totalProviders30),
+                            revenueChange: 0, // TODO: Implement revenue change calculation
+                            viewsChange: calculateChange(totalViews, totalViews30)
                         }];
                 case 2:
-                    error_4 = _b.sent();
-                    console.error("Failed to get dashboard stats:", error_4);
+                    error_8 = _h.sent();
+                    console.error("Failed to get dashboard stats:", error_8);
                     return [2 /*return*/, {
                             totalAccommodations: 0,
                             totalProviders: 0,
@@ -186,18 +406,32 @@ function getTopAccommodations() {
 }
 function getRecentActivity() {
     return __awaiter(this, void 0, void 0, function () {
-        var result, error_5;
+        var activities, error_9;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, database_1.query)("SELECT id, activity_type as type, message, created_at as time\n       FROM admin_activities\n       ORDER BY created_at DESC\n       LIMIT 5")];
+                    return [4 /*yield*/, database_secure_1.secureDb.db
+                            .select({
+                            id: schema.adminActivities.id,
+                            activityType: schema.adminActivities.activityType,
+                            message: schema.adminActivities.message,
+                            createdAt: schema.adminActivities.createdAt
+                        })
+                            .from(schema.adminActivities)
+                            .orderBy((0, drizzle_orm_1.desc)(schema.adminActivities.createdAt))
+                            .limit(5)];
                 case 1:
-                    result = _a.sent();
-                    return [2 /*return*/, result.rows.map(function (row) { return (__assign(__assign({}, row), { time: formatTimeAgo(row.time) })); })];
+                    activities = _a.sent();
+                    return [2 /*return*/, activities.map(function (row) { return ({
+                            id: row.id,
+                            type: row.activityType,
+                            message: row.message,
+                            time: formatTimeAgo(row.createdAt.toISOString())
+                        }); })];
                 case 2:
-                    error_5 = _a.sent();
-                    console.error("Failed to get recent activity:", error_5);
+                    error_9 = _a.sent();
+                    console.error("Failed to get recent activity:", error_9);
                     return [2 /*return*/, []];
                 case 3: return [2 /*return*/];
             }
@@ -206,18 +440,32 @@ function getRecentActivity() {
 }
 function getPendingApprovals() {
     return __awaiter(this, void 0, void 0, function () {
-        var result, error_6;
+        var providers, error_10;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, database_1.query)("SELECT\n        p.id,\n        CASE\n          WHEN p.registration_status = 'pending' THEN 'provider'\n          WHEN a.verification_status = 'pending' THEN 'accommodation'\n        END as type,\n        COALESCE(a.title, p.business_name) as title,\n        COALESCE(p.business_name, 'New Registration') as provider,\n        'pending' as status\n       FROM providers p\n       LEFT JOIN accommodations a ON a.provider_id = p.id\n       WHERE p.registration_status = 'pending' OR a.verification_status = 'pending'")];
+                    return [4 /*yield*/, database_secure_1.secureDb.db
+                            .select({
+                            id: schema.providers.id,
+                            businessName: schema.providers.businessName,
+                            registrationStatus: schema.providers.registrationStatus
+                        })
+                            .from(schema.providers)
+                            .where((0, drizzle_orm_1.eq)(schema.providers.registrationStatus, 'pending'))
+                            .limit(100)];
                 case 1:
-                    result = _a.sent();
-                    return [2 /*return*/, result.rows];
+                    providers = _a.sent();
+                    return [2 /*return*/, providers.map(function (r) { return ({
+                            id: r.id,
+                            type: 'provider',
+                            title: r.businessName,
+                            provider: r.businessName,
+                            status: 'pending'
+                        }); })];
                 case 2:
-                    error_6 = _a.sent();
-                    console.error("Failed to get pending approvals:", error_6);
+                    error_10 = _a.sent();
+                    console.error("Failed to get pending approvals:", error_10);
                     return [2 /*return*/, []];
                 case 3: return [2 /*return*/];
             }
@@ -236,3 +484,4 @@ function formatTimeAgo(dateString) {
         return "".concat(Math.floor(diffInSeconds / 3600), " hours ago");
     return "".concat(Math.floor(diffInSeconds / 86400), " days ago");
 }
+var templateObject_1;

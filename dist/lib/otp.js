@@ -44,7 +44,8 @@ exports.incrementOTPAttempts = incrementOTPAttempts;
 exports.getOTPAttempts = getOTPAttempts;
 var resend_1 = require("resend");
 var redis_1 = require("./redis");
-var resend = new resend_1.Resend(process.env.RESEND_API_KEY);
+var env_1 = require("@/lib/env");
+var resend = new resend_1.Resend(env_1.env.RESEND_API_KEY);
 function storeOTP(email_1, otp_1) {
     return __awaiter(this, arguments, void 0, function (email, otp, type) {
         var key;
@@ -53,10 +54,10 @@ function storeOTP(email_1, otp_1) {
             switch (_a.label) {
                 case 0:
                     key = "otp:".concat(type, ":").concat(email);
-                    return [4 /*yield*/, redis_1.redis.setex(key, 300, otp)]; // 5 minutes expiry
+                    return [4 /*yield*/, redis_1.redis.setex(key, 1800, otp)]; // 30 minutes expiry
                 case 1:
-                    _a.sent(); // 5 minutes expiry
-                    return [4 /*yield*/, redis_1.redis.setex("".concat(key, ":attempts"), 300, "0")]; // Track attempts
+                    _a.sent(); // 30 minutes expiry
+                    return [4 /*yield*/, redis_1.redis.setex("".concat(key, ":attempts"), 1800, "0")]; // Track attempts
                 case 2:
                     _a.sent(); // Track attempts
                     return [2 /*return*/];
@@ -87,7 +88,7 @@ function sendOTP(email_1) {
                         ? "Welcome to Varsity Nest! Please use the verification code below to complete your ".concat(userType, " registration:")
                         : "You requested to reset your password. Use the code below to proceed:", "\n          </p>\n          \n          <div style=\"background: #f1f5f9; border: 2px dashed #0891b2; border-radius: 8px; padding: 30px; text-align: center; margin: 30px 0;\">\n            <div style=\"font-size: 36px; font-weight: bold; color: #0891b2; letter-spacing: 8px; font-family: monospace;\">\n              ").concat(otp, "\n            </div>\n            <p style=\"color: #64748b; margin: 15px 0 0 0; font-size: 14px;\">\n              This code expires in 5 minutes\n            </p>\n          </div>\n          \n          <div style=\"background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;\">\n            <p style=\"color: #92400e; margin: 0; font-size: 14px;\">\n              <strong>Security Notice:</strong> Never share this code with anyone. Varsity Nest will never ask for your verification code.\n            </p>\n          </div>\n          \n          <p style=\"color: #64748b; font-size: 14px; margin-top: 30px;\">\n            If you didn't request this ").concat(type === "registration" ? "registration" : "password reset", ", please ignore this email.\n          </p>\n        </div>\n        \n        <div style=\"background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;\">\n          <p style=\"color: #64748b; font-size: 12px; margin: 0;\">\n            \u00A9 2024 Varsity Nest - Student Accommodation Platform<br>\n            Powered by Massive Operations\n          </p>\n        </div>\n      </div>\n    ");
                     return [4 /*yield*/, resend.emails.send({
-                            from: "Varsity Nest <no-reply@varsitynest.space>", // TODO: Replace with verified domain email for production
+                            from: "Varsity Nest <noreply@varsitynest.space>",
                             to: [email],
                             subject: subject,
                             html: html,
@@ -165,9 +166,9 @@ function incrementOTPAttempts(email_1) {
                     return [4 /*yield*/, redis_1.redis.incr(key)];
                 case 1:
                     attempts = _a.sent();
-                    return [4 /*yield*/, redis_1.redis.expire(key, 300)]; // Reset expiry
+                    return [4 /*yield*/, redis_1.redis.expire(key, 1800)]; // Reset expiry (30 minutes)
                 case 2:
-                    _a.sent(); // Reset expiry
+                    _a.sent(); // Reset expiry (30 minutes)
                     return [2 /*return*/, attempts];
             }
         });

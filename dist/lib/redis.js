@@ -43,14 +43,11 @@ exports.deleteOTP = deleteOTP;
 exports.incrementOTPAttempts = incrementOTPAttempts;
 exports.getOTPAttempts = getOTPAttempts;
 var redis_1 = require("@upstash/redis");
-var redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-var redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-if (!redisUrl || !redisToken) {
-    console.warn("Upstash Redis environment variables not set. OTP and other Redis features will not work.");
-}
+var env_1 = require("./env");
+// Design pattern: Singleton
 exports.redis = new redis_1.Redis({
-    url: redisUrl,
-    token: redisToken,
+    url: env_1.env.REDIS_URL,
+    token: env_1.env.REDIS_TOKEN,
 });
 // OTP Management
 function storeOTP(email_1, otp_1) {
@@ -61,10 +58,10 @@ function storeOTP(email_1, otp_1) {
             switch (_a.label) {
                 case 0:
                     key = "otp:".concat(type, ":").concat(email);
-                    return [4 /*yield*/, exports.redis.setex(key, 300, otp)]; // 5 minutes expiry
+                    return [4 /*yield*/, exports.redis.set(key, otp, { ex: 1800 })]; // 30 minutes expiry
                 case 1:
-                    _a.sent(); // 5 minutes expiry
-                    return [4 /*yield*/, exports.redis.setex("".concat(key, ":attempts"), 300, "0")]; // Track attempts
+                    _a.sent(); // 30 minutes expiry
+                    return [4 /*yield*/, exports.redis.set("".concat(key, ":attempts"), "0", { ex: 1800 })]; // Track attempts
                 case 2:
                     _a.sent(); // Track attempts
                     return [2 /*return*/];
@@ -74,14 +71,16 @@ function storeOTP(email_1, otp_1) {
 }
 function getOTP(email_1) {
     return __awaiter(this, arguments, void 0, function (email, type) {
-        var key;
+        var key, value;
         if (type === void 0) { type = "registration"; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     key = "otp:".concat(type, ":").concat(email);
                     return [4 /*yield*/, exports.redis.get(key)];
-                case 1: return [2 /*return*/, _a.sent()];
+                case 1:
+                    value = _a.sent();
+                    return [2 /*return*/, value];
             }
         });
     });
@@ -107,19 +106,28 @@ function deleteOTP(email_1) {
 }
 function incrementOTPAttempts(email_1) {
     return __awaiter(this, arguments, void 0, function (email, type) {
-        var key, attempts;
+        var key, attempts, e_1;
         if (type === void 0) { type = "registration"; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     key = "otp:".concat(type, ":").concat(email, ":attempts");
-                    return [4 /*yield*/, exports.redis.incr(key)];
+                    return [4 /*yield*/, exports.redis.incr(key)
+                        // Reset expiry using expire
+                    ];
                 case 1:
                     attempts = _a.sent();
-                    return [4 /*yield*/, exports.redis.expire(key, 300)]; // Reset expiry
+                    _a.label = 2;
                 case 2:
-                    _a.sent(); // Reset expiry
-                    return [2 /*return*/, attempts];
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, exports.redis.expire(key, 1800)]; // Reset expiry (30 minutes)
+                case 3:
+                    _a.sent(); // Reset expiry (30 minutes)
+                    return [3 /*break*/, 5];
+                case 4:
+                    e_1 = _a.sent();
+                    return [3 /*break*/, 5];
+                case 5: return [2 /*return*/, Number(attempts !== null && attempts !== void 0 ? attempts : 0)];
             }
         });
     });

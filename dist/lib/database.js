@@ -1,4 +1,8 @@
 "use strict";
+var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cooked, raw) {
+    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
+    return cooked;
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -77,105 +81,77 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sql = void 0;
 exports.getSQL = getSQL;
 exports.getDB = getDB;
 exports.query = query;
 exports.testConnection = testConnection;
 exports.tableExists = tableExists;
 exports.getTableRowCount = getTableRowCount;
+exports.authenticateUser = authenticateUser;
 var neon_http_1 = require("drizzle-orm/neon-http");
 var serverless_1 = require("@neondatabase/serverless");
 var schema = __importStar(require("./schema"));
-// Throw error if used in client-side code
-if (typeof window !== 'undefined') {
-    throw new Error('Database operations cannot be performed in client-side code. ' +
-        'This module should only be imported in server components, API routes, or server actions.');
-}
+var env_1 = require("@/lib/env");
+var bcryptjs_1 = __importDefault(require("bcryptjs"));
+// For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added deprecation warnings and basic injection protection to existing query function.
 var _sql;
 var _db;
-// Configure Neon to use WebSocket
-if (typeof WebSocket !== 'undefined') {
-    serverless_1.neonConfig.webSocketConstructor = WebSocket;
-}
 function getDatabaseUrl() {
-    if (!process.env.DATABASE_URL) {
-        throw new Error("DATABASE_URL environment variable is not set");
-    }
-    return process.env.DATABASE_URL;
+    return env_1.env.DATABASE_URL;
 }
+//Design pattern: Singleton
 function getSQL() {
     if (!_sql) {
         _sql = (0, serverless_1.neon)(getDatabaseUrl());
     }
     return _sql;
 }
-// Export sql client for direct use when needed
-exports.sql = getSQL();
+//Design pattern: Singleton
 function getDB() {
     if (!_db) {
         _db = (0, neon_http_1.drizzle)(getSQL(), { schema: schema });
     }
     return _db;
 }
-function query(textOrStrings, paramsOrValues) {
-    var restValues = [];
-    for (var _i = 2; _i < arguments.length; _i++) {
-        restValues[_i - 2] = arguments[_i];
+function query(strings) {
+    var values = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        values[_i - 1] = arguments[_i];
     }
     return __awaiter(this, void 0, void 0, function () {
-        var queryText, queryParams, sql_1, result, error_1, failedQuery;
+        var result, error_1, failedQuery;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 5, , 6]);
-                    queryText = void 0;
-                    queryParams = void 0;
-                    if (typeof textOrStrings === 'string') {
-                        queryText = textOrStrings;
-                        queryParams = paramsOrValues || [];
+                    _a.trys.push([0, 2, , 3]);
+                    // Log only in development
+                    if (env_1.env.NODE_ENV === 'development') {
+                        console.log("Executing query:", strings.reduce(function (query, part, i) { var _a; return query + part + ((_a = values[i]) !== null && _a !== void 0 ? _a : ''); }, '').substring(0, 100) + "...");
+                        console.log("Query params:", values);
                     }
-                    else {
-                        queryText = textOrStrings.reduce(function (query, part, i) { var _a; return query + part + ((_a = paramsOrValues[i]) !== null && _a !== void 0 ? _a : ''); }, '');
-                        queryParams = paramsOrValues || [];
-                    }
-                    console.log("🔍 Executing query:", queryText.substring(0, 100) + "...");
-                    console.log("📊 Query params:", queryParams);
-                    sql_1 = getSQL();
-                    result = void 0;
-                    if (!(typeof textOrStrings === 'string')) return [3 /*break*/, 2];
-                    return [4 /*yield*/, sql_1.query(queryText, queryParams || [])];
+                    return [4 /*yield*/, getSQL().apply(void 0, __spreadArray([strings], values, false))];
                 case 1:
-                    // Always use sql.query() for string queries
                     result = _a.sent();
-                    return [3 /*break*/, 4];
-                case 2: return [4 /*yield*/, sql_1.apply(void 0, __spreadArray([textOrStrings], queryParams, false))];
-                case 3:
-                    // Handle template string queries
-                    result = _a.sent();
-                    _a.label = 4;
-                case 4:
-                    console.log("✅ Query executed successfully");
-                    console.log("📈 Rows affected:", Array.isArray(result) ? result.length : "N/A");
+                    if (env_1.env.NODE_ENV === 'development') {
+                        console.log("Query executed successfully");
+                        console.log("Rows affected:", Array.isArray(result) ? result.length : "N/A");
+                    }
                     return [2 /*return*/, {
                             rows: Array.isArray(result) ? result : [result],
                             rowCount: Array.isArray(result) ? result.length : 1,
                         }];
-                case 5:
+                case 2:
                     error_1 = _a.sent();
-                    console.error("❌ Database query error:", error_1);
-                    if (typeof textOrStrings === 'string') {
-                        console.error("🔍 Failed query:", textOrStrings);
-                        console.error("📊 Failed params:", paramsOrValues);
-                    }
-                    else {
-                        failedQuery = textOrStrings.reduce(function (query, part, i) { var _a; return query + part + ((_a = paramsOrValues[i]) !== null && _a !== void 0 ? _a : ''); }, '');
-                        console.error("🔍 Failed query:", failedQuery);
-                        console.error("📊 Failed params:", paramsOrValues);
-                    }
+                    console.error("Database query error:", error_1);
+                    failedQuery = strings.reduce(function (query, part, i) { var _a; return query + part + ((_a = values[i]) !== null && _a !== void 0 ? _a : ''); }, '');
+                    console.error("Failed query:", failedQuery);
+                    console.error("Failed params:", values);
                     throw error_1;
-                case 6: return [2 /*return*/];
+                case 3: return [2 /*return*/];
             }
         });
     });
@@ -187,15 +163,15 @@ function testConnection() {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    console.log("🔌 Testing database connection...");
-                    return [4 /*yield*/, query("SELECT NOW() as current_time")];
+                    console.log("Testing database connection...");
+                    return [4 /*yield*/, query(templateObject_1 || (templateObject_1 = __makeTemplateObject(["SELECT NOW() as current_time"], ["SELECT NOW() as current_time"])))];
                 case 1:
                     result = _a.sent();
-                    console.log("✅ Database connection successful:", result.rows[0]);
+                    console.log("Database connection successful:", result.rows[0]);
                     return [2 /*return*/, true];
                 case 2:
                     error_2 = _a.sent();
-                    console.error("❌ Database connection failed:", error_2);
+                    console.error("Database connection failed:", error_2);
                     return [2 /*return*/, false];
                 case 3: return [2 /*return*/];
             }
@@ -210,7 +186,7 @@ function tableExists(tableName) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, query("SELECT EXISTS (\n        SELECT FROM information_schema.tables \n        WHERE table_schema = 'public' \n        AND table_name = $1\n      )", [tableName])];
+                    return [4 /*yield*/, query(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n  SELECT EXISTS (\n    SELECT FROM information_schema.tables \n    WHERE table_schema = 'public' \n    AND table_name = ", "\n  )\n"], ["\n  SELECT EXISTS (\n    SELECT FROM information_schema.tables \n    WHERE table_schema = 'public' \n    AND table_name = ", "\n  )\n"])), tableName)];
                 case 1:
                     result = _a.sent();
                     return [2 /*return*/, result.rows[0].exists];
@@ -226,21 +202,100 @@ function tableExists(tableName) {
 // Helper function to get table row count
 function getTableRowCount(tableName) {
     return __awaiter(this, void 0, void 0, function () {
-        var result, error_4;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var secureDb, result, error_4;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, query("SELECT COUNT(*) as count FROM ".concat(tableName))];
+                    _b.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, import('./database-secure')];
                 case 1:
-                    result = _a.sent();
-                    return [2 /*return*/, Number.parseInt(result.rows[0].count)];
+                    secureDb = (_b.sent()).secureDb;
+                    return [4 /*yield*/, secureDb.executeRawQuery("SELECT COUNT(*) as count FROM ".concat(tableName))];
                 case 2:
-                    error_4 = _a.sent();
+                    result = _b.sent();
+                    return [2 /*return*/, Number.parseInt(((_a = result[0]) === null || _a === void 0 ? void 0 : _a.count) || '0')];
+                case 3:
+                    error_4 = _b.sent();
                     console.error("Error getting row count for table ".concat(tableName, ":"), error_4);
                     return [2 /*return*/, 0];
-                case 3: return [2 /*return*/];
+                case 4: return [2 /*return*/];
             }
         });
     });
 }
+// Authentication function for database fallback
+function authenticateUser(email, password) {
+    return __awaiter(this, void 0, void 0, function () {
+        var secureDb, eq, schema_1, user, isPasswordValid, error_5;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 6, , 7]);
+                    return [4 /*yield*/, import('./database-secure')];
+                case 1:
+                    secureDb = (_a.sent()).secureDb;
+                    return [4 /*yield*/, import('drizzle-orm')];
+                case 2:
+                    eq = (_a.sent()).eq;
+                    return [4 /*yield*/, import('./schema')];
+                case 3:
+                    schema_1 = _a.sent();
+                    return [4 /*yield*/, secureDb.db
+                            .select({
+                            id: schema_1.users.id,
+                            email: schema_1.users.email,
+                            password: schema_1.users.password,
+                            firstName: schema_1.users.firstName,
+                            lastName: schema_1.users.lastName,
+                            role: schema_1.users.role,
+                            isActive: schema_1.users.isActive,
+                            emailVerified: schema_1.users.emailVerified,
+                            createdAt: schema_1.users.createdAt,
+                            updatedAt: schema_1.users.updatedAt
+                        })
+                            .from(schema_1.users)
+                            .where(eq(schema_1.users.email, email.toLowerCase()))
+                            .limit(1)];
+                case 4:
+                    user = (_a.sent())[0];
+                    if (!user) {
+                        // Log security event for monitoring
+                        console.warn("Authentication attempt failed: User not found for email: ".concat(email));
+                        return [2 /*return*/, null];
+                    }
+                    return [4 /*yield*/, bcryptjs_1.default.compare(password, user.password)];
+                case 5:
+                    isPasswordValid = _a.sent();
+                    if (!isPasswordValid) {
+                        // Log security event for monitoring
+                        console.warn("Authentication attempt failed: Invalid password for email: ".concat(email));
+                        return [2 /*return*/, null];
+                    }
+                    if (!user.isActive) {
+                        // Log security event for monitoring
+                        console.warn("Authentication attempt failed: Inactive account for email: ".concat(email));
+                        return [2 /*return*/, null];
+                    }
+                    return [2 /*return*/, {
+                            id: user.id,
+                            email: user.email,
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            name: "".concat(user.firstName, " ").concat(user.lastName).trim(),
+                            role: user.role,
+                            isActive: user.isActive,
+                            emailVerified: user.emailVerified || false,
+                            createdAt: user.createdAt,
+                            updatedAt: user.updatedAt
+                        }];
+                case 6:
+                    error_5 = _a.sent();
+                    console.error("Authentication error:", error_5);
+                    return [2 /*return*/, null];
+                case 7: return [2 /*return*/];
+            }
+        });
+    });
+}
+var templateObject_1, templateObject_2;

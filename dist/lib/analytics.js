@@ -42,127 +42,123 @@ var AnalyticsService = /** @class */ (function () {
     }
     AnalyticsService.getOverviewData = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var response, data, error_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: 
-                    // Simulate API call
-                    return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 1000); })];
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        return [4 /*yield*/, fetch('/api/admin/analytics/overview')];
                     case 1:
-                        // Simulate API call
-                        _a.sent();
+                        response = _a.sent();
+                        if (!response.ok)
+                            throw new Error('Failed to fetch analytics data');
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        data = _a.sent();
+                        return [2 /*return*/, data];
+                    case 3:
+                        error_1 = _a.sent();
+                        console.error('Failed to fetch analytics overview:', error_1);
+                        // Return empty/zero data instead of mock data
                         return [2 /*return*/, {
-                                revenue: {
-                                    total: 125000,
-                                    thisMonth: 12500,
-                                    lastMonth: 11200,
-                                    growth: 11.6,
-                                },
-                                accommodations: {
-                                    total: 45,
-                                    active: 42,
-                                    pending: 3,
-                                    growth: 8.5,
-                                },
-                                providers: {
-                                    total: 28,
-                                    active: 26,
-                                    newThisMonth: 3,
-                                    growth: 12.0,
-                                },
-                                bookings: {
-                                    total: 1250,
-                                    thisMonth: 145,
-                                    lastMonth: 132,
-                                    growth: 9.8,
-                                },
-                                views: {
-                                    total: 25000,
-                                    thisMonth: 3200,
-                                    lastMonth: 2800,
-                                    growth: 14.3,
-                                },
+                                revenue: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+                                accommodations: { total: 0, active: 0, pending: 0, growth: 0 },
+                                providers: { total: 0, active: 0, newThisMonth: 0, growth: 0 },
+                                bookings: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+                                views: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
                             }];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
     };
     AnalyticsService.getRevenueChart = function (period) {
         return __awaiter(this, void 0, void 0, function () {
-            var labels, data;
+            var response, data, error_2;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 800); })];
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        return [4 /*yield*/, fetch("/api/admin/analytics/revenue?period=".concat(period))];
                     case 1:
-                        _a.sent();
-                        labels = period === "7d"
-                            ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-                            : period === "30d"
-                                ? Array.from({ length: 30 }, function (_, i) { return "Day ".concat(i + 1); })
-                                : period === "90d"
-                                    ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-                                    : ["Q1", "Q2", "Q3", "Q4"];
-                        data = labels.map(function () { return Math.floor(Math.random() * 5000) + 1000; });
+                        response = _a.sent();
+                        if (!response.ok)
+                            throw new Error('Failed to fetch revenue chart data');
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        data = _a.sent();
+                        return [2 /*return*/, data];
+                    case 3:
+                        error_2 = _a.sent();
+                        console.error('Failed to fetch revenue chart:', error_2);
+                        // Return empty chart data instead of mock data
                         return [2 /*return*/, {
-                                labels: labels,
-                                datasets: [
-                                    {
+                                labels: [],
+                                datasets: [{
                                         label: "Revenue (R)",
-                                        data: data,
+                                        data: [],
                                         borderColor: "rgb(59, 130, 246)",
                                         backgroundColor: "rgba(59, 130, 246, 0.1)",
                                         tension: 0.4,
-                                    },
-                                ],
+                                    }],
                             }];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
     };
     AnalyticsService.getTopPerformers = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var response, data, error_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 600); })];
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        return [4 /*yield*/, fetch('/api/admin/analytics/top-performers')];
                     case 1:
-                        _a.sent();
-                        return [2 /*return*/, [
-                                { id: "1", name: "Campus View Apartments", value: 4200, change: 15.2, type: "accommodation" },
-                                { id: "2", name: "Sunny Side Residence", value: 3500, change: 8.7, type: "accommodation" },
-                                { id: "3", name: "Smith Properties", value: 8500, change: 22.1, type: "provider" },
-                                { id: "4", name: "Modern Student Hub", value: 3800, change: 12.3, type: "accommodation" },
-                                { id: "5", name: "ABC Housing Ltd", value: 6200, change: 18.9, type: "provider" },
-                            ]];
+                        response = _a.sent();
+                        if (!response.ok)
+                            throw new Error('Failed to fetch top performers');
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        data = _a.sent();
+                        return [2 /*return*/, data.performers || []];
+                    case 3:
+                        error_3 = _a.sent();
+                        console.error('Failed to fetch top performers:', error_3);
+                        return [2 /*return*/, []];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
     };
     AnalyticsService.getSystemHealth = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var response, data, error_4;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: 
-                    // Simulate API call
-                    return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 500); })];
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        return [4 /*yield*/, fetch('/api/admin/analytics/system-health')];
                     case 1:
-                        // Simulate API call
-                        _a.sent();
+                        response = _a.sent();
+                        if (!response.ok)
+                            throw new Error('Failed to fetch system health');
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        data = _a.sent();
+                        return [2 /*return*/, data];
+                    case 3:
+                        error_4 = _a.sent();
+                        console.error('Failed to fetch system health:', error_4);
+                        // Return degraded status instead of mock data
                         return [2 /*return*/, {
-                                apiLatency: {
-                                    average: 85,
-                                    status: "good",
-                                },
-                                errorRate: {
-                                    rate: 0.2,
-                                    status: "good",
-                                },
-                                database: {
-                                    status: "online",
-                                },
-                                uptime: {
-                                    percentage: 99.98,
-                                    status: "good",
-                                },
+                                apiLatency: { average: 0, status: "poor" },
+                                errorRate: { rate: 100, status: "poor" },
+                                database: { status: "offline" },
+                                uptime: { percentage: 0, status: "poor" },
                             }];
+                    case 4: return [2 /*return*/];
                 }
             });
         });

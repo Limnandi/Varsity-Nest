@@ -4,17 +4,6 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
     if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
     return cooked;
 };
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -54,11 +43,10 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPlatformSettings = getPlatformSettings;
 exports.updateProductionMode = updateProductionMode;
-var database_1 = require("../../lib/database");
+var database_1 = require("@/lib/database");
 var cache_1 = require("next/cache");
 var zod_1 = require("zod");
-var session_1 = require("@/lib/session");
-var SETTINGS_KEY = "platform_settings";
+var stackauth_1 = require("@/lib/stackauth");
 var SettingsSchema = zod_1.z.object({
     production_mode: zod_1.z.boolean(),
     registration_enabled: zod_1.z.boolean(),
@@ -66,21 +54,27 @@ var SettingsSchema = zod_1.z.object({
 });
 function getPlatformSettings() {
     return __awaiter(this, void 0, void 0, function () {
-        var data, settings, error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var res, row, settings, error_1;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, database_1.query)(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n      SELECT value FROM admin_settings WHERE key = ", "\n    "], ["\n      SELECT value FROM admin_settings WHERE key = ", "\n    "])), SETTINGS_KEY)];
+                    _b.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, (0, database_1.query)(templateObject_1 || (templateObject_1 = __makeTemplateObject(["SELECT maintenance_mode, registration_enabled, payments_enabled FROM admin_settings WHERE id = 1"], ["SELECT maintenance_mode, registration_enabled, payments_enabled FROM admin_settings WHERE id = 1"])))];
                 case 1:
-                    data = _a.sent();
-                    if (data.length === 0) {
-                        throw new Error("Platform settings not found. Please run the seed script.");
+                    res = _b.sent();
+                    row = (_a = res.rows) === null || _a === void 0 ? void 0 : _a[0];
+                    if (!row) {
+                        throw new Error("admin_settings not found. Please run the migration/seed script.");
                     }
-                    settings = SettingsSchema.parse(data[0].value);
+                    settings = SettingsSchema.parse({
+                        production_mode: !Boolean(row.maintenance_mode),
+                        registration_enabled: Boolean(row.registration_enabled),
+                        reviews_enabled: false,
+                    });
                     return [2 /*return*/, settings];
                 case 2:
-                    error_1 = _a.sent();
+                    error_1 = _b.sent();
                     console.error("Failed to fetch platform settings:", error_1);
                     return [2 /*return*/, {
                             production_mode: true,
@@ -94,13 +88,13 @@ function getPlatformSettings() {
 }
 function updateProductionMode(isProduction) {
     return __awaiter(this, void 0, void 0, function () {
-        var session, currentSettings, newSettings, error_2;
+        var session, error_2;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, (0, session_1.getSession)()];
+                case 0: return [4 /*yield*/, (0, stackauth_1.getSession)()];
                 case 1:
                     session = _a.sent();
-                    if ((session === null || session === void 0 ? void 0 : session.role) !== "admin") {
+                    if ((session === null || session === void 0 ? void 0 : session.user.role) !== "admin") {
                         return [2 /*return*/, { success: false, message: "Unauthorized" }];
                     }
                     _a.label = 2;
@@ -108,9 +102,8 @@ function updateProductionMode(isProduction) {
                     _a.trys.push([2, 5, , 6]);
                     return [4 /*yield*/, getPlatformSettings()];
                 case 3:
-                    currentSettings = _a.sent();
-                    newSettings = __assign(__assign({}, currentSettings), { production_mode: isProduction });
-                    return [4 /*yield*/, (0, database_1.query)(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n      UPDATE admin_settings\n      SET value = ", "::jsonb\n      WHERE key = ", "\n    "], ["\n      UPDATE admin_settings\n      SET value = ", "::jsonb\n      WHERE key = ", "\n    "])), JSON.stringify(newSettings), SETTINGS_KEY)];
+                    _a.sent();
+                    return [4 /*yield*/, (0, database_1.query)(templateObject_2 || (templateObject_2 = __makeTemplateObject(["UPDATE admin_settings SET maintenance_mode = ", " WHERE id = 1"], ["UPDATE admin_settings SET maintenance_mode = ", " WHERE id = 1"])), !isProduction)];
                 case 4:
                     _a.sent();
                     (0, cache_1.revalidatePath)("/admin/dashboard");

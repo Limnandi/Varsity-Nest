@@ -1,4 +1,3 @@
-"use server";
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -37,45 +36,54 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyRecaptcha = verifyRecaptcha;
-var env_1 = require("@/lib/env");
-function verifyRecaptcha(token) {
+exports.securityMiddleware = securityMiddleware;
+var server_1 = require("next/server");
+var redis_1 = require("@/lib/redis");
+var logger_1 = require("@/lib/logging/logger");
+var security_utils_1 = require("../security/security-utils");
+var RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+var MAX_REQUESTS = 60; // 60 requests per minute
+function securityMiddleware(request) {
     return __awaiter(this, void 0, void 0, function () {
-        var secretKey, response, data, error_1;
+        var rateLimitKey, path, requests, response, responseHeaders_1, securityHeaders, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!token) {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA token is missing." }];
-                    }
-                    secretKey = env_1.env.RECAPTCHA_SECRET_KEY;
+                    rateLimitKey = security_utils_1.SecurityUtils.getRateLimitKey(request);
+                    path = request.nextUrl.pathname;
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, fetch("https://www.google.com/recaptcha/api/siteverify", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/x-www-form-urlencoded",
-                            },
-                            body: "secret=".concat(secretKey, "&response=").concat(token),
-                        })];
+                    _a.trys.push([1, 5, , 6]);
+                    return [4 /*yield*/, redis_1.redis.incr(rateLimitKey)];
                 case 2:
-                    response = _a.sent();
-                    return [4 /*yield*/, response.json()];
+                    requests = _a.sent();
+                    if (!(requests === 1)) return [3 /*break*/, 4];
+                    return [4 /*yield*/, redis_1.redis.expire(rateLimitKey, RATE_LIMIT_WINDOW / 1000)];
                 case 3:
-                    data = _a.sent();
-                    if (data.success) {
-                        return [2 /*return*/, { success: true }];
-                    }
-                    else {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA verification failed.", errors: data["error-codes"] }];
-                    }
-                    return [3 /*break*/, 5];
+                    _a.sent();
+                    _a.label = 4;
                 case 4:
+                    if (requests > MAX_REQUESTS) {
+                        logger_1.log.warn('Rate limit exceeded', { path: path, requests: requests });
+                        return [2 /*return*/, new server_1.NextResponse('Too Many Requests', { status: 429 })];
+                    }
+                    response = server_1.NextResponse.next();
+                    responseHeaders_1 = response.headers;
+                    // CORS headers
+                    responseHeaders_1.set('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS || '*');
+                    responseHeaders_1.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+                    responseHeaders_1.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                    securityHeaders = security_utils_1.SecurityUtils.getSecurityHeaders();
+                    Object.entries(securityHeaders).forEach(function (_a) {
+                        var header = _a[0], value = _a[1];
+                        responseHeaders_1.set(header, value);
+                    });
+                    return [2 /*return*/, response];
+                case 5:
                     error_1 = _a.sent();
-                    console.error("Error verifying reCAPTCHA:", error_1);
-                    return [2 /*return*/, { success: false, message: "Could not verify reCAPTCHA. Please try again." }];
-                case 5: return [2 /*return*/];
+                    logger_1.log.error('Security middleware error', error_1 instanceof Error ? error_1 : new Error('Unknown error'));
+                    return [2 /*return*/, server_1.NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })];
+                case 6: return [2 /*return*/];
             }
         });
     });

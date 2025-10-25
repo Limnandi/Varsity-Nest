@@ -1,5 +1,8 @@
-"use server";
 "use strict";
+var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cooked, raw) {
+    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
+    return cooked;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -37,46 +40,33 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyRecaptcha = verifyRecaptcha;
-var env_1 = require("@/lib/env");
-function verifyRecaptcha(token) {
+var database_1 = require("../lib/database");
+function addReviewVotesColumns() {
     return __awaiter(this, void 0, void 0, function () {
-        var secretKey, response, data, error_1;
+        var error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!token) {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA token is missing." }];
-                    }
-                    secretKey = env_1.env.RECAPTCHA_SECRET_KEY;
-                    _a.label = 1;
+                    _a.trys.push([0, 3, , 4]);
+                    console.log('Adding helpful_votes and total_votes columns to reviews table...');
+                    return [4 /*yield*/, (0, database_1.query)(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n      ALTER TABLE reviews \n      ADD COLUMN IF NOT EXISTS helpful_votes INTEGER DEFAULT 0\n    "], ["\n      ALTER TABLE reviews \n      ADD COLUMN IF NOT EXISTS helpful_votes INTEGER DEFAULT 0\n    "])))];
                 case 1:
-                    _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, fetch("https://www.google.com/recaptcha/api/siteverify", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/x-www-form-urlencoded",
-                            },
-                            body: "secret=".concat(secretKey, "&response=").concat(token),
-                        })];
+                    _a.sent();
+                    return [4 /*yield*/, (0, database_1.query)(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n      ALTER TABLE reviews \n      ADD COLUMN IF NOT EXISTS total_votes INTEGER DEFAULT 0\n    "], ["\n      ALTER TABLE reviews \n      ADD COLUMN IF NOT EXISTS total_votes INTEGER DEFAULT 0\n    "])))];
                 case 2:
-                    response = _a.sent();
-                    return [4 /*yield*/, response.json()];
+                    _a.sent();
+                    console.log('✅ Columns added successfully!');
+                    process.exit(0);
+                    return [3 /*break*/, 4];
                 case 3:
-                    data = _a.sent();
-                    if (data.success) {
-                        return [2 /*return*/, { success: true }];
-                    }
-                    else {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA verification failed.", errors: data["error-codes"] }];
-                    }
-                    return [3 /*break*/, 5];
-                case 4:
                     error_1 = _a.sent();
-                    console.error("Error verifying reCAPTCHA:", error_1);
-                    return [2 /*return*/, { success: false, message: "Could not verify reCAPTCHA. Please try again." }];
-                case 5: return [2 /*return*/];
+                    console.error('❌ Error adding columns:', error_1);
+                    process.exit(1);
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
             }
         });
     });
 }
+addReviewVotesColumns();
+var templateObject_1, templateObject_2;

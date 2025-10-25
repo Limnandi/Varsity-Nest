@@ -1,4 +1,3 @@
-"use server";
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -37,45 +36,66 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyRecaptcha = verifyRecaptcha;
-var env_1 = require("@/lib/env");
-function verifyRecaptcha(token) {
+exports.migrateUserOperations = migrateUserOperations;
+exports.migrateAccommodationOperations = migrateAccommodationOperations;
+exports.migrateBookingOperations = migrateBookingOperations;
+exports.safeRawQuery = safeRawQuery;
+// Migration helper to gradually replace vulnerable query calls
+var database_secure_1 = require("./database-secure");
+// This file provides migration utilities to replace vulnerable query calls
+// with secure database operations
+function migrateUserOperations() {
     return __awaiter(this, void 0, void 0, function () {
-        var secretKey, response, data, error_1;
+        return __generator(this, function (_a) {
+            // Example migration for user operations
+            console.log("🔄 Migrating user operations to secure database...");
+            // This will be used to replace vulnerable query calls in auth operations
+            return [2 /*return*/, database_secure_1.secureDb];
+        });
+    });
+}
+function migrateAccommodationOperations() {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            // Example migration for accommodation operations
+            console.log("🔄 Migrating accommodation operations to secure database...");
+            // This will be used to replace vulnerable query calls in accommodation operations
+            return [2 /*return*/, database_secure_1.secureDb];
+        });
+    });
+}
+function migrateBookingOperations() {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            // Example migration for booking operations
+            console.log("🔄 Migrating booking operations to secure database...");
+            // This will be used to replace vulnerable query calls in booking operations
+            return [2 /*return*/, database_secure_1.secureDb];
+        });
+    });
+}
+// Helper function to safely execute raw queries when absolutely necessary
+function safeRawQuery(query_1) {
+    return __awaiter(this, arguments, void 0, function (query, params) {
+        var dangerousPatterns;
+        if (params === void 0) { params = []; }
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!token) {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA token is missing." }];
+                    dangerousPatterns = [
+                        /DROP\s+TABLE/i,
+                        /DELETE\s+FROM/i,
+                        /UPDATE\s+.*\s+SET/i,
+                        /INSERT\s+INTO/i,
+                        /ALTER\s+TABLE/i,
+                        /CREATE\s+TABLE/i,
+                        /TRUNCATE/i
+                    ];
+                    if (dangerousPatterns.some(function (pattern) { return pattern.test(query); })) {
+                        throw new Error("Dangerous query detected. Use specific methods instead.");
                     }
-                    secretKey = env_1.env.RECAPTCHA_SECRET_KEY;
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, fetch("https://www.google.com/recaptcha/api/siteverify", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/x-www-form-urlencoded",
-                            },
-                            body: "secret=".concat(secretKey, "&response=").concat(token),
-                        })];
-                case 2:
-                    response = _a.sent();
-                    return [4 /*yield*/, response.json()];
-                case 3:
-                    data = _a.sent();
-                    if (data.success) {
-                        return [2 /*return*/, { success: true }];
-                    }
-                    else {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA verification failed.", errors: data["error-codes"] }];
-                    }
-                    return [3 /*break*/, 5];
-                case 4:
-                    error_1 = _a.sent();
-                    console.error("Error verifying reCAPTCHA:", error_1);
-                    return [2 /*return*/, { success: false, message: "Could not verify reCAPTCHA. Please try again." }];
-                case 5: return [2 /*return*/];
+                    return [4 /*yield*/, database_secure_1.secureDb.executeRawQuery(query, params)];
+                case 1: return [2 /*return*/, _a.sent()];
             }
         });
     });

@@ -36,9 +36,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Sentry = void 0;
 var Sentry = __importStar(require("@sentry/nextjs"));
 exports.Sentry = Sentry;
+// Initialize Sentry without importing server-only env into client bundles.
+// - Server: reads from process.env.SENTRY_DSN (already validated by lib/env at startup elsewhere)
+// - Client: reads from process.env.NEXT_PUBLIC_SENTRY_DSN (optional; Sentry disabled if not set)
+var isServer = typeof window === "undefined";
+var environment = process.env.NODE_ENV || "development";
+var dsn = isServer ? process.env.SENTRY_DSN : process.env.NEXT_PUBLIC_SENTRY_DSN;
 Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV,
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-    debug: process.env.NODE_ENV === "development",
+    dsn: dsn,
+    environment: environment,
+    tracesSampleRate: environment === "production" ? 0.1 : 1.0,
+    debug: environment === "development",
 });

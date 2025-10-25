@@ -120,258 +120,258 @@ var StudentAuthService = /** @class */ (function () {
         }
         return { isValid: false };
     };
-    StudentAuthService.generateOTP = function () {
-        return Math.floor(100000 + Math.random() * 900000).toString();
-    };
-    StudentAuthService.hashOTP = function (otp) {
-        // Simple hash for demo - use proper hashing in production
-        return btoa(otp + "salt").substring(0, 6);
-    };
-    // 🔥 REAL EMAIL SENDING WITH RESEND
-    StudentAuthService.sendRealOTP = function (email_1) {
-        return __awaiter(this, arguments, void 0, function (email, type) {
-            var _a, isValid, university, students, existingStudent, otp, hashedOTP, response, result, verification, error_1;
-            if (type === void 0) { type = "registration"; }
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+    // OTP functions removed in favor of StackAuth native flows
+    StudentAuthService.registerStudent = function (email, name, password) {
+        return __awaiter(this, void 0, void 0, function () {
+            var university, response, result, error, error_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        _a = this.isEmailWhitelisted(email), isValid = _a.isValid, university = _a.university;
-                        if (!isValid) {
-                            return [2 /*return*/, { success: false, error: "Email domain not whitelisted for student access" }];
-                        }
-                        // For password reset, check if user exists
-                        if (type === "password_reset") {
-                            students = this.getStudents();
-                            existingStudent = students.find(function (s) { return s.email === email; });
-                            if (!existingStudent) {
-                                return [2 /*return*/, { success: false, error: "No account found with this email address" }];
-                            }
-                            if (existingStudent.isBlocked) {
-                                return [2 /*return*/, { success: false, error: "Your account has been suspended. Please contact support." }];
-                            }
-                        }
-                        otp = this.generateOTP();
-                        hashedOTP = this.hashOTP(otp);
-                        _b.label = 1;
+                        university = this.isEmailWhitelisted(email).university;
+                        _a.label = 1;
                     case 1:
-                        _b.trys.push([1, 4, , 5]);
-                        return [4 /*yield*/, fetch("/api/send-otp", {
-                                method: "POST",
+                        _a.trys.push([1, 7, , 8]);
+                        return [4 /*yield*/, fetch('/api/auth/register', {
+                                method: 'POST',
                                 headers: {
-                                    "Content-Type": "application/json",
+                                    'Content-Type': 'application/json',
                                 },
                                 body: JSON.stringify({
                                     email: email,
-                                    otp: otp,
-                                    type: type,
-                                    university: university === "UFS" ? "University of the Free State" : "Central University of Technology",
+                                    firstName: name.split(' ')[0],
+                                    lastName: name.split(' ').slice(1).join(' ') || '',
+                                    password: password,
+                                    role: 'student',
+                                    university: university
                                 }),
                             })];
                     case 2:
-                        response = _b.sent();
+                        response = _a.sent();
+                        if (!response.ok) return [3 /*break*/, 4];
                         return [4 /*yield*/, response.json()];
                     case 3:
-                        result = _b.sent();
-                        if (result.success) {
-                            verification = {
-                                email: email,
-                                otp: hashedOTP,
-                                expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
-                                attempts: 0,
-                                type: type,
-                            };
-                            localStorage.setItem("otp_".concat(email), JSON.stringify(verification));
-                            return [2 /*return*/, { success: true, hashedOTP: hashedOTP }];
-                        }
-                        else {
-                            return [2 /*return*/, { success: false, error: result.error || "Failed to send email" }];
-                        }
-                        return [3 /*break*/, 5];
-                    case 4:
-                        error_1 = _b.sent();
-                        console.error("Failed to send OTP:", error_1);
-                        return [2 /*return*/, { success: false, error: "Failed to send verification email. Please try again." }];
-                    case 5: return [2 /*return*/];
+                        result = _a.sent();
+                        return [2 /*return*/, result.user];
+                    case 4: return [4 /*yield*/, response.json()];
+                    case 5:
+                        error = _a.sent();
+                        throw new Error(error.error || 'Registration failed');
+                    case 6: return [3 /*break*/, 8];
+                    case 7:
+                        error_1 = _a.sent();
+                        console.error('Registration error:', error_1);
+                        throw error_1;
+                    case 8: return [2 /*return*/];
                 }
-            });
-        });
-    };
-    // 🚨 DEMO OTP (Keep for testing)
-    StudentAuthService.sendOTP = function (email_1) {
-        return __awaiter(this, arguments, void 0, function (email, type) {
-            var _a, isValid, university, students, existingStudent, otp, hashedOTP, verification;
-            if (type === void 0) { type = "registration"; }
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        _a = this.isEmailWhitelisted(email), isValid = _a.isValid, university = _a.university;
-                        if (!isValid) {
-                            return [2 /*return*/, { success: false, error: "Email domain not whitelisted for student access" }];
-                        }
-                        // For password reset, check if user exists
-                        if (type === "password_reset") {
-                            students = this.getStudents();
-                            existingStudent = students.find(function (s) { return s.email === email; });
-                            if (!existingStudent) {
-                                return [2 /*return*/, { success: false, error: "No account found with this email address" }];
-                            }
-                            if (existingStudent.isBlocked) {
-                                return [2 /*return*/, { success: false, error: "Your account has been suspended. Please contact support." }];
-                            }
-                        }
-                        otp = this.generateOTP();
-                        hashedOTP = this.hashOTP(otp);
-                        // 🚨 DEMO MODE - Just a timeout, no real email!
-                        return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 1000); })
-                            // Store OTP verification data
-                        ];
-                    case 1:
-                        // 🚨 DEMO MODE - Just a timeout, no real email!
-                        _b.sent();
-                        verification = {
-                            email: email,
-                            otp: hashedOTP,
-                            expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
-                            attempts: 0,
-                            type: type,
-                        };
-                        localStorage.setItem("otp_".concat(email), JSON.stringify(verification));
-                        // 🚨 DEMO ONLY - In development, log the actual OTP to console
-                        console.log("\uD83D\uDD25 DEMO OTP for ".concat(email, " (").concat(type, "): ").concat(otp, " (Hashed: ").concat(hashedOTP, ")"));
-                        // 🚨 DEMO ALERT - Show OTP in browser for testing
-                        if (typeof window !== "undefined") {
-                            alert("DEMO MODE: Your OTP is ".concat(otp, "\n\nIn production, this would be sent to your email."));
-                        }
-                        return [2 /*return*/, { success: true, hashedOTP: hashedOTP }];
-                }
-            });
-        });
-    };
-    StudentAuthService.verifyOTP = function (email, inputOTP) {
-        return __awaiter(this, void 0, void 0, function () {
-            var stored, verification, hashedInput;
-            return __generator(this, function (_a) {
-                stored = localStorage.getItem("otp_".concat(email));
-                if (!stored) {
-                    return [2 /*return*/, { success: false, error: "No OTP found for this email" }];
-                }
-                verification = JSON.parse(stored);
-                // Check expiry
-                if (new Date() > new Date(verification.expiresAt)) {
-                    localStorage.removeItem("otp_".concat(email));
-                    return [2 /*return*/, { success: false, error: "OTP has expired" }];
-                }
-                // Check attempts
-                if (verification.attempts >= 3) {
-                    localStorage.removeItem("otp_".concat(email));
-                    return [2 /*return*/, { success: false, error: "Too many failed attempts" }];
-                }
-                hashedInput = this.hashOTP(inputOTP);
-                if (hashedInput !== verification.otp) {
-                    verification.attempts++;
-                    localStorage.setItem("otp_".concat(email), JSON.stringify(verification));
-                    return [2 /*return*/, { success: false, error: "Invalid OTP" }];
-                }
-                // Success - clean up
-                localStorage.removeItem("otp_".concat(email));
-                return [2 /*return*/, { success: true }];
-            });
-        });
-    };
-    StudentAuthService.registerStudent = function (email, name, password) {
-        return __awaiter(this, void 0, void 0, function () {
-            var university, student, students;
-            return __generator(this, function (_a) {
-                university = this.isEmailWhitelisted(email).university;
-                student = {
-                    id: Date.now().toString(),
-                    email: email,
-                    name: name,
-                    university: university,
-                    isVerified: true,
-                    createdAt: new Date().toISOString(),
-                    isBlocked: false,
-                };
-                students = this.getStudents();
-                students.push(student);
-                localStorage.setItem("students", JSON.stringify(students));
-                // Store password (in production, hash this!)
-                localStorage.setItem("password_".concat(email), password);
-                // Set current student
-                localStorage.setItem("currentStudent", JSON.stringify(student));
-                return [2 /*return*/, student];
             });
         });
     };
     StudentAuthService.resetPassword = function (email, newPassword) {
         return __awaiter(this, void 0, void 0, function () {
-            var students, student;
+            var response, error_2;
             return __generator(this, function (_a) {
-                students = this.getStudents();
-                student = students.find(function (s) { return s.email === email; });
-                if (!student || student.isBlocked) {
-                    return [2 /*return*/, false];
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4 /*yield*/, fetch('/api/auth/reset-password', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ email: email, newPassword: newPassword }),
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.ok];
+                    case 2:
+                        error_2 = _a.sent();
+                        console.error('Password reset error:', error_2);
+                        return [2 /*return*/, false];
+                    case 3: return [2 /*return*/];
                 }
-                // Update password (in production, hash this!)
-                localStorage.setItem("password_".concat(email), newPassword);
-                return [2 /*return*/, true];
             });
         });
     };
     StudentAuthService.getStudents = function () {
-        if (typeof window === "undefined")
-            return [];
-        var stored = localStorage.getItem("students");
-        return stored ? JSON.parse(stored) : [];
+        return __awaiter(this, void 0, void 0, function () {
+            var response, data, error_3;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 4, , 5]);
+                        return [4 /*yield*/, fetch('/api/admin/students')];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) return [3 /*break*/, 3];
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        data = _a.sent();
+                        return [2 /*return*/, data.students || []];
+                    case 3: return [2 /*return*/, []];
+                    case 4:
+                        error_3 = _a.sent();
+                        console.error('Error fetching students:', error_3);
+                        return [2 /*return*/, []];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
     };
     StudentAuthService.getCurrentStudent = function () {
-        if (typeof window === "undefined")
-            return null;
-        var stored = localStorage.getItem("currentStudent");
-        return stored ? JSON.parse(stored) : null;
+        return __awaiter(this, void 0, void 0, function () {
+            var response, userSession, error_4;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 4, , 5]);
+                        return [4 /*yield*/, fetch('/api/auth/session')];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) return [3 /*break*/, 3];
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        userSession = _a.sent();
+                        return [2 /*return*/, {
+                                id: userSession.userId,
+                                email: userSession.email,
+                                name: userSession.name,
+                                university: userSession.university || 'UFS',
+                                isVerified: userSession.emailVerified,
+                                createdAt: userSession.createdAt,
+                                isBlocked: !userSession.isActive,
+                                blockedAt: userSession.isActive ? undefined : userSession.updatedAt,
+                                blockedReason: userSession.isActive ? undefined : 'Account deactivated'
+                            }];
+                    case 3: return [2 /*return*/, null];
+                    case 4:
+                        error_4 = _a.sent();
+                        console.error('Error fetching current student:', error_4);
+                        return [2 /*return*/, null];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
     };
     StudentAuthService.loginStudent = function (email, password) {
-        var students = this.getStudents();
-        var student = students.find(function (s) { return s.email === email; });
-        if (!student) {
-            return { success: false, error: "No account found with this email" };
-        }
-        if (student.isBlocked) {
-            return {
-                success: false,
-                error: "Your account has been suspended".concat(student.blockedReason ? " for: ".concat(student.blockedReason) : "", ". Please contact support."),
-            };
-        }
-        // Check password if provided (for regular login)
-        if (password) {
-            var storedPassword = localStorage.getItem("password_".concat(email));
-            if (storedPassword !== password) {
-                return { success: false, error: "Invalid password" };
-            }
-        }
-        localStorage.setItem("currentStudent", JSON.stringify(student));
-        return { success: true, student: student };
+        return __awaiter(this, void 0, void 0, function () {
+            var response, result, error, error_5;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 6, , 7]);
+                        return [4 /*yield*/, fetch('/api/auth/secure-login', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ email: email, password: password }),
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) return [3 /*break*/, 3];
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        result = _a.sent();
+                        return [2 /*return*/, { success: true, student: result.user }];
+                    case 3: return [4 /*yield*/, response.json()];
+                    case 4:
+                        error = _a.sent();
+                        return [2 /*return*/, { success: false, error: error.error || "Login failed" }];
+                    case 5: return [3 /*break*/, 7];
+                    case 6:
+                        error_5 = _a.sent();
+                        console.error('Login error:', error_5);
+                        return [2 /*return*/, { success: false, error: "Login failed. Please try again." }];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        });
     };
     StudentAuthService.logoutStudent = function () {
-        localStorage.removeItem("currentStudent");
+        return __awaiter(this, void 0, void 0, function () {
+            var error_6;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        // Call secure logout API
+                        return [4 /*yield*/, fetch('/api/auth/secure-logout', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                            })];
+                    case 1:
+                        // Call secure logout API
+                        _a.sent();
+                        return [3 /*break*/, 3];
+                    case 2:
+                        error_6 = _a.sent();
+                        console.error('Logout error:', error_6);
+                        return [3 /*break*/, 3];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
     };
     StudentAuthService.blockStudent = function (studentId, reason) {
-        var students = this.getStudents();
-        var index = students.findIndex(function (s) { return s.id === studentId; });
-        if (index === -1)
-            return false;
-        students[index] = __assign(__assign({}, students[index]), { isBlocked: true, blockedAt: new Date().toISOString(), blockedReason: reason });
-        localStorage.setItem("students", JSON.stringify(students));
-        return true;
+        return __awaiter(this, void 0, void 0, function () {
+            var response, error_7;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4 /*yield*/, fetch('/api/admin/students/toggle-status', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    studentId: studentId,
+                                    isActive: false,
+                                    reason: reason
+                                }),
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.ok];
+                    case 2:
+                        error_7 = _a.sent();
+                        console.error('Error blocking student:', error_7);
+                        return [2 /*return*/, false];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
     };
     StudentAuthService.unblockStudent = function (studentId) {
-        var students = this.getStudents();
-        var index = students.findIndex(function (s) { return s.id === studentId; });
-        if (index === -1)
-            return false;
-        students[index] = __assign(__assign({}, students[index]), { isBlocked: false, blockedAt: undefined, blockedReason: undefined });
-        localStorage.setItem("students", JSON.stringify(students));
-        return true;
+        return __awaiter(this, void 0, void 0, function () {
+            var response, error_8;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4 /*yield*/, fetch('/api/admin/students/toggle-status', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    studentId: studentId,
+                                    isActive: true
+                                }),
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.ok];
+                    case 2:
+                        error_8 = _a.sent();
+                        console.error('Error unblocking student:', error_8);
+                        return [2 /*return*/, false];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
     };
     // Report Management
     StudentAuthService.getReports = function () {

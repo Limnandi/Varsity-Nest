@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cn = cn;
 exports.formatCurrency = formatCurrency;
+exports.formatZar = formatZar;
 exports.formatDate = formatDate;
 exports.formatDateTime = formatDateTime;
 exports.slugify = slugify;
@@ -35,6 +36,16 @@ function formatCurrency(amount) {
         style: "currency",
         currency: "ZAR",
     }).format(amount);
+}
+// Deterministic ZAR formatter (avoids SSR/CSR locale differences)
+function formatZar(amount, withCents) {
+    if (withCents === void 0) { withCents = false; }
+    var formatted = new Intl.NumberFormat("en-US", {
+        useGrouping: true,
+        minimumFractionDigits: withCents ? 2 : 0,
+        maximumFractionDigits: withCents ? 2 : 0,
+    }).format(amount);
+    return "R".concat(formatted);
 }
 function formatDate(date) {
     var dateObj = typeof date === "string" ? new Date(date) : date;

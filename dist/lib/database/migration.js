@@ -1,4 +1,3 @@
-"use server";
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -37,46 +36,52 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyRecaptcha = verifyRecaptcha;
-var env_1 = require("@/lib/env");
-function verifyRecaptcha(token) {
-    return __awaiter(this, void 0, void 0, function () {
-        var secretKey, response, data, error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!token) {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA token is missing." }];
-                    }
-                    secretKey = env_1.env.RECAPTCHA_SECRET_KEY;
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, fetch("https://www.google.com/recaptcha/api/siteverify", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/x-www-form-urlencoded",
-                            },
-                            body: "secret=".concat(secretKey, "&response=").concat(token),
-                        })];
-                case 2:
-                    response = _a.sent();
-                    return [4 /*yield*/, response.json()];
-                case 3:
-                    data = _a.sent();
-                    if (data.success) {
-                        return [2 /*return*/, { success: true }];
-                    }
-                    else {
-                        return [2 /*return*/, { success: false, message: "reCAPTCHA verification failed.", errors: data["error-codes"] }];
-                    }
-                    return [3 /*break*/, 5];
-                case 4:
-                    error_1 = _a.sent();
-                    console.error("Error verifying reCAPTCHA:", error_1);
-                    return [2 /*return*/, { success: false, message: "Could not verify reCAPTCHA. Please try again." }];
-                case 5: return [2 /*return*/];
-            }
-        });
+var node_postgres_1 = require("drizzle-orm/node-postgres");
+var migrator_1 = require("drizzle-orm/node-postgres/migrator");
+var pg_1 = require("pg");
+var logger_1 = require("@/lib/logging/logger");
+var config_1 = require("@/lib/logging/config");
+var runMigrations = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var migrationClient, db, startTime, duration, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                migrationClient = new pg_1.Pool({
+                    connectionTimeoutMillis: 5000,
+                });
+                db = (0, node_postgres_1.drizzle)(migrationClient);
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, 4, 6]);
+                logger_1.log.info('Starting database migrations');
+                startTime = performance.now();
+                return [4 /*yield*/, (0, migrator_1.migrate)(db, {
+                        migrationsFolder: './database/migrations'
+                    })];
+            case 2:
+                _a.sent();
+                duration = performance.now() - startTime;
+                logger_1.log.info('Database migrations completed successfully', {
+                    durationMs: duration
+                });
+                return [3 /*break*/, 6];
+            case 3:
+                error_1 = _a.sent();
+                logger_1.log.error('Database migration failed', error_1 instanceof Error ? error_1 : new Error('Unknown error'));
+                (0, config_1.captureException)(error_1 instanceof Error ? error_1 : new Error('Unknown error'));
+                throw error_1;
+            case 4: return [4 /*yield*/, migrationClient.end()];
+            case 5:
+                _a.sent();
+                return [7 /*endfinally*/];
+            case 6: return [2 /*return*/];
+        }
+    });
+}); };
+// Auto-migration in development, manual in production
+if (process.env.NODE_ENV !== 'production') {
+    runMigrations().catch(function (error) {
+        console.error('Failed to run migrations:', error);
+        process.exit(1);
     });
 }
