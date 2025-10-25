@@ -17,6 +17,7 @@ interface Review {
   first_name: string
   last_name: string
   email: string
+  profile_image_url?: string
 }
 
 interface Reply {
@@ -28,6 +29,7 @@ interface Reply {
   first_name: string
   last_name: string
   email: string
+  profile_image_url?: string
 }
 
 interface ReviewsData {
@@ -38,9 +40,12 @@ interface ReviewsData {
 
 interface ReviewsSectionProps {
   accommodationId: string
+  currentUserEmail?: string
+  currentUserRole?: string
+  isAuthenticated?: boolean
 }
 
-export default function ReviewsSection({ accommodationId }: ReviewsSectionProps) {
+export default function ReviewsSection({ accommodationId, currentUserEmail, currentUserRole, isAuthenticated }: ReviewsSectionProps) {
   const [reviewsData, setReviewsData] = useState<ReviewsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -138,12 +143,17 @@ export default function ReviewsSection({ accommodationId }: ReviewsSectionProps)
 
       if (response.ok) {
         const data = await response.json()
+        
+        // If clicking the same vote, it's being removed (set to null)
+        const currentVote = userVotes[reviewId]
+        const newVote = currentVote === isHelpful ? null : isHelpful
+        
         setUserVotes(prev => ({
           ...prev,
-          [reviewId]: isHelpful
+          [reviewId]: newVote
         }))
         
-        // Update the review in the list
+        // Update the review in the list with new counts from API
         setReviewsData(prev => {
           if (!prev) return null
           return {
@@ -249,6 +259,34 @@ export default function ReviewsSection({ accommodationId }: ReviewsSectionProps)
     }
   }
 
+  const handleDeleteReview = async (reviewId: string) => {
+    try {
+      const response = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove the review from the local state
+        setReviewsData(prev => {
+          if (!prev) return null
+          return {
+            ...prev,
+            reviews: prev.reviews.filter(review => review.id !== reviewId),
+            totalReviews: prev.totalReviews - 1
+          }
+        })
+        // Reload reviews to get updated average rating
+        await loadReviews()
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete review')
+      }
+    } catch (error) {
+      console.error('Delete review failed:', error)
+      throw error
+    }
+  }
+
   const renderStars = (rating: number, size: 'sm' | 'md' | 'lg' = 'md') => {
     const sizeClasses = {
       sm: 'w-3 h-3',
@@ -316,12 +354,32 @@ export default function ReviewsSection({ accommodationId }: ReviewsSectionProps)
         </div>
       </div>
 
-      {/* Review Form */}
-      <ReviewForm
-        accommodationId={accommodationId}
-        onSubmit={handleReviewSubmit}
-        isSubmitting={isSubmitting}
-      />
+      {/* Review Form - Only for students */}
+      {!isAuthenticated ? (
+        <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-center">
+          <MessageSquare className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Want to leave a review?</h3>
+          <p className="text-neutral-400 mb-6">Sign in as a student to share your experience</p>
+          <a
+            href="/auth/signin"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20"
+          >
+            Sign In as Student
+          </a>
+        </div>
+      ) : currentUserRole === 'student' ? (
+        <ReviewForm
+          accommodationId={accommodationId}
+          onSubmit={handleReviewSubmit}
+          isSubmitting={isSubmitting}
+        />
+      ) : (
+        <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-center">
+          <MessageSquare className="w-12 h-12 text-orange-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Students Only</h3>
+          <p className="text-neutral-400">Only verified students can leave reviews for accommodations</p>
+        </div>
+      )}
 
       {/* Reviews List */}
       {reviewsData.reviews.length > 0 ? (
@@ -335,9 +393,13 @@ export default function ReviewsSection({ accommodationId }: ReviewsSectionProps)
               onReplyVote={handleReplyVote}
               onReport={(reviewId, reviewAuthor) => handleReport(reviewId, reviewAuthor, 'review')}
               onReplyReport={(replyId, replyAuthor) => handleReport(replyId, replyAuthor, 'reply')}
+              onDelete={handleDeleteReview}
               userVote={userVotes[review.id]}
               replies={replies[review.id] || []}
               userReplyVotes={userReplyVotes}
+              currentUserEmail={currentUserEmail}
+              currentUserRole={currentUserRole}
+              isAuthenticated={isAuthenticated}
             />
           ))}
         </div>

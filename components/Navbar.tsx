@@ -187,6 +187,8 @@ export default function Navbar() {
 
             {/* Mobile menu button */}
             <button
+              aria-label="Toggle menu"
+              aria-expanded={isMobileMenuOpen}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden p-3 text-white hover:bg-white/10 rounded-xl transition-all duration-300 group relative overflow-hidden"
             >
@@ -202,14 +204,14 @@ export default function Navbar() {
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-black/40 backdrop-blur-2xl border-t border-white/10 py-6 animate-in slide-in-from-top-2 duration-300">
             <div className="space-y-2">
-              {/* Student Profile Section (Mobile) */}
-              <StudentAuthProvider>
-                {() => (
-                  <div className="px-4 py-3 border-b border-white/10 mb-4">
-                    <StudentAuthSection />
-                  </div>
-                )}
-              </StudentAuthProvider>
+              {/* Student Profile Dropdown (click to open), not a block of links */}
+              <div className="px-4 py-3 border-b border-white/10 mb-4">
+                <StudentAuthProvider>
+                  {() => (
+                    <StudentAuthSection onNavigate={() => setIsMobileMenuOpen(false)} />
+                  )}
+                </StudentAuthProvider>
+              </div>
 
               <Link
                 href="/"

@@ -81,7 +81,9 @@ export default function AccommodationCard({
     e.stopPropagation()
     
     if (!isAuthenticated || !studentUser) {
-      toast.error("Please log in to save accommodations to your wishlist")
+      toast.error("Sign in as student", {
+        duration: 4000,
+      })
       return
     }
 

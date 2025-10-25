@@ -53,7 +53,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Dark Professional Background */}
         <div className="fixed inset-0 z-0">
           {/* Primary dark gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040945] to-[#02042b]" />
           
           {/* Subtle pattern overlay */}
           <div className="absolute inset-0 opacity-20">

@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { User, Settings, Heart, LogOut, ChevronDown } from "lucide-react"
+import { User, Settings, Heart, LogOut, ChevronDown, Trash2 } from "lucide-react"
 import { useUser } from "@stackframe/stack"
 import Image from "next/image"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
+import ConfirmDialog from "./ConfirmDialog"
+import { toast } from "@/hooks/use-toast"
 
 interface StudentProfileDropdownProps {
   onClose?: () => void
@@ -13,6 +15,8 @@ interface StudentProfileDropdownProps {
 
 export default function StudentProfileDropdown({ onClose }: StudentProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const user = useUser() as any
@@ -72,6 +76,44 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
     await logout()
   }
 
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch('/api/student/delete-account', {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete account')
+      }
+
+      // Show success message
+      toast({
+        title: "Account Deleted",
+        description: "Your account has been permanently deleted. Redirecting to homepage...",
+        variant: "default"
+      })
+
+      // Account is already deleted from StackAuth by the backend
+      // Just redirect immediately to avoid any auth errors
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1500)
+
+    } catch (error) {
+      console.error('Delete account error:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete account",
+        variant: "destructive"
+      })
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
   const menuItems = [
     {
       icon: User,
@@ -99,7 +141,7 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-3 p-2 rounded-xl hover:bg-white/10 transition-all duration-300 group"
+        className="flex items-center space-x-3 p-2 rounded-xl border border-white/10 bg-black/20 backdrop-blur-xl hover:bg-white/10 transition-all duration-300 group"
       >
         {/* Profile Avatar */}
         <div className="relative">
@@ -126,7 +168,7 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 top-full mt-2 w-80 bg-black/40 backdrop-blur-2xl text-white rounded-2xl shadow-2xl shadow-blue-500/20 border border-white/20 animate-in slide-in-from-top-2 duration-300 z-50"
+          className="absolute right-0 top-full mt-2 w-80 text-white rounded-2xl shadow-2xl shadow-blue-500/25 border border-white/20 animate-in slide-in-from-top-2 duration-300 z-50 bg-black/40 supports-[backdrop-filter]:bg-black/30 backdrop-blur-[20px] backdrop-saturate-200"
         >
           {/* Header */}
           <div className="p-4 border-b border-white/10">
@@ -168,29 +210,61 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
             ))}
           </div>
 
-          {/* Logout Button */}
-          <div className="p-2 border-t border-white/10">
+          {/* Logout & Delete Account Buttons */}
+          <div className="p-2 border-t border-white/10 space-y-1">
             <button
               onClick={() => {
                 setIsOpen(false)
                 onClose?.()
                 handleLogout()
               }}
+              className="group w-full flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-yellow-500/10 hover:text-orange-300 transition-all duration-300 font-medium rounded-xl relative overflow-hidden"
+            >
+              <div className="relative">
+                <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-orange-400 transition-colors" />
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-white group-hover:text-orange-300 transition-colors">Logout</p>
+                <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">Sign out of your account</p>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-yellow-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsOpen(false)
+                onClose?.()
+                setShowDeleteConfirm(true)
+              }}
               className="group w-full flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-red-500/10 hover:to-pink-500/10 hover:text-red-300 transition-all duration-300 font-medium rounded-xl relative overflow-hidden"
             >
               <div className="relative">
-                <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-red-400 transition-colors" />
+                <Trash2 className="w-5 h-5 text-neutral-400 group-hover:text-red-400 transition-colors" />
                 <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
               </div>
               <div className="flex-1 text-left">
-                <p className="text-white group-hover:text-red-300 transition-colors">Logout</p>
-                <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">Sign out of your account</p>
+                <p className="text-white group-hover:text-red-300 transition-colors">Delete Account</p>
+                <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">Permanently remove your account</p>
               </div>
               <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-pink-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
             </button>
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete Account?"
+        message="Are you sure? By pressing confirm, your account will be permanently deleted. This action cannot be undone."
+        confirmText="Delete Account"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+        variant="danger"
+      />
     </div>
   )
 }

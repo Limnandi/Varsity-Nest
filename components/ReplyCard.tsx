@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ThumbsUp, ThumbsDown, Flag } from "lucide-react"
+import Image from "next/image"
 
 interface Reply {
   id: string
@@ -12,6 +13,7 @@ interface Reply {
   first_name: string
   last_name: string
   email: string
+  profile_image_url?: string
 }
 
 interface ReplyCardProps {
@@ -73,9 +75,19 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-            {getInitials(reply.first_name, reply.last_name)}
-          </div>
+          {reply.profile_image_url ? (
+            <Image
+              src={reply.profile_image_url}
+              alt={`${reply.first_name} ${reply.last_name}`}
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
+            />
+          ) : (
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              {getInitials(reply.first_name, reply.last_name)}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-white text-sm">
@@ -109,7 +121,7 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
       <div className="flex items-center justify-between pt-3 border-t border-white/10">
         <div className="flex items-center gap-3">
           <span className="text-xs text-neutral-400">
-            Was this reply helpful?
+            Facts?
           </span>
           <div className="flex items-center gap-1">
             <button
