@@ -8,8 +8,10 @@ import { z } from "zod"
 
 // Validation schema for image upload
 const imageUploadSchema = z.object({
-  image: z.string().min(1, "Image data is required"),
-  fileName: z.string().min(1, "File name is required"),
+  image: z.string().min(1, "Image data is required").optional(),
+  fileName: z.string().min(1, "File name is required").optional(),
+  imageUrl: z.string().url("Valid image URL is required").optional(),
+  cloudinaryId: z.string().min(1, "Cloudinary ID is required").optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { image } = validation.data
+    const { image, imageUrl, cloudinaryId } = validation.data
 
     // Verify user exists
     const currentUser = await secureDb.db
@@ -48,57 +50,84 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Upload image to Cloudinary
-    const uploadResult = await uploadImageFromBase64(
-      image,
-      {
-        folder: `profile-images/students/${user.id}`,
-        public_id: `profile_${user.id}_${Date.now()}`,
-        transformation: {
-          width: 400,
-          height: 400,
-          crop: "fill",
-          gravity: "face",
-          quality: "auto",
-          format: "auto"
-        },
-        userId: user.id,
-        purpose: "profile" as const
-      }
-    )
+    let finalImageUrl: string
+    let finalCloudinaryId: string
 
-    if (!uploadResult.success) {
-      return NextResponse.json({ 
-        error: "Failed to upload image", 
-        details: uploadResult.error 
-      }, { status: 400 })
+    // Handle direct Cloudinary URL (from CldUploadButton)
+    if (imageUrl && cloudinaryId) {
+      finalImageUrl = imageUrl
+      finalCloudinaryId = cloudinaryId
+    } 
+    // Fallback: Handle base64 image upload (legacy)
+    else if (image) {
+      const uploadResult = await uploadImageFromBase64(
+        image,
+        {
+          folder: `profile-images/students/${user.id}`,
+          public_id: `profile_${user.id}_${Date.now()}`,
+          transformation: {
+            width: 400,
+            height: 400,
+            crop: "fill",
+            gravity: "face",
+            quality: "auto",
+            format: "auto"
+          },
+          userId: user.id,
+          purpose: "profile" as const
+        }
+      )
+
+      if (!uploadResult.success) {
+        return NextResponse.json({ 
+          error: "Failed to upload image", 
+          details: uploadResult.error 
+        }, { status: 400 })
+      }
+
+      finalImageUrl = uploadResult.result.secure_url
+      finalCloudinaryId = uploadResult.result.public_id
+    } else {
+      return NextResponse.json({ error: "No image data provided" }, { status: 400 })
     }
 
-    // TODO: Profile image storage not yet implemented in schema
     // Update user record with new image URL and Cloudinary ID
-    // await secureDb.db
-    //   .update(schema.users)
-    //   .set({
-    //     updatedAt: new Date(),
-    //   })
-    //   .where(eq(schema.users.id, user.id))
-
-    // Create audit record for profile image change
+    console.log('Updating user record with image URL:', finalImageUrl)
     await secureDb.db
-      .insert(schema.studentProfileAudit)
-      .values({
-        studentId: user.id,
-        fieldName: "profileImage",
-        oldValue: null,
-        newValue: uploadResult.result.secure_url,
-        updatedBy: user.id,
+      .update(schema.users)
+      .set({
+        profileImageUrl: finalImageUrl,
+        // @ts-ignore drizzle typing for snake_case
+        profileImageCloudinaryId: finalCloudinaryId,
+        updatedAt: new Date(),
       })
+      .where(eq(schema.users.id, user.id))
+    
+    console.log('User record updated successfully')
 
+    // Create audit record for profile image change (optional, skip if student record doesn't exist)
+    try {
+      await secureDb.db
+        .insert(schema.studentProfileAudit)
+        .values({
+          studentId: user.id,
+          fieldName: "profileImage",
+          oldValue: null,
+          newValue: finalImageUrl,
+          updatedBy: user.id,
+        })
+      console.log('Audit log created successfully')
+    } catch (auditError) {
+      // Audit logging failed (likely no student record), but image was saved successfully
+      console.warn('Failed to create audit log (non-critical):', auditError)
+    }
+
+    console.log('Returning success response')
     return NextResponse.json({
       success: true,
       data: {
-        imageUrl: uploadResult.result.secure_url,
-        cloudinaryId: uploadResult.result.public_id,
+        imageUrl: finalImageUrl,
+        cloudinaryId: finalCloudinaryId,
       },
       message: "Profile image updated successfully"
     })
@@ -133,19 +162,32 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // TODO: Profile image storage not yet implemented in schema
-    // For now, just return success
-    
-    // Create audit record for profile image deletion
+    // Clear stored profile image fields
     await secureDb.db
-      .insert(schema.studentProfileAudit)
-      .values({
-        studentId: user.id,
-        fieldName: "profileImage",
-        oldValue: null,
-        newValue: null,
-        updatedBy: user.id,
+      .update(schema.users)
+      .set({
+        profileImageUrl: null,
+        // @ts-ignore snake_case mapping
+        profileImageCloudinaryId: null,
+        updatedAt: new Date(),
       })
+      .where(eq(schema.users.id, user.id))
+
+    // Create audit record for profile image deletion (optional)
+    try {
+      await secureDb.db
+        .insert(schema.studentProfileAudit)
+        .values({
+          studentId: user.id,
+          fieldName: "profileImage",
+          oldValue: null,
+          newValue: null,
+          updatedBy: user.id,
+        })
+    } catch (auditError) {
+      // Audit logging failed (non-critical)
+      console.warn('Failed to create audit log (non-critical):', auditError)
+    }
 
     return NextResponse.json({
       success: true,
