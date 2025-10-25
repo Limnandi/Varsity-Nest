@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { secureDb } from "@/lib/database-secure"
 import { eq, and, desc, like, or } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { getCurrentUserFromRequest } from "@/lib/auth-server"
+import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { z } from "zod"
 import { randomUUID } from "crypto"
 
@@ -21,7 +21,7 @@ const wishlistQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    const user = await getCurrentUserFromStackAuth()
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
@@ -64,15 +64,18 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const queryValidation = wishlistQuerySchema.safeParse({
-      search: searchParams.get("search"),
-      status: searchParams.get("status"),
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
-      accommodationId: searchParams.get("accommodationId"),
-    })
+    const rawParams = {
+      search: searchParams.get("search") || undefined,
+      status: searchParams.get("status") || undefined,
+      page: searchParams.get("page") || undefined,
+      limit: searchParams.get("limit") || undefined,
+      accommodationId: searchParams.get("accommodationId") || undefined,
+    }
+    
+    const queryValidation = wishlistQuerySchema.safeParse(rawParams)
 
     if (!queryValidation.success) {
+      console.error('Query validation failed:', queryValidation.error.issues)
       return NextResponse.json({ 
         error: "Invalid query parameters", 
         details: queryValidation.error.issues 
@@ -165,7 +168,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    const user = await getCurrentUserFromStackAuth()
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
@@ -282,7 +285,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    const user = await getCurrentUserFromStackAuth()
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
