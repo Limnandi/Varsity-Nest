@@ -79,12 +79,13 @@ export async function POST(
     const voteCounts = await query`
       SELECT 
         COUNT(*) as total_votes,
-        COUNT(CASE WHEN is_helpful = true THEN 1 END) as helpful_votes
+        COUNT(CASE WHEN is_helpful = true THEN 1 END) as helpful_votes,
+        COUNT(CASE WHEN is_helpful = false THEN 1 END) as not_helpful_votes
       FROM review_helpfulness 
       WHERE review_id = ${reviewId}
     `
 
-    const { total_votes, helpful_votes } = voteCounts.rows[0]
+    const { total_votes, helpful_votes, not_helpful_votes } = voteCounts.rows[0]
 
     await query`
       UPDATE reviews 
@@ -95,6 +96,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       helpfulVotes: parseInt(helpful_votes),
+      notHelpfulVotes: parseInt(not_helpful_votes),
       totalVotes: parseInt(total_votes)
     })
 

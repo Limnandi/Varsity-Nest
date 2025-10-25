@@ -16,10 +16,13 @@ export async function GET(
         r.rating,
         r.comment,
         r.is_verified,
+        r.helpful_votes,
+        r.total_votes,
         r.created_at,
         u.first_name,
         u.last_name,
-        u.email
+        u.email,
+        u.profile_image_url
       FROM reviews r
       JOIN students s ON r.student_id = s.id
       JOIN users u ON s.user_id = u.id

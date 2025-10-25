@@ -19,7 +19,8 @@ export async function GET(
         rr.created_at,
         u.first_name,
         u.last_name,
-        u.email
+        u.email,
+        u.profile_image_url
       FROM review_replies rr
       JOIN students s ON rr.student_id = s.id
       JOIN users u ON s.user_id = u.id
