@@ -2,6 +2,7 @@ import ImageCarousel from "@/components/ImageCarousel"
 import ReviewsSection from "@/components/ReviewsSection"
 import RoomTypesSection from "@/components/RoomTypesSection"
 import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
+import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { notFound } from "next/navigation"
 import { 
   MapPin, 
@@ -22,6 +23,7 @@ import {
   Building,
   MessageSquare
 } from "lucide-react"
+import WishlistButton from "@/components/WishlistButton"
 
 async function getListing(id: string) {
   try {
@@ -41,6 +43,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   if (!listing) {
     notFound()
   }
+
+  // Get current user for review deletion authorization and role checking
+  const currentUser = await getCurrentUserFromStackAuth()
+  const currentUserEmail = currentUser?.email
+  const currentUserRole = currentUser?.role
+  const isAuthenticated = !!currentUser
 
   const amenities = listing.amenities || []
   const isVerified = listing.is_verified || false
@@ -246,7 +254,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                 Reviews & Ratings
               </h2>
               
-              <ReviewsSection accommodationId={id} />
+              <ReviewsSection 
+                accommodationId={id} 
+                currentUserEmail={currentUserEmail}
+                currentUserRole={currentUserRole}
+                isAuthenticated={isAuthenticated}
+              />
             </div>
           </div>
 
@@ -294,10 +307,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                   <Calendar className="w-4 h-4 mr-2" />
                   Schedule Viewing
                 </button>
-                <button className="w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-3 px-4 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center">
-                  <Star className="w-4 h-4 mr-2" />
-                  Save to Favorites
-                </button>
+                <WishlistButton accommodationId={id} />
               </div>
             </div>
           </div>
