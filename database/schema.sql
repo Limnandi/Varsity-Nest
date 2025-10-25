@@ -218,6 +218,10 @@ CREATE TABLE IF NOT EXISTS admin_activities (
 -- Add view_count column to accommodations if it doesn't exist
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0;
 
+-- Add helpful_votes and total_votes columns to reviews if they don't exist
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS helpful_votes INTEGER DEFAULT 0;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS total_votes INTEGER DEFAULT 0;
+
 -- Add missing columns to providers table
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS registration_status VARCHAR(20) DEFAULT 'pending' CHECK (registration_status IN ('pending', 'approved', 'rejected'));
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
@@ -391,6 +395,9 @@ ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT fal
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS available_rooms INTEGER DEFAULT 0;
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS total_rooms INTEGER DEFAULT 0;
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+-- Ensure user profile image fields exist
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR(500);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_cloudinary_id VARCHAR(255);
 -- Seed compatibility: extra fields referenced by seeding scripts
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS city VARCHAR(100);
 ALTER TABLE accommodations ADD COLUMN IF NOT EXISTS province VARCHAR(100);
