@@ -67,7 +67,7 @@ export async function GET(
           name: 'Sharing Room',
           type: 'sharing',
           price: Math.round(basePrice * 0.6),
-          description: 'Shared room with other students',
+          description: 'Shared room',
           amenities: ['wifi', 'ensuite'],
           images: [],
           availableCount: 8,
