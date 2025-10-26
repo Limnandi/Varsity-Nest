@@ -361,7 +361,7 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
           <h3 className="text-xl font-semibold text-white mb-2">Want to leave a review?</h3>
           <p className="text-neutral-400 mb-6">Sign in as a student to share your experience</p>
           <a
-            href="/auth/signin"
+            href="/auth/login"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20"
           >
             Sign In as Student
