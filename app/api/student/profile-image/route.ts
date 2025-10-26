@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { getCurrentUserFromRequest } from "@/lib/auth-server"
+import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { uploadImageFromBase64 } from "@/lib/cloudinary"
 import { z } from "zod"
 
@@ -16,7 +16,7 @@ const imageUploadSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    const user = await getCurrentUserFromStackAuth()
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
@@ -138,9 +138,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    const user = await getCurrentUserFromStackAuth()
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
