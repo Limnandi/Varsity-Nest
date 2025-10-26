@@ -2,13 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, Bell, Shield, Eye, Save, Mail, Smartphone } from "lucide-react"
+import { Settings, Bell, Shield, Eye, Save, Mail, Smartphone, Trash2 } from "lucide-react"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import { Toaster, toast } from "sonner"
+import ConfirmDialog from "@/components/ConfirmDialog"
+import DeletionLoadingOverlay from "@/components/DeletionLoadingOverlay"
 
 export default function StudentSettingsPage() {
-  const { user: studentUser, isLoading, refetch } = useStudentAuth()
+  const { user: studentUser, isLoading, refetch, logout } = useStudentAuth()
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deletionComplete, setDeletionComplete] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const router = useRouter()
 
   // Settings state
@@ -65,6 +70,41 @@ export default function StudentSettingsPage() {
       toast.error("Failed to update settings")
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setShowDeleteDialog(false)
+    setIsDeleting(true)
+    
+    try {
+      const response = await fetch('/api/student/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || error.error || 'Failed to delete account')
+      }
+
+      // Show completion state
+      setDeletionComplete(true)
+
+      // Wait a moment before redirecting
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Logout and redirect to home
+      await logout()
+      window.location.href = '/'
+
+    } catch (error) {
+      console.error('Account deletion error:', error)
+      toast.error(error instanceof Error ? error.message : "Failed to delete account. Please try again.")
+      setIsDeleting(false)
+      setDeletionComplete(false)
     }
   }
 
@@ -384,6 +424,28 @@ export default function StudentSettingsPage() {
           {/* End Security Settings */}
         </div>
 
+        {/* Danger Zone - Delete Account */}
+        <div className="relative border border-red-500/30 bg-red-950/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-red-500/10 p-6 text-white mt-8">
+          <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent flex items-center">
+            <Trash2 className="w-5 h-5 mr-2 text-red-400" />
+            Danger Zone
+          </h2>
+          
+          <div className="space-y-4">
+            <p className="text-neutral-300 text-sm">
+              Once you delete your account, there is no going back.
+            </p>
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+              className="flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-300 font-medium shadow-lg shadow-red-500/20 hover:shadow-red-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Account</span>
+            </button>
+          </div>
+        </div>
+
         {/* Save Button */}
         <div className="flex justify-end mt-8">
           <button
@@ -396,6 +458,22 @@ export default function StudentSettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete Account"
+        message="Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted."
+        confirmText="Yes, Delete My Account"
+        cancelText="Cancel"
+        isLoading={false}
+        variant="danger"
+      />
+
+      {/* Deletion Loading Overlay */}
+      <DeletionLoadingOverlay isDeleting={isDeleting} isComplete={deletionComplete} />
     </div>
   )
 }
