@@ -97,10 +97,7 @@ export const DELETE = ApiMiddleware.withMiddleware(
     }
   },
   {
-    rateLimit: {
-      windowMs: 15 * 60 * 1000,
-      max: 5 // Very restrictive - only 5 attempts per 15 minutes
-    },
+    rateLimit: false, // Disable rate limiting for delete account endpoint
     cors: true,
     requestSizeCheck: false
   }
