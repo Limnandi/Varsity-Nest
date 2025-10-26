@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
+import { getCurrentUserFromStackAuth, invalidateAllUserSessions } from "@/lib/auth-server"
 import { query } from "@/lib/database"
 import { ApiMiddleware } from "@/lib/api-middleware"
 import { ApiErrorResponseBuilder } from "@/lib/api-error-response"
@@ -42,42 +42,30 @@ export const DELETE = ApiMiddleware.withMiddleware(
 
       const studentId = studentResult.rows[0].id
 
-      // Delete all related data (foreign keys with ON DELETE CASCADE should handle most of this)
-      // But we'll explicitly delete some for logging purposes
-      
-      // Delete student-specific data
-      await query`DELETE FROM student_profile_audit WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted profile audit records for student: ${studentId}`)
+      // Step 1: Invalidate all user sessions first
+      try {
+        await invalidateAllUserSessions(user.id)
+        console.log(`[DELETE ACCOUNT] Invalidated all sessions for user: ${user.id}`)
+      } catch (sessionError) {
+        console.error(`[DELETE ACCOUNT] Error invalidating sessions:`, sessionError)
+      }
 
-      await query`DELETE FROM student_preferences WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted student preferences for student: ${studentId}`)
+      // Step 2: Delete database records
+      // CASCADE DELETE should handle related data, but we'll be explicit for audit trail
+      try {
+        // Delete student record (CASCADE will handle related data)
+        await query`DELETE FROM students WHERE id = ${studentId}`
+        console.log(`[DELETE ACCOUNT] Deleted student record and all related data: ${studentId}`)
 
-      await query`DELETE FROM review_helpfulness WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted review helpfulness records for student: ${studentId}`)
+        // Delete user record (CASCADE will handle any remaining data)
+        await query`DELETE FROM users WHERE id = ${user.id}`
+        console.log(`[DELETE ACCOUNT] Deleted user record from database: ${user.id}`)
+      } catch (dbError) {
+        console.error(`[DELETE ACCOUNT] Database deletion error:`, dbError)
+        throw new Error(`Failed to delete user data from database: ${dbError instanceof Error ? dbError.message : String(dbError)}`)
+      }
 
-      await query`DELETE FROM review_reports WHERE reporter_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted review reports for student: ${studentId}`)
-
-      await query`DELETE FROM reply_reports WHERE reporter_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted reply reports for student: ${studentId}`)
-
-      await query`DELETE FROM review_replies WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted review replies for student: ${studentId}`)
-
-      await query`DELETE FROM reviews WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted reviews for student: ${studentId}`)
-
-      await query`DELETE FROM bookings WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted bookings for student: ${studentId}`)
-
-      await query`DELETE FROM student_wishlist WHERE student_id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted wishlist items for student: ${studentId}`)
-
-      // Delete student record
-      await query`DELETE FROM students WHERE id = ${studentId}`
-      console.log(`[DELETE ACCOUNT] Deleted student record: ${studentId}`)
-
-      // Delete from StackAuth first (this will invalidate the session)
+      // Step 3: Delete from StackAuth (last, after database cleanup)
       try {
         const stackApp = getStackServerApp()
         const stackUser = await stackApp.getUser(user.id)
@@ -90,12 +78,8 @@ export const DELETE = ApiMiddleware.withMiddleware(
         }
       } catch (stackError) {
         console.error(`[DELETE ACCOUNT] Error deleting from StackAuth:`, stackError)
-        // Continue to database deletion even if StackAuth fails
+        console.warn(`[DELETE ACCOUNT] Database cleanup completed but StackAuth deletion failed. Manual cleanup may be required for user: ${user.id}`)
       }
-
-      // Then delete from our database
-      await query`DELETE FROM users WHERE id = ${user.id}`
-      console.log(`[DELETE ACCOUNT] Deleted user account from database: ${user.id}`)
 
       console.log(`[DELETE ACCOUNT] Account deletion completed successfully for user: ${user.id}`)
 
