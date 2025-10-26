@@ -29,17 +29,11 @@ export default function Navbar() {
             showProvisionallyAccredited: settings.show_provisionally_accredited ?? true,
             showNonAccredited: settings.show_non_accredited ?? true,
           })
-        } else if (response.status === 401 || response.status === 403) {
-          // Ignore unauthorized in UI; keep defaults
-          return
         }
+        // Silently ignore unauthorized/forbidden (non-admin users)
       } catch (error) {
-        console.error('Error fetching admin settings:', error)
-        // Fallback to default values
-        setAdminSettings({
-          showProvisionallyAccredited: true,
-          showNonAccredited: true,
-        })
+        // Silently fail - keep defaults
+        // Non-admin users will see all accommodations by default
       }
     }
 
