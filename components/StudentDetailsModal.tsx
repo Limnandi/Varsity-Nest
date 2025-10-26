@@ -2,7 +2,8 @@
 
 import { X, Eye, Mail, Calendar, GraduationCap } from "lucide-react"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 
 interface StudentDetailsModalProps {
   isOpen: boolean
@@ -22,6 +23,12 @@ export default function StudentDetailsModal({
   createdAt
 }: StudentDetailsModalProps) {
   const [showImageViewer, setShowImageViewer] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
   if (!isOpen) return null
 
@@ -140,19 +147,19 @@ export default function StudentDetailsModal({
         </div>
       </div>
 
-      {/* Image Viewer Modal */}
-      {showImageViewer && profileImageUrl && (
+      {/* Image Viewer Modal - Portal to body for full screen */}
+      {showImageViewer && profileImageUrl && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-300"
           onClick={() => setShowImageViewer(false)}
         >
           <button
             onClick={() => setShowImageViewer(false)}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
           >
             <X className="w-6 h-6 text-white" />
           </button>
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full p-4">
+          <div className="relative w-4/5 h-4/5 max-w-6xl max-h-[90vh]">
             <Image
               src={profileImageUrl}
               alt={`${studentName}'s profile`}
@@ -161,7 +168,8 @@ export default function StudentDetailsModal({
               sizes="(max-width: 1024px) 100vw, 1024px"
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )
