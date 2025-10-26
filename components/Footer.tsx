@@ -17,13 +17,13 @@ export default function Footer() {
                   width={100}
                   height={60}
                   className="object-contain"
-                  style={{ height: 'auto' }}
+                  style={{ width: 'auto', height: 'auto' }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm"></div>
               </div>
               <div>
                 <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Varsity Nest</div>
-                <div className="text-neutral-400">Powered by Massive Operations</div>
+                <div className="text-neutral-400">Powered by <a href="https://massiveoperations.site/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">Massive Operations</a></div>
               </div>
             </div>
             <p className="text-neutral-300 mb-8 max-w-md leading-relaxed text-lg">
@@ -122,7 +122,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-neutral-400 text-sm">© 2025 Massive Operations. All rights reserved.</p>
+          <p className="text-neutral-400 text-sm">© 2025 <a href="https://massiveoperations.site/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">Massive Operations</a>. All rights reserved.</p>
           <div className="flex space-x-8 mt-4 md:mt-0">
             <Link href="/privacy" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Privacy Policy
