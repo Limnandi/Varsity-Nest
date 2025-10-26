@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { X, Upload, Loader2, Eye, Trash2 } from "lucide-react"
-import { CldUploadButton } from "next-cloudinary"
-import { publicEnv } from "@/lib/env.client"
 import Image from "next/image"
 import { toast } from "sonner"
+import { publicEnv } from "@/lib/env.client"
+import CustomImageCrop from "./CustomImageCrop"
 import ConfirmDialog from "./ConfirmDialog"
 
 interface ProfileImageUploadProps {
@@ -25,116 +26,134 @@ export default function ProfileImageUpload({
   const [showMenu, setShowMenu] = useState(false)
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLDivElement>(null)
 
-  const handleUploadSuccess = async (result: any) => {
-    console.log('Upload success result:', result)
-    try {
-      if (typeof result.info === "object" && "secure_url" in result.info) {
-        const imageUrl = result.info.secure_url
-        const cloudinaryId = result.info.public_id
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
-        console.log('Saving to database:', { imageUrl, cloudinaryId })
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-        // Save to our database
-        const response = await fetch('/api/student/profile-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageUrl,
-            cloudinaryId,
-          }),
-        })
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file")
+      return
+    }
 
-        if (response.ok) {
-          onImageUpdate(imageUrl)
-          toast.success("Profile image updated successfully!")
-        } else {
-          const error = await response.json()
-          console.error('API error:', error)
-          toast.error(error.message || "Failed to save image")
-        }
-      } else {
-        console.error('Invalid result structure:', result)
-        toast.error("Invalid upload response")
+    // Validate file size (5MB max)
+    if (file.size > 5000000) {
+      toast.error("Image size must be less than 5MB")
+      return
+    }
+
+    // Create object URL for cropping
+    const reader = new FileReader()
+    reader.onload = () => {
+      setSelectedImage(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const uploadToCloudinary = async (blob: Blob): Promise<{ imageUrl: string; cloudinaryId: string }> => {
+    const formData = new FormData()
+    formData.append("file", blob, "profile-image.jpg")
+    formData.append("upload_preset", publicEnv.CLOUDINARY_UPLOAD_PRESET)
+    formData.append("cloud_name", publicEnv.CLOUDINARY_CLOUD_NAME)
+    formData.append("folder", "student-profiles")
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${publicEnv.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
       }
-    } catch (error) {
-      console.error('Image save error:', error)
-      toast.error("Failed to save image")
-    } finally {
-      setIsUploading(false)
+    )
+
+    if (!response.ok) {
+      throw new Error("Failed to upload to Cloudinary")
+    }
+
+    const data = await response.json()
+    return {
+      imageUrl: data.secure_url,
+      cloudinaryId: data.public_id,
     }
   }
 
-  const handleUploadError = (error: any) => {
-    console.error('Upload error:', error)
-    console.error('Error type:', typeof error)
-    console.error('Error keys:', error ? Object.keys(error) : 'null')
-    console.error('Error status:', error?.status)
-    console.error('Error statusText:', error?.statusText)
-    
-    let errorMessage = "Failed to upload image"
-    
-    if (error?.status === 404) {
-      errorMessage = "Upload preset 'student_profile_unsigned' not found. Please check your Cloudinary console."
-    } else if (error?.status === 401 || error?.status === 403) {
-      errorMessage = "Upload not authorized. Please ensure your preset is set to 'Unsigned' mode."
-    } else if (error?.statusText) {
-      errorMessage = `Upload failed: ${error.statusText}`
-    } else if (error?.message) {
-      errorMessage = error.message
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    try {
+      setIsUploading(true)
+
+      // Upload to Cloudinary
+      const { imageUrl, cloudinaryId } = await uploadToCloudinary(croppedBlob)
+
+      // Save to database
+      const response = await fetch("/api/student/profile-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          imageUrl,
+          cloudinaryId,
+        }),
+      })
+
+      if (response.ok) {
+        onImageUpdate(imageUrl)
+        toast.success("Profile image updated successfully!")
+        setSelectedImage(null)
+      } else {
+        const error = await response.json()
+        console.error("API error:", error)
+        toast.error(error.message || "Failed to save image")
+      }
+    } catch (error) {
+      console.error("Image upload error:", error)
+      toast.error("Failed to upload image")
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
-    
-    toast.error(errorMessage)
-    setIsUploading(false)
   }
 
   const handleRemoveImage = async () => {
     try {
-      const response = await fetch('/api/student/profile-image', {
-        method: 'DELETE',
+      const response = await fetch("/api/student/profile-image", {
+        method: "DELETE",
+        credentials: "include",
       })
 
       if (response.ok) {
         onImageRemove()
         toast.success("Profile image removed successfully!")
-        setShowDeleteConfirm(false)
-        setShowMenu(false)
       } else {
         const error = await response.json()
         toast.error(error.message || "Failed to remove image")
       }
     } catch (error) {
-      console.error('Image removal error:', error)
+      console.error("Remove image error:", error)
       toast.error("Failed to remove image")
     }
   }
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        setShowMenu(false)
-      }
+  const handleCancelCrop = () => {
+    setSelectedImage(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
-
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showMenu])
+  }
 
   const displayImage = currentImageUrl
-  const displayName = userName || 'Student'
+  const displayName = userName || "Student"
   const initial = displayName.charAt(0).toUpperCase()
 
   return (
@@ -148,13 +167,15 @@ export default function ProfileImageUpload({
             className={`w-32 h-32 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-4xl shadow-lg ${currentImageUrl ? 'cursor-pointer hover:ring-4 hover:ring-blue-500/50 transition-all' : ''}`}
           >
             {displayImage ? (
-              <Image
-                src={displayImage}
-                alt={`${displayName}'s profile`}
-                fill
-                className="object-cover"
-                sizes="128px"
-              />
+              <div className="relative w-full h-full">
+                <Image
+                  src={displayImage}
+                  alt={`${displayName}'s profile`}
+                  fill
+                  className="object-cover rounded-full"
+                  sizes="128px"
+                />
+              </div>
             ) : (
               initial
             )}
@@ -193,44 +214,16 @@ export default function ProfileImageUpload({
         {/* Upload Button - Only show when no image */}
         {!currentImageUrl && (
           <>
-            <CldUploadButton
-              uploadPreset={publicEnv.CLOUDINARY_UPLOAD_PRESET}
-              onUpload={() => {
-                console.log('Upload started')
-                setIsUploading(true)
-              }}
-              onSuccess={handleUploadSuccess}
-              onError={handleUploadError}
-              options={{
-                cloudName: publicEnv.CLOUDINARY_CLOUD_NAME,
-                uploadPreset: publicEnv.CLOUDINARY_UPLOAD_PRESET,
-                multiple: false,
-                maxFiles: 1,
-                clientAllowedFormats: ["jpg", "jpeg", "png", "gif", "webp"],
-                maxFileSize: 5000000,
-                cropping: true,
-                croppingAspectRatio: 1,
-                croppingShowDimensions: true,
-                sources: ["local", "url", "camera"],
-                showSkipCropButton: false,
-                styles: {
-                  palette: {
-                    window: "#1a1a1a",
-                    windowBorder: "#3b82f6",
-                    tabIcon: "#3b82f6",
-                    menuIcons: "#ffffff",
-                    textDark: "#000000",
-                    textLight: "#ffffff",
-                    link: "#3b82f6",
-                    action: "#3b82f6",
-                    inactiveTabIcon: "#555555",
-                    error: "#ef4444",
-                    inProgress: "#3b82f6",
-                    complete: "#10b981",
-                    sourceBg: "#1a1a1a"
-                  }
-                }
-              }}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
               className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
               {isUploading ? (
@@ -244,7 +237,7 @@ export default function ProfileImageUpload({
                   <span>Upload Image</span>
                 </>
               )}
-            </CldUploadButton>
+            </button>
 
             {/* Help Text */}
             <p className="text-sm text-neutral-400 text-center max-w-xs">
@@ -261,28 +254,44 @@ export default function ProfileImageUpload({
         )}
       </div>
 
-      {/* Image Viewer Modal */}
-      {showImageViewer && currentImageUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-300"
-          onClick={() => setShowImageViewer(false)}
-        >
-          <button
+      {/* Custom Crop Interface */}
+      {selectedImage && (
+        <CustomImageCrop
+          imageSrc={selectedImage}
+          onComplete={handleCropComplete}
+          onCancel={handleCancelCrop}
+        />
+      )}
+
+      {/* Image Viewer Modal - Portal to body for full screen */}
+      {showImageViewer && currentImageUrl && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/90 backdrop-blur-sm"
             onClick={() => setShowImageViewer(false)}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6 text-white" />
-          </button>
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full p-4">
-            <Image
-              src={currentImageUrl}
-              alt={`${displayName}'s profile`}
-              fill
-              className="object-contain"
-              sizes="(max-width: 1024px) 100vw, 1024px"
-            />
+          />
+          
+          {/* Modal - Full Screen */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] flex items-center justify-center overflow-hidden animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowImageViewer(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+            <div className="relative w-4/5 h-4/5 max-w-5xl max-h-[80vh]">
+              <Image
+                src={currentImageUrl}
+                alt={`${displayName}'s profile`}
+                fill
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 1024px"
+              />
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Dialog */}
