@@ -324,6 +324,6 @@ COMMENT ON TABLE admin_activities IS 'Audit trail of admin actions';
 COMMENT ON TABLE payment_transactions IS 'Payment gateway transaction records';
 COMMENT ON TABLE audit_log IS 'Comprehensive audit trail for all data changes';
 
--- 10. Grant appropriate permissions (adjust as needed for your setup)
+-- 10. Grant appropriate permissions
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO varsity_nest_app;
 -- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO varsity_nest_app;
