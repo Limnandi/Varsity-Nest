@@ -21,11 +21,20 @@ export default function NewAccommodation() {
     distance: "",
     amenities: [] as string[],
     images: [] as File[],
+    cardImage: null as File | null,
     accreditationStatus: "accredited" as "accredited" | "provisionally_accredited" | "non_accredited",
     hasSingleRooms: false,
     hasSharingRooms: false,
     singleRoomPrice: "",
     sharingRoomPrice: "",
+    contactEmail: "",
+    contactPhone: "",
+    websiteUrl: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    accommodationType: "",
+    maxOccupancy: "",
   })
 
   const availableAmenities = [
@@ -57,6 +66,11 @@ export default function NewAccommodation() {
       alert("Please select at least one room type (Single or Sharing)")
       return
     }
+    // Require exactly 10 images (excluding the card image handled separately)
+    if (formData.images.length !== 10) {
+      alert("Please upload exactly 10 images for the property (excluding the card picture)")
+      return
+    }
     
     // Validate pricing for selected room types
     if (formData.hasSingleRooms && (!formData.singleRoomPrice || Number(formData.singleRoomPrice) <= 0)) {
@@ -72,25 +86,63 @@ export default function NewAccommodation() {
     setIsLoading(true)
 
     try {
-      const form = new FormData()
-      form.append("title", formData.title)
-      form.append("address", formData.address)
-      form.append("area", formData.area)
-      form.append("price", formData.price)
-      form.append("total_rooms", formData.totalRooms)
-      form.append("description", formData.description)
-      form.append("distance", formData.distance)
-      form.append("amenities", JSON.stringify(formData.amenities))
-      form.append("accreditation_status", formData.accreditationStatus)
-      form.append("has_single_rooms", formData.hasSingleRooms.toString())
-      form.append("has_sharing_rooms", formData.hasSharingRooms.toString())
-      form.append("single_room_price", formData.singleRoomPrice)
-      form.append("sharing_room_price", formData.sharingRoomPrice)
-      formData.images.forEach((file) => form.append("images", file))
+      // Upload images to Cloudinary using signed uploads
+      const uploadWithSignature = async (file: File) => {
+        const signRes = await fetch('/api/cloudinary/sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'varsity-nest/accommodations' }) })
+        if (!signRes.ok) throw new Error('Failed to sign upload')
+        const { cloudName, apiKey, timestamp, folder, signature } = await signRes.json()
+        const uploadForm = new FormData()
+        uploadForm.append('file', file)
+        uploadForm.append('api_key', apiKey)
+        uploadForm.append('timestamp', String(timestamp))
+        uploadForm.append('folder', folder)
+        uploadForm.append('signature', signature)
+        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: uploadForm })
+        if (!uploadRes.ok) throw new Error('Cloudinary upload failed')
+        const data = await uploadRes.json()
+        return data.secure_url as string
+      }
+
+      // Ensure the accommodation card image is first
+      const orderedFiles: File[] = []
+      if (formData.cardImage) orderedFiles.push(formData.cardImage)
+      for (const f of formData.images) {
+        if (!formData.cardImage || f !== formData.cardImage) orderedFiles.push(f)
+      }
+
+      const uploadedUrls: string[] = []
+      for (const f of orderedFiles) {
+        const url = await uploadWithSignature(f)
+        uploadedUrls.push(url)
+      }
 
       const res = await fetch("/api/accommodations", {
         method: "POST",
-        body: form,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.title,
+          address: formData.address,
+          area: formData.area,
+          price: Number(formData.price),
+          total_rooms: Number(formData.totalRooms),
+          description: formData.description,
+          distance: formData.distance ? Number(formData.distance) : undefined,
+          amenities: formData.amenities,
+          accreditation_status: formData.accreditationStatus,
+          has_single_rooms: formData.hasSingleRooms,
+          has_sharing_rooms: formData.hasSharingRooms,
+          single_room_price: formData.singleRoomPrice ? Number(formData.singleRoomPrice) : 0,
+          sharing_room_price: formData.sharingRoomPrice ? Number(formData.sharingRoomPrice) : 0,
+          images: uploadedUrls,
+          contact_email: formData.contactEmail || undefined,
+          contact_phone: formData.contactPhone || undefined,
+          website_url: formData.websiteUrl || undefined,
+          city: formData.city || undefined,
+          province: formData.province || undefined,
+          postal_code: formData.postalCode || undefined,
+          accommodation_type: formData.accommodationType || undefined,
+          max_occupancy: formData.maxOccupancy ? Number(formData.maxOccupancy) : undefined,
+        })
       })
 
       if (!res.ok) {
@@ -127,7 +179,7 @@ export default function NewAccommodation() {
               </h3>
               <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
                 <p className="text-green-300 text-lg">
-                  <strong>Accredited Accommodations:</strong> First property R150/month, additional properties R50/month each
+                  <strong>Accredited Accommodations:</strong> First property R450/month, additional properties R50/month each
                 </p>
               </div>
             </div>
@@ -257,20 +309,6 @@ export default function NewAccommodation() {
                     <input
                       type="radio"
                       name="accreditationStatus"
-                      value="provisionally_accredited"
-                      checked={formData.accreditationStatus === "provisionally_accredited"}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, accreditationStatus: e.target.value as any }))}
-                      className="w-4 h-4 text-yellow-600 border-white/30 rounded focus:ring-yellow-500 bg-black/30"
-                    />
-                    <div>
-                      <div className="font-semibold text-yellow-400">Provisionally Accredited</div>
-                      <div className="text-sm text-neutral-400">Under review by UFS</div>
-                    </div>
-                  </label>
-                  <label className="flex items-center space-x-3 cursor-pointer p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
-                    <input
-                      type="radio"
-                      name="accreditationStatus"
                       value="non_accredited"
                       checked={formData.accreditationStatus === "non_accredited"}
                       onChange={(e) => setFormData((prev) => ({ ...prev, accreditationStatus: e.target.value as any }))}
@@ -381,6 +419,95 @@ export default function NewAccommodation() {
               />
             </div>
 
+            {/* Contact & Location */}
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-teal-500/20">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-teal-400 to-cyan-500 bg-clip-text text-transparent">
+                Contact & Location
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Contact Email</label>
+                  <input
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData((p) => ({ ...p, contactEmail: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="provider@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.contactPhone}
+                    onChange={(e) => setFormData((p) => ({ ...p, contactPhone: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="+27 82 123 4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Website URL</label>
+                  <input
+                    type="url"
+                    value={formData.websiteUrl}
+                    onChange={(e) => setFormData((p) => ({ ...p, websiteUrl: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="https://yourproperty.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">City</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData((p) => ({ ...p, city: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="Bloemfontein"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Province</label>
+                  <input
+                    type="text"
+                    value={formData.province}
+                    onChange={(e) => setFormData((p) => ({ ...p, province: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="Free State"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Postal Code</label>
+                  <input
+                    type="text"
+                    value={formData.postalCode}
+                    onChange={(e) => setFormData((p) => ({ ...p, postalCode: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="9301"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Accommodation Type</label>
+                  <input
+                    type="text"
+                    value={formData.accommodationType}
+                    onChange={(e) => setFormData((p) => ({ ...p, accommodationType: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="Student residence / Flats"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-300 mb-2">Max Occupancy</label>
+                  <input
+                    type="number"
+                    value={formData.maxOccupancy}
+                    onChange={(e) => setFormData((p) => ({ ...p, maxOccupancy: e.target.value }))}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-white placeholder-neutral-400"
+                    placeholder="100"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Amenities */}
             <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-orange-500/20">
               <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent flex items-center gap-3">
@@ -403,6 +530,51 @@ export default function NewAccommodation() {
               </div>
             </div>
 
+            {/* Accommodation Card Picture */}
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-pink-500/20">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
+                <Building className="w-6 h-6 text-pink-400" />
+                Accommodation Card Picture
+              </h2>
+              <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center bg-black/20">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="card-image"
+                  onChange={(e) => {
+                    const file = (e.target.files && e.target.files[0]) || null
+                    const MAX_SIZE = 10 * 1024 * 1024
+                    const ALLOWED = ['image/jpeg','image/png','image/webp']
+                    if (file) {
+                      if (!ALLOWED.includes(file.type)) { alert('Only JPEG, PNG, WEBP allowed'); return }
+                      if (file.size > MAX_SIZE) { alert('Image must be <= 10MB'); return }
+                    }
+                    setFormData((prev) => ({ ...prev, cardImage: file }))
+                  }}
+                />
+                <label
+                  htmlFor="card-image"
+                  className="inline-block bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02] active:scale-[0.98] cursor-pointer font-semibold"
+                >
+                  Choose Card Image
+                </label>
+                {formData.cardImage && (
+                  <div className="mt-3 inline-flex items-center gap-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
+                    <span className="text-sm text-neutral-300">{formData.cardImage.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, cardImage: null }))}
+                      className="text-red-400 hover:text-red-300 transition-colors"
+                      aria-label="Remove card image"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Images */}
             <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-pink-500/20">
               <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
@@ -413,7 +585,7 @@ export default function NewAccommodation() {
                 <div className="space-y-4">
                   <Building className="w-16 h-16 text-neutral-400 mx-auto" />
                   <p className="text-xl text-neutral-300">Upload property images</p>
-                  <p className="text-sm text-neutral-400">PNG, JPG up to 10MB each</p>
+                  <p className="text-sm text-neutral-400">Exactly 10 images required (PNG, JPG, WEBP, up to 10MB each)</p>
                   <input
                     type="file"
                     multiple
@@ -425,10 +597,7 @@ export default function NewAccommodation() {
                       const MAX_FILES = 10
                       const MAX_SIZE = 10 * 1024 * 1024
                       const ALLOWED = ['image/jpeg','image/png','image/webp']
-                      if (files.length > MAX_FILES) {
-                        alert(`Max ${MAX_FILES} images allowed`)
-                        return
-                      }
+                      if (files.length !== MAX_FILES) { alert(`Please select exactly ${MAX_FILES} images`); return }
                       for (const f of files) {
                         if (!ALLOWED.includes(f.type)) {
                           alert('Only JPEG, PNG, WEBP images allowed')
@@ -451,8 +620,28 @@ export default function NewAccommodation() {
                 </div>
               </div>
               {formData.images.length > 0 && (
-                <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                  <p className="text-sm text-green-300 font-medium">{formData.images.length} files selected</p>
+                <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm text-neutral-300 font-medium">{formData.images.length} files selected</p>
+                    {formData.images.length !== 10 && (
+                      <span className="text-xs text-red-400">Exactly 10 required</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {formData.images.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between px-3 py-2 bg-black/30 border border-white/10 rounded-lg">
+                        <span className="text-sm text-neutral-300 truncate max-w-[75%]" title={file.name}>{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -468,7 +657,7 @@ export default function NewAccommodation() {
               </button>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || formData.images.length !== 10}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {isLoading ? (
