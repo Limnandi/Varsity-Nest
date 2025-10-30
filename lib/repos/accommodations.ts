@@ -1,5 +1,5 @@
 import { secureDb } from "@/lib/database-secure"
-import { eq, and, desc, count } from "drizzle-orm"
+import { eq, and, desc, count, sql } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { randomUUID } from "crypto"
 
@@ -40,26 +40,16 @@ export async function fetchFeaturedAccommodations(limit = 9): Promise<DbAccommod
     .select({
       id: schema.accommodations.id,
       name: schema.accommodations.name,
-      description: schema.accommodations.description,
       address: schema.accommodations.address,
       price: schema.accommodations.price,
       images: schema.accommodations.images,
-      amenities: schema.accommodations.amenities,
-      area: schema.accommodations.area,
-      distance: schema.accommodations.distance,
-      rating: schema.accommodations.rating,
-      reviewCount: schema.accommodations.reviewCount,
-      isOpen: schema.accommodations.isOpen,
       featured: schema.accommodations.featured,
-      availableRooms: schema.accommodations.availableRooms,
-      totalRooms: schema.accommodations.totalRooms,
-      isVerified: schema.accommodations.isVerified
     })
     .from(schema.accommodations)
     .where(and(
       eq(schema.accommodations.isActive, true),
       eq(schema.accommodations.featured, true),
-      eq((schema.accommodations as any).isPublished, true)
+      sql`accommodations.is_published = true`
     ))
     .orderBy(desc(schema.accommodations.createdAt))
     .limit(limit)
@@ -67,22 +57,22 @@ export async function fetchFeaturedAccommodations(limit = 9): Promise<DbAccommod
   return accommodations.map((acc: any) => ({
     id: acc.id,
     name: acc.name,
-    description: acc.description,
+    description: undefined,
     address: acc.address,
     price: acc.price,
     images: acc.images || [],
-    amenities: acc.amenities || [],
-    accreditation_status: 'accredited', // Default value
-    provider_id: null, // Will be populated if needed
-    area: acc.area,
-    distance: acc.distance,
-    rating: acc.rating,
-    review_count: acc.reviewCount,
-    is_open: acc.isOpen,
+    amenities: [],
+    accreditation_status: 'accredited',
+    provider_id: null,
+    area: undefined,
+    distance: undefined,
+    rating: undefined,
+    review_count: undefined,
+    is_open: undefined,
     featured: acc.featured,
-    available_rooms: acc.availableRooms,
-    total_rooms: acc.totalRooms,
-    is_verified: acc.isVerified
+    available_rooms: undefined,
+    total_rooms: undefined,
+    is_verified: undefined
   }))
 }
 
@@ -91,27 +81,16 @@ export async function fetchAccommodationsByStatus(status: string, limit = 200, o
     .select({
       id: schema.accommodations.id,
       name: schema.accommodations.name,
-      description: schema.accommodations.description,
       address: schema.accommodations.address,
       price: schema.accommodations.price,
       images: schema.accommodations.images,
-      amenities: schema.accommodations.amenities,
-      area: schema.accommodations.area,
-      distance: schema.accommodations.distance,
-      rating: schema.accommodations.rating,
-      reviewCount: schema.accommodations.reviewCount,
-      isOpen: schema.accommodations.isOpen,
-      featured: schema.accommodations.featured,
-      availableRooms: schema.accommodations.availableRooms,
-      totalRooms: schema.accommodations.totalRooms,
-      isVerified: schema.accommodations.isVerified,
-      accreditationStatus: schema.accommodations.accreditationStatus
+      accreditationStatus: schema.accommodations.accreditationStatus,
     })
     .from(schema.accommodations)
     .where(and(
       eq(schema.accommodations.isActive, true),
       eq(schema.accommodations.accreditationStatus, status as any),
-      eq((schema.accommodations as any).isPublished, true)
+      sql`accommodations.is_published = true`
     ))
     .orderBy(desc(schema.accommodations.createdAt))
     .limit(limit)
@@ -120,22 +99,22 @@ export async function fetchAccommodationsByStatus(status: string, limit = 200, o
   return accommodations.map((acc: any) => ({
     id: acc.id,
     name: acc.name,
-    description: acc.description,
+    description: undefined,
     address: acc.address,
     price: acc.price,
     images: acc.images || [],
-    amenities: acc.amenities || [],
+    amenities: [],
     accreditation_status: acc.accreditationStatus,
-    provider_id: null, // Will be populated if needed
-    area: acc.area,
-    distance: acc.distance,
-    rating: acc.rating,
-    review_count: acc.reviewCount,
-    is_open: acc.isOpen,
-    featured: acc.featured,
-    available_rooms: acc.availableRooms,
-    total_rooms: acc.totalRooms,
-    is_verified: acc.isVerified
+    provider_id: null,
+    area: undefined,
+    distance: undefined,
+    rating: undefined,
+    review_count: undefined,
+    is_open: undefined,
+    featured: undefined,
+    available_rooms: undefined,
+    total_rooms: undefined,
+    is_verified: undefined
   }))
 }
 
