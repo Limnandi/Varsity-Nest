@@ -20,6 +20,7 @@ interface Review {
   email: string
   profile_image_url?: string
   user_id?: string
+  university?: string
 }
 
 interface Reply {
@@ -74,6 +75,7 @@ export default function ReviewCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showStudentDetails, setShowStudentDetails] = useState(false)
+  const [showReplies, setShowReplies] = useState(false)
   const [localVotes, setLocalVotes] = useState({
     helpful: review.helpful_votes || 0,
     notHelpful: (review.total_votes || 0) - (review.helpful_votes || 0), // Calculate initially from total
@@ -223,7 +225,7 @@ export default function ReviewCard({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-white group-hover:text-blue-400 transition-colors">
-                {review.first_name} {review.last_name}
+                {review.first_name}{review.university ? `, ${review.university}` : ''}
               </span>
               {review.is_verified && (
                 <span className="px-2 py-1 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300">
@@ -356,9 +358,15 @@ export default function ReviewCard({
               </button>
             )}
             {replies.length > 0 && (
-              <span className="text-sm text-neutral-500">
-                {replies.length} repl{replies.length !== 1 ? 'ies' : 'y'}
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowReplies(!showReplies)}
+                className="text-sm text-neutral-400 hover:text-white transition-colors underline underline-offset-4"
+                aria-expanded={showReplies}
+                aria-controls={`replies-${review.id}`}
+              >
+                {showReplies ? 'Hide replies' : `View replies (${replies.length})`}
+              </button>
             )}
           </div>
         </div>
@@ -401,8 +409,8 @@ export default function ReviewCard({
         )}
 
         {/* Replies */}
-        {replies.length > 0 && (
-          <div className="space-y-3">
+        {replies.length > 0 && showReplies && (
+          <div id={`replies-${review.id}`} className="space-y-3">
             {replies.map((reply) => (
               <ReplyCard
                 key={reply.id}
