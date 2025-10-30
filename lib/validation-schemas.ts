@@ -13,7 +13,8 @@ export const accommodationCreateSchema = z.object({
   address: z.string().min(5, "Address required").max(500, "Address too long"),
   price: z.number().positive("Price must be positive").max(999999, "Price too high"),
   amenities: z.array(z.string().max(100, "Amenity name too long")).max(20, "Too many amenities"),
-  images: z.array(z.string().url("Invalid image URL")).max(10, "Too many images"),
+  // Allow card image + exactly 10 gallery images (total up to 11)
+  images: z.array(z.string().url("Invalid image URL")).max(11, "Too many images"),
   area: z.string().max(100, "Area name too long").optional(),
   distance: z.number().min(0, "Distance cannot be negative").max(1000, "Distance too high").optional(),
   featured: z.boolean().optional(),

@@ -58,7 +58,8 @@ export async function fetchFeaturedAccommodations(limit = 9): Promise<DbAccommod
     .from(schema.accommodations)
     .where(and(
       eq(schema.accommodations.isActive, true),
-      eq(schema.accommodations.featured, true)
+      eq(schema.accommodations.featured, true),
+      eq((schema.accommodations as any).isPublished, true)
     ))
     .orderBy(desc(schema.accommodations.createdAt))
     .limit(limit)
@@ -109,7 +110,8 @@ export async function fetchAccommodationsByStatus(status: string, limit = 200, o
     .from(schema.accommodations)
     .where(and(
       eq(schema.accommodations.isActive, true),
-      eq(schema.accommodations.accreditationStatus, status as any)
+      eq(schema.accommodations.accreditationStatus, status as any),
+      eq((schema.accommodations as any).isPublished, true)
     ))
     .orderBy(desc(schema.accommodations.createdAt))
     .limit(limit)
@@ -238,6 +240,14 @@ export async function insertAccommodation(payload: {
   sharing_room_price?: number
   listing_status?: string
   is_published?: boolean
+  contact_email?: string
+  contact_phone?: string
+  website_url?: string
+  city?: string
+  province?: string
+  postal_code?: string
+  accommodation_type?: string
+  max_occupancy?: number
 }) {
   const [accommodation] = await secureDb.db
     .insert(schema.accommodations)
@@ -263,7 +273,15 @@ export async function insertAccommodation(payload: {
       sharingRoomPrice: payload.sharing_room_price ?? 0,
       listingStatus: payload.listing_status ?? 'draft',
       isPublished: payload.is_published ?? false,
-      isActive: true
+      isActive: true,
+      contactEmail: payload.contact_email || null,
+      contactPhone: payload.contact_phone || null,
+      websiteUrl: payload.website_url || null,
+      city: payload.city || null,
+      province: payload.province || null,
+      postalCode: payload.postal_code || null,
+      accommodationType: payload.accommodation_type || null,
+      maxOccupancy: payload.max_occupancy || null
     })
     .returning()
   
