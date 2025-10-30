@@ -130,6 +130,114 @@ export class FileUploadMiddleware {
   }
 
   /**
+   * Process uploads from an already-parsed FormData to avoid consuming the request body twice
+   */
+  static async processFormData(
+    formData: FormData,
+    request: NextRequest,
+    options: FileUploadMiddlewareOptions
+  ): Promise<{
+    files: File[]
+    errors: string[]
+    warnings: string[]
+    quarantinedFiles: string[]
+  }> {
+    const errors: string[] = []
+    const warnings: string[] = []
+    const quarantinedFiles: string[] = []
+    const validFiles: File[] = []
+
+    try {
+      // Get files based on purpose
+      let files: File[] = []
+      if (options.purpose === 'accommodation') {
+        files = formData.getAll('images') as File[]
+      } else if (options.purpose === 'document' || options.purpose === 'accreditation') {
+        files = formData.getAll('documents') as File[]
+      } else if (options.purpose === 'profile') {
+        files = formData.getAll('profileImage') as File[]
+      }
+
+      // Filter out empty files
+      files = files.filter(file => file && file.size > 0)
+
+      if (files.length === 0) {
+        return { files: [], errors: ['No files provided'], warnings: [], quarantinedFiles: [] }
+      }
+
+      const config = this.getUploadConfig(options)
+
+      if (files.length > config.maxFiles) {
+        errors.push(`Maximum ${config.maxFiles} files allowed, received ${files.length}`)
+        return { files: [], errors, warnings, quarantinedFiles: [] }
+      }
+
+      const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                       request.headers.get('x-real-ip') || 
+                       'unknown'
+      const userAgent = request.headers.get('user-agent') || 'unknown'
+      const userId = 'unknown'
+
+      for (const file of files) {
+        try {
+          if (!file || file.size === 0) {
+            errors.push(`Empty or invalid file: ${file.name}`)
+            continue
+          }
+
+          const securityResult = await FileSecurityService.validateFileSecurity(
+            file,
+            config,
+            userId,
+            ipAddress,
+            userAgent
+          )
+
+          if (!securityResult.isValid) {
+            errors.push(...securityResult.errors.map(error => `${file.name}: ${error}`))
+            continue
+          }
+
+          warnings.push(...securityResult.warnings.map(warning => `${file.name}: ${warning}`))
+
+          if (securityResult.shouldQuarantine) {
+            const quarantinedName = await FileSecurityService.quarantineFile(
+              file,
+              userId,
+              securityResult.threats.join(', '),
+              securityResult.riskScore,
+              securityResult.threats
+            )
+            quarantinedFiles.push(quarantinedName)
+            errors.push(`${file.name}: File quarantined due to security concerns`)
+            continue
+          }
+
+          validFiles.push(file)
+        } catch (fileError) {
+          captureException(fileError instanceof Error ? fileError : new Error(String(fileError)), { component: 'file-upload-middleware', fileName: (file as any)?.name, fileSize: (file as any)?.size })
+          errors.push(`${(file as any)?.name || 'unknown'}: File processing failed`)
+        }
+      }
+
+      return {
+        files: validFiles,
+        errors,
+        warnings,
+        quarantinedFiles
+      }
+    } catch (error) {
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'file-upload-middleware' })
+      return {
+        files: [],
+        errors: ['File upload processing failed'],
+        warnings: [],
+        quarantinedFiles: []
+      }
+    }
+  }
+
+  /**
    * Get upload configuration based on purpose
    */
   private static getUploadConfig(options: FileUploadMiddlewareOptions): FileUploadConfig {
