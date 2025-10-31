@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
     console.log('[ACCOM POST] Content-Type:', contentType)
     let payload: any = {}
     let imagesToUpload: File[] = []
+    let uploadedImages: string[] = []
 
     if (contentType.includes('multipart/form-data')) {
       const form = await request.formData()
@@ -216,9 +217,10 @@ export async function POST(request: NextRequest) {
       payload = validation.data
       // JSON path already contains URLs; no File[] uploads here
       imagesToUpload = []
+      // Use client-provided image URLs directly for persistence
+      uploadedImages = [...(((payload as any).images as string[]) || [])]
     }
 
-    const uploadedImages: string[] = []
     const uploadWarnings: string[] = []
     
     for (const file of imagesToUpload) {
@@ -245,6 +247,11 @@ export async function POST(request: NextRequest) {
         console.error('Image upload error:', error)
         // Continue with other images even if one fails
       }
+    }
+    // Defensive cap: ensure we store at most 11 images (card + gallery up to 10)
+    if (uploadedImages.length > 11) {
+      console.warn('[ACCOM POST] More than 11 images provided; truncating to 11')
+      uploadedImages.length = 11
     }
     console.log('[ACCOM POST] Uploaded image count:', uploadedImages.length)
 
