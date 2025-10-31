@@ -29,6 +29,17 @@ if (typeof window !== 'undefined') {
 export const metadata: Metadata = {
   title: "Varsity Nest",
   description: "Off-Campus Living Made Simple",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", rel: "icon", type: "image/x-icon" },
+    ],
+    apple: [
+      { url: "/favicon.ico" },
+    ],
+    shortcut: [
+      { url: "/favicon.ico" },
+    ],
+  },
 }
 
 export const viewport: Viewport = {
