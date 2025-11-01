@@ -27,6 +27,10 @@ export default function NewAccommodation() {
     hasSharingRooms: false,
     singleRoomPrice: "",
     sharingRoomPrice: "",
+    singleRoomsTotal: "",
+    singleRoomsAvailable: "",
+    sharingRoomsTotal: "",
+    sharingRoomsAvailable: "",
     contactEmail: "",
     contactPhone: "",
     websiteUrl: "",
@@ -61,12 +65,16 @@ export default function NewAccommodation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validate room types
     if (!formData.hasSingleRooms && !formData.hasSharingRooms) {
       alert("Please select at least one room type (Single or Sharing)")
       return
     }
-    // Require exactly 10 images (excluding the card image handled separately)
+
+    if (!formData.cardImage) {
+      alert("Please upload a property card image")
+      return
+    }
+
     if (formData.images.length !== 10) {
       alert("Please upload exactly 10 images for the property (excluding the card picture)")
       return
@@ -80,6 +88,53 @@ export default function NewAccommodation() {
     
     if (formData.hasSharingRooms && (!formData.sharingRoomPrice || Number(formData.sharingRoomPrice) <= 0)) {
       alert("Please enter a valid price for sharing rooms")
+      return
+    }
+
+    // Validate room counts for single rooms
+    if (formData.hasSingleRooms) {
+      const singleTotal = Number(formData.singleRoomsTotal) || 0
+      const singleAvailable = Number(formData.singleRoomsAvailable) || 0
+      if (singleTotal <= 0) {
+        alert("Please enter the total number of single rooms")
+        return
+      }
+      if (singleAvailable < 0 || singleAvailable > singleTotal) {
+        alert("Available single rooms must be between 0 and the total number of single rooms")
+        return
+      }
+    }
+
+    // Validate room counts for sharing rooms
+    if (formData.hasSharingRooms) {
+      const sharingTotal = Number(formData.sharingRoomsTotal) || 0
+      const sharingAvailable = Number(formData.sharingRoomsAvailable) || 0
+      if (sharingTotal <= 0) {
+        alert("Please enter the total number of sharing rooms")
+        return
+      }
+      if (sharingAvailable < 0 || sharingAvailable > sharingTotal) {
+        alert("Available sharing rooms must be between 0 and the total number of sharing rooms")
+        return
+      }
+    }
+
+    // Validate that room type totals match overall total
+    const singleTotal = formData.hasSingleRooms ? Number(formData.singleRoomsTotal) || 0 : 0
+    const sharingTotal = formData.hasSharingRooms ? Number(formData.sharingRoomsTotal) || 0 : 0
+    const overallTotal = Number(formData.totalRooms) || 0
+    
+    if (singleTotal + sharingTotal !== overallTotal) {
+      alert(`The sum of single rooms (${singleTotal}) and sharing rooms (${sharingTotal}) must equal the total rooms (${overallTotal})`)
+      return
+    }
+
+    const singleAvailable = formData.hasSingleRooms ? Number(formData.singleRoomsAvailable) || 0 : 0
+    const sharingAvailable = formData.hasSharingRooms ? Number(formData.sharingRoomsAvailable) || 0 : 0
+    const overallAvailable = singleAvailable + sharingAvailable
+    
+    if (overallAvailable > overallTotal) {
+      alert("The sum of available rooms cannot exceed the total number of rooms")
       return
     }
     
@@ -103,6 +158,7 @@ export default function NewAccommodation() {
         return data.secure_url as string
       }
 
+      // Total: 11 images (1 card image + 10 property images)
       // Ensure the accommodation card image is first
       const orderedFiles: File[] = []
       if (formData.cardImage) orderedFiles.push(formData.cardImage)
@@ -110,6 +166,7 @@ export default function NewAccommodation() {
         if (!formData.cardImage || f !== formData.cardImage) orderedFiles.push(f)
       }
 
+      // Upload all 11 images (card image first, then 10 property images)
       const uploadedUrls: string[] = []
       for (const f of orderedFiles) {
         const url = await uploadWithSignature(f)
@@ -125,6 +182,7 @@ export default function NewAccommodation() {
           area: formData.area,
           price: Number(formData.price),
           total_rooms: Number(formData.totalRooms),
+          available_rooms: (formData.hasSingleRooms ? Number(formData.singleRoomsAvailable) || 0 : 0) + (formData.hasSharingRooms ? Number(formData.sharingRoomsAvailable) || 0 : 0),
           description: formData.description,
           distance: formData.distance ? Number(formData.distance) : undefined,
           amenities: formData.amenities,
@@ -133,6 +191,10 @@ export default function NewAccommodation() {
           has_sharing_rooms: formData.hasSharingRooms,
           single_room_price: formData.singleRoomPrice ? Number(formData.singleRoomPrice) : 0,
           sharing_room_price: formData.sharingRoomPrice ? Number(formData.sharingRoomPrice) : 0,
+          single_rooms_total: formData.hasSingleRooms ? Number(formData.singleRoomsTotal) : 0,
+          single_rooms_available: formData.hasSingleRooms ? Number(formData.singleRoomsAvailable) : 0,
+          sharing_rooms_total: formData.hasSharingRooms ? Number(formData.sharingRoomsTotal) : 0,
+          sharing_rooms_available: formData.hasSharingRooms ? Number(formData.sharingRoomsAvailable) : 0,
           images: uploadedUrls,
           contact_email: formData.contactEmail || undefined,
           contact_phone: formData.contactPhone || undefined,
@@ -347,17 +409,52 @@ export default function NewAccommodation() {
                       </div>
                     </label>
                     {formData.hasSingleRooms && (
-                      <div className="ml-7">
-                        <label className="block text-sm font-medium text-neutral-300 mb-2">Single Room Price (R/month)</label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                          <input
-                            type="number"
-                            value={formData.singleRoomPrice}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, singleRoomPrice: e.target.value }))}
-                            className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
-                            placeholder="3500"
-                          />
+                      <div className="ml-7 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-300 mb-2">Single Room Price (R/month) *</label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                            <input
+                              type="number"
+                              required
+                              value={formData.singleRoomPrice}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, singleRoomPrice: e.target.value }))}
+                              className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                              placeholder="3500"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">Total Single Rooms *</label>
+                            <div className="relative">
+                              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                value={formData.singleRoomsTotal}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, singleRoomsTotal: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">Available Single Rooms *</label>
+                            <div className="relative">
+                              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                              <input
+                                type="number"
+                                required
+                                min="0"
+                                value={formData.singleRoomsAvailable}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, singleRoomsAvailable: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -377,17 +474,52 @@ export default function NewAccommodation() {
                       </div>
                     </label>
                     {formData.hasSharingRooms && (
-                      <div className="ml-7">
-                        <label className="block text-sm font-medium text-neutral-300 mb-2">Sharing Room Price (R/month)</label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                          <input
-                            type="number"
-                            value={formData.sharingRoomPrice}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, sharingRoomPrice: e.target.value }))}
-                            className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
-                            placeholder="2500"
-                          />
+                      <div className="ml-7 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-300 mb-2">Sharing Room Price (R/month) *</label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                            <input
+                              type="number"
+                              required
+                              value={formData.sharingRoomPrice}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, sharingRoomPrice: e.target.value }))}
+                              className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                              placeholder="2500"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">Total Sharing Rooms *</label>
+                            <div className="relative">
+                              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                value={formData.sharingRoomsTotal}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, sharingRoomsTotal: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">Available Sharing Rooms *</label>
+                            <div className="relative">
+                              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                              <input
+                                type="number"
+                                required
+                                min="0"
+                                value={formData.sharingRoomsAvailable}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, sharingRoomsAvailable: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-neutral-400"
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -657,7 +789,7 @@ export default function NewAccommodation() {
               </button>
               <button
                 type="submit"
-                disabled={isLoading || formData.images.length !== 10}
+                disabled={isLoading || !formData.cardImage || formData.images.length !== 10}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {isLoading ? (
