@@ -3,7 +3,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
-import { uploadImageFromBase64 } from "@/lib/cloudinary"
+import { uploadImageFromBase64, deleteImage } from "@/lib/cloudinary"
 import { z } from "zod"
 
 // Validation schema for image upload
@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
 
     const { image, imageUrl, cloudinaryId } = validation.data
 
-    // Verify user exists
     const currentUser = await secureDb.db
       .select({
         id: schema.users.id,
+        profileImageCloudinaryId: schema.users.profileImageCloudinaryId,
       })
       .from(schema.users)
       .where(eq(schema.users.id, user.id))
@@ -50,21 +50,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    const existingCloudinaryId = currentUser[0].profileImageCloudinaryId
+
+    if (existingCloudinaryId) {
+      const deleteResult = await deleteImage(existingCloudinaryId)
+      if (!deleteResult.success) {
+        console.warn('Failed to delete existing profile image from Cloudinary:', deleteResult.error)
+      }
+    }
+
     let finalImageUrl: string
     let finalCloudinaryId: string
 
-    // Handle direct Cloudinary URL (from CldUploadButton)
+    const profilePublicId = existingCloudinaryId || `profile-images/students/${user.id}/profile_${user.id}`
+
     if (imageUrl && cloudinaryId) {
       finalImageUrl = imageUrl
       finalCloudinaryId = cloudinaryId
-    } 
-    // Fallback: Handle base64 image upload (legacy)
-    else if (image) {
+      
+      if (existingCloudinaryId && existingCloudinaryId !== cloudinaryId) {
+        const deleteResult = await deleteImage(existingCloudinaryId)
+        if (!deleteResult.success) {
+          console.warn('Failed to delete old profile image from Cloudinary:', deleteResult.error)
+        }
+      }
+    } else if (image) {
       const uploadResult = await uploadImageFromBase64(
         image,
         {
           folder: `profile-images/students/${user.id}`,
-          public_id: `profile_${user.id}_${Date.now()}`,
+          public_id: profilePublicId,
           transformation: {
             width: 400,
             height: 400,
@@ -153,6 +168,7 @@ export async function DELETE() {
     const currentUser = await secureDb.db
       .select({
         id: schema.users.id,
+        profileImageCloudinaryId: schema.users.profileImageCloudinaryId,
       })
       .from(schema.users)
       .where(eq(schema.users.id, user.id))
@@ -162,7 +178,15 @@ export async function DELETE() {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Clear stored profile image fields
+    const existingCloudinaryId = currentUser[0].profileImageCloudinaryId
+
+    if (existingCloudinaryId) {
+      const deleteResult = await deleteImage(existingCloudinaryId)
+      if (!deleteResult.success) {
+        console.warn('Failed to delete profile image from Cloudinary:', deleteResult.error)
+      }
+    }
+
     await secureDb.db
       .update(schema.users)
       .set({
