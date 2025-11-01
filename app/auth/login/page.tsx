@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useStackApp } from "@stackframe/stack"
-// import { OAuthButton, useStackApp } from "@stackframe/stack" // OAuthButton temporarily disabled
+import { OAuthButton, useStackApp } from "@stackframe/stack"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
@@ -278,8 +277,6 @@ export default function LoginPage() {
             </button>
 
             <div className="flex items-center justify-between">
-              {/* Google Sign-In temporarily disabled */}
-              {/*
               <div className="group relative w-full">
                 <div className="!w-full !px-6 !py-3 !bg-black/20 !text-white !border !border-white/20 !rounded-xl !font-medium !shadow-lg !hover:bg-white/5 !hover:shadow-blue-500/20 !transition-all !duration-300 !hover:scale-105 !active:scale-95 !flex !items-center !justify-center !space-x-3 !backdrop-blur-xl">
                   <OAuthButton 
@@ -289,7 +286,6 @@ export default function LoginPage() {
                 </div>
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
               </div>
-              */}
               <button
                 type="button"
                 onClick={handleForgotPassword}
