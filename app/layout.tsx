@@ -12,6 +12,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { initializeLogging } from "@/lib/logging/config"
 import { performanceMonitor } from "@/lib/monitoring/performance"
+import ConsoleSecurityWarning from "@/components/ConsoleSecurityWarning"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -29,6 +30,17 @@ if (typeof window !== 'undefined') {
 export const metadata: Metadata = {
   title: "Varsity Nest",
   description: "Off-Campus Living Made Simple",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", rel: "icon", type: "image/x-icon" },
+    ],
+    apple: [
+      { url: "/favicon.ico" },
+    ],
+    shortcut: [
+      { url: "/favicon.ico" },
+    ],
+  },
 }
 
 export const viewport: Viewport = {
@@ -51,6 +63,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <ConsoleSecurityWarning />
         <ErrorBoundary component="root_layout">
           <StackProvider app={getStackServerApp() as any}>
             <ReactQueryProvider>

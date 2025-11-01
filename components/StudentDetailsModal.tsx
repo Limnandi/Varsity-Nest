@@ -53,15 +53,20 @@ export default function StudentDetailsModal({
 
   return (
     <>
-      {/* Main Modal */}
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
-        onClick={onClose}
-      >
+      {/* Main Modal (portal to body for true page overlay) */}
+      {mounted && createPortal(
         <div
-          onClick={(e) => e.stopPropagation()}
-          className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/20 max-w-md w-full mx-4 transform transition-all duration-300 animate-in slide-in-from-bottom-4"
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={onClose}
+          aria-hidden={!isOpen}
         >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Reviewer details"
+            className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl p-6 text-white shadow-[0_10px_40px_rgba(59,130,246,0.25)] max-w-md w-full mx-4 transform transition-all duration-300 animate-in slide-in-from-bottom-4 sm:animate-in zoom-in-95"
+          >
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -76,7 +81,7 @@ export default function StudentDetailsModal({
             <div className="relative mb-4">
               <div
                 onClick={() => profileImageUrl && setShowImageViewer(true)}
-                className={`w-24 h-24 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-2xl shadow-lg ${profileImageUrl ? 'cursor-pointer hover:ring-4 hover:ring-blue-500/50 transition-all' : ''}`}
+                className={`w-28 h-28 rounded-full overflow-hidden ring-4 ring-white/10 bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-2xl shadow-xl ${profileImageUrl ? 'cursor-pointer hover:ring-blue-500/40 transition-all' : ''}`}
               >
                 {profileImageUrl ? (
                   <Image
@@ -84,7 +89,7 @@ export default function StudentDetailsModal({
                     alt={`${studentName}'s profile`}
                     fill
                     className="object-cover"
-                    sizes="96px"
+                    sizes="112px"
                   />
                 ) : (
                   getInitials(studentName)
@@ -144,14 +149,19 @@ export default function StudentDetailsModal({
               This is a verified student account
             </p>
           </div>
-        </div>
-      </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Image Viewer Modal - Portal to body for full screen */}
       {showImageViewer && profileImageUrl && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setShowImageViewer(false)}
+          aria-modal="true"
+          role="dialog"
+          aria-label="Profile picture"
         >
           <button
             onClick={() => setShowImageViewer(false)}
@@ -159,14 +169,16 @@ export default function StudentDetailsModal({
           >
             <X className="w-6 h-6 text-white" />
           </button>
-          <div className="relative w-4/5 h-4/5 max-w-6xl max-h-[90vh]">
-            <Image
-              src={profileImageUrl}
-              alt={`${studentName}'s profile`}
-              fill
-              className="object-contain"
-              sizes="(max-width: 1024px) 100vw, 1024px"
-            />
+          <div className="relative w-[min(88vw,28rem)] h-[min(88vw,28rem)]">
+            <div className="absolute inset-0 rounded-full overflow-hidden ring-8 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+              <Image
+                src={profileImageUrl}
+                alt={`${studentName}'s profile`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 480px) 90vw, 448px"
+              />
+            </div>
           </div>
         </div>,
         document.body

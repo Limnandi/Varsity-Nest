@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
+import ConfirmDialog from "@/components/ConfirmDialog"
+import DeletionLoadingOverlay from "@/components/DeletionLoadingOverlay"
 import { 
   Building, 
-  Bell, 
-  Shield, 
-  CreditCard, 
   Save,
   CheckCircle,
   AlertCircle,
@@ -73,8 +72,20 @@ export default function ProviderSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [accommodations, setAccommodations] = useState<any[]>([])
+  const [accommodations, setAccommodations] = useState<Array<{
+    id: string
+    name: string
+    address: string
+    is_active: boolean
+    is_published: boolean
+    accreditation_status: string
+    available_rooms: number | null
+    total_rooms: number | null
+  }>>([])
   const [accommodationsLoading, setAccommodationsLoading] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deletionComplete, setDeletionComplete] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   useEffect(() => {
     fetchSettings()
@@ -134,10 +145,6 @@ export default function ProviderSettings() {
     }
   }
 
-  const handleSettingChange = (key: keyof ProviderSettings, value: boolean | number | string) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
-  }
-
   const fetchAccommodations = async () => {
     try {
       setAccommodationsLoading(true)
@@ -163,19 +170,22 @@ export default function ProviderSettings() {
       const response = await fetch(`/api/accommodations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !isActive })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update accommodation status')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to update accommodation status')
       }
 
+      const updated = await response.json()
       setAccommodations(prev => prev.map(acc => 
-        acc.id === id ? { ...acc, is_active: !isActive } : acc
+        acc.id === id ? { ...acc, is_active: updated.is_active !== undefined ? updated.is_active : !isActive } : acc
       ))
     } catch (err) {
       console.error('Accommodation status update error:', err)
-      alert('Failed to update accommodation status')
+      alert(err instanceof Error ? err.message : 'Failed to update accommodation status')
     }
   }
 
@@ -186,17 +196,54 @@ export default function ProviderSettings() {
 
     try {
       const response = await fetch(`/api/accommodations/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete accommodation')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to delete accommodation')
       }
 
       setAccommodations(prev => prev.filter(acc => acc.id !== id))
     } catch (err) {
       console.error('Accommodation deletion error:', err)
-      alert('Failed to delete accommodation')
+      alert(err instanceof Error ? err.message : 'Failed to delete accommodation')
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setShowDeleteDialog(false)
+    setIsDeleting(true)
+    
+    try {
+      const response = await fetch('/api/provider/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || error.error || 'Failed to delete account')
+      }
+
+      // Show completion state
+      setDeletionComplete(true)
+
+      // Wait a moment before redirecting
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Redirect to home
+      window.location.href = '/'
+
+    } catch (error) {
+      console.error('Account deletion error:', error)
+      alert(error instanceof Error ? error.message : "Failed to delete account. Please try again.")
+      setIsDeleting(false)
+      setDeletionComplete(false)
     }
   }
 
@@ -269,319 +316,8 @@ export default function ProviderSettings() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Accommodation Settings */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 border border-blue-500/50 bg-blue-500/10 rounded-xl">
-                  <Building className="w-6 h-6 text-blue-400" />
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  Accommodation Settings
-                </h2>
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Auto-approve bookings</h3>
-                    <p className="text-sm text-neutral-400">Automatically approve new bookings</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoApproveBookings}
-                      onChange={(e) => handleSettingChange('autoApproveBookings', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Allow instant booking</h3>
-                    <p className="text-sm text-neutral-400">Enable instant booking for available rooms</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.allowInstantBooking}
-                      onChange={(e) => handleSettingChange('allowInstantBooking', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Require deposit</h3>
-                    <p className="text-sm text-neutral-400">Require a deposit for bookings</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.requireDeposit}
-                      onChange={(e) => handleSettingChange('requireDeposit', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                {settings.requireDeposit && (
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Deposit percentage
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={settings.depositPercentage}
-                        onChange={(e) => handleSettingChange('depositPercentage', parseInt(e.target.value) || 0)}
-                        className="w-24 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-neutral-400">%</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Notification Settings */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-purple-500/10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 border border-purple-500/50 bg-purple-500/10 rounded-xl">
-                  <Bell className="w-6 h-6 text-purple-400" />
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
-                  Notifications
-                </h2>
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Email notifications</h3>
-                    <p className="text-sm text-neutral-400">Receive notifications via email</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.emailNotifications}
-                      onChange={(e) => handleSettingChange('emailNotifications', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Booking alerts</h3>
-                    <p className="text-sm text-neutral-400">Get notified of new bookings</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.bookingAlerts}
-                      onChange={(e) => handleSettingChange('bookingAlerts', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Payment alerts</h3>
-                    <p className="text-sm text-neutral-400">Get notified of payments</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.paymentAlerts}
-                      onChange={(e) => handleSettingChange('paymentAlerts', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Maintenance alerts</h3>
-                    <p className="text-sm text-neutral-400">Get notified of maintenance issues</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.maintenanceAlerts}
-                      onChange={(e) => handleSettingChange('maintenanceAlerts', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Privacy Settings */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-green-500/10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 border border-green-500/50 bg-green-500/10 rounded-xl">
-                  <Shield className="w-6 h-6 text-green-400" />
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-                  Privacy & Security
-                </h2>
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Show contact information</h3>
-                    <p className="text-sm text-neutral-400">Display your contact details to students</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.showContactInfo}
-                      onChange={(e) => handleSettingChange('showContactInfo', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Allow direct contact</h3>
-                    <p className="text-sm text-neutral-400">Allow students to contact you directly</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.allowDirectContact}
-                      onChange={(e) => handleSettingChange('allowDirectContact', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Show availability</h3>
-                    <p className="text-sm text-neutral-400">Display room availability to students</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.showAvailability}
-                      onChange={(e) => handleSettingChange('showAvailability', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Two-factor authentication</h3>
-                    <p className="text-sm text-neutral-400">Add extra security to your account</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.twoFactorAuth}
-                      onChange={(e) => handleSettingChange('twoFactorAuth', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Billing Settings */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-orange-500/10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 border border-orange-500/50 bg-orange-500/10 rounded-xl">
-                  <CreditCard className="w-6 h-6 text-orange-400" />
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
-                  Billing & Payments
-                </h2>
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Auto-renewal</h3>
-                    <p className="text-sm text-neutral-400">Automatically renew your subscription</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoRenewal}
-                      onChange={(e) => handleSettingChange('autoRenewal', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">Billing reminders</h3>
-                    <p className="text-sm text-neutral-400">Get reminded about upcoming payments</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.billingReminders}
-                      onChange={(e) => handleSettingChange('billingReminders', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Invoice email address
-                  </label>
-                  <input
-                    type="email"
-                    value={settings.invoiceEmail}
-                    onChange={(e) => handleSettingChange('invoiceEmail', e.target.value)}
-                    placeholder="billing@yourcompany.com"
-                    className="w-full px-4 py-3 bg-black/20 border border-white/20 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Session timeout (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="480"
-                    value={settings.sessionTimeout}
-                    onChange={(e) => handleSettingChange('sessionTimeout', parseInt(e.target.value) || 30)}
-                    className="w-24 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Accommodation Management */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-indigo-500/10 col-span-1 lg:col-span-2">
+          {/* Accommodation Management */}
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-indigo-500/10">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 border border-indigo-500/50 bg-indigo-500/10 rounded-xl">
                   <Settings className="w-6 h-6 text-indigo-400" />
@@ -665,8 +401,63 @@ export default function ProviderSettings() {
                 </div>
               )}
             </div>
+
+          {/* Danger Zone - Delete Account */}
+        <div className="relative border border-red-500/30 bg-red-950/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-red-500/10 p-6 text-white mt-8">
+          <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent flex items-center">
+            <Trash2 className="w-5 h-5 mr-2 text-red-400" />
+            Danger Zone
+          </h2>
+          
+          <div className="space-y-4">
+            <p className="text-neutral-300 text-sm">
+              Once you delete your account, there is no going back. This will permanently delete:
+            </p>
+            <ul className="list-disc list-inside text-neutral-400 text-sm space-y-1 ml-4">
+              <li>Your provider profile</li>
+              <li>All your accommodations and their images</li>
+              <li>All bookings and related data</li>
+              <li>Your user account</li>
+            </ul>
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+              className="flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-300 font-medium shadow-lg shadow-red-500/20 hover:shadow-red-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Account</span>
+            </button>
           </div>
         </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end mt-8">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
+          </button>
+        </div>
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onConfirm={handleDeleteAccount}
+          title="Delete Account"
+          message="Are you absolutely sure you want to delete your account? This action cannot be undone and all your data, accommodations, images, and bookings will be permanently deleted."
+          confirmText="Yes, Delete My Account"
+          cancelText="Cancel"
+          isLoading={isDeleting}
+          variant="danger"
+        />
+
+        {/* Deletion Loading Overlay */}
+        <DeletionLoadingOverlay isDeleting={isDeleting} isComplete={deletionComplete} />
       </DashboardLayout>
     </AuthGuard>
   )

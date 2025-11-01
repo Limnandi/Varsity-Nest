@@ -3,7 +3,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getCurrentUserFromRequest } from "@/lib/auth-server"
-import { cloudinary } from "@/lib/cloudinary"
+import { cloudinary, deleteImage } from "@/lib/cloudinary"
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +15,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Student access required" }, { status: 403 })
     }
 
+    const currentUser = await secureDb.db
+      .select({
+        id: schema.users.id,
+        profileImageCloudinaryId: schema.users.profileImageCloudinaryId,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, user.id))
+      .limit(1)
+
+    if (currentUser.length === 0) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    const existingCloudinaryId = currentUser[0].profileImageCloudinaryId
+
+    if (existingCloudinaryId) {
+      const deleteResult = await deleteImage(existingCloudinaryId)
+      if (!deleteResult.success) {
+        console.warn('Failed to delete existing profile image from Cloudinary:', deleteResult.error)
+      }
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const fileName = (formData.get('fileName') as string) || 'profile.jpg'
@@ -23,19 +45,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Stream to Cloudinary
+    const folder = `profile-images/students/${user.id}`
+    const publicId = existingCloudinaryId || `${folder}/profile_${user.id}`
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
     const uploadResult: any = await new Promise((resolve, reject) => {
-      const folder = `profile-images/students/${user.id}`
-      const publicId = `profile_${user.id}_${Date.now()}`
       cloudinary.uploader.upload_stream(
         {
           folder,
           public_id: publicId,
           resource_type: 'image',
           overwrite: true,
+          invalidate: true,
           transformation: [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }, { quality: 'auto' }, { fetch_format: 'auto' }],
           tags: [`user:${user.id}`, 'profile-image'],
           context: { uploaded_by: user.id, original_filename: fileName },
@@ -47,7 +70,6 @@ export async function POST(request: NextRequest) {
       ).end(buffer)
     })
 
-    // Persist to DB
     await secureDb.db
       .update(schema.users)
       .set({

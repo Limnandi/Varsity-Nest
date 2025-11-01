@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/database"
-import { getCurrentUserFromRequest } from "@/lib/auth-server"
+import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 
 export async function GET(request: NextRequest) {
   try {
-    // Get current user from session
-    const user = await getCurrentUserFromRequest(request)
+    // Get current user from session (JWT) or fallback to StackAuth
+    let user = await getCurrentUserFromRequest(request)
+    if (!user) {
+      user = await getCurrentUserFromStackAuth()
+    }
     if (!user || user.role !== 'provider') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!user.isActive) {
+      return NextResponse.json({ error: 'Account deactivated' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)

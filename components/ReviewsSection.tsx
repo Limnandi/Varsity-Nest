@@ -18,6 +18,7 @@ interface Review {
   last_name: string
   email: string
   profile_image_url?: string
+  university?: string
 }
 
 interface Reply {
@@ -381,27 +382,34 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
         </div>
       )}
 
-      {/* Reviews List */}
+      {/* Reviews List (scrollable) */}
       {reviewsData.reviews.length > 0 ? (
-        <div className="space-y-4">
-          {reviewsData.reviews.map((review) => (
-            <ReviewCard
-              key={review.id}
-              review={review}
-              onVote={handleVote}
-              onReply={handleReply}
-              onReplyVote={handleReplyVote}
-              onReport={(reviewId, reviewAuthor) => handleReport(reviewId, reviewAuthor, 'review')}
-              onReplyReport={(replyId, replyAuthor) => handleReport(replyId, replyAuthor, 'reply')}
-              onDelete={handleDeleteReview}
-              userVote={userVotes[review.id]}
-              replies={replies[review.id] || []}
-              userReplyVotes={userReplyVotes}
-              currentUserEmail={currentUserEmail}
-              currentUserRole={currentUserRole}
-              isAuthenticated={isAuthenticated}
-            />
-          ))}
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl">
+          <div
+            className="max-h-[28rem] overflow-y-auto overscroll-contain p-4 flex flex-col gap-4"
+            role="listbox"
+            aria-label="Accommodation reviews"
+          >
+            {reviewsData.reviews.map((review) => (
+              <div key={review.id} role="option" aria-selected="false">
+                <ReviewCard
+                  review={review}
+                  onVote={handleVote}
+                  onReply={handleReply}
+                  onReplyVote={handleReplyVote}
+                  onReport={(reviewId, reviewAuthor) => handleReport(reviewId, reviewAuthor, 'review')}
+                  onReplyReport={(replyId, replyAuthor) => handleReport(replyId, replyAuthor, 'reply')}
+                  onDelete={handleDeleteReview}
+                  userVote={userVotes[review.id]}
+                  replies={replies[review.id] || []}
+                  userReplyVotes={userReplyVotes}
+                  currentUserEmail={currentUserEmail}
+                  currentUserRole={currentUserRole}
+                  isAuthenticated={isAuthenticated}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="text-center py-8">

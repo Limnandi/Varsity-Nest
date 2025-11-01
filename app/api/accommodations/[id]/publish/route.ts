@@ -1,59 +1,103 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUserFromRequest } from '@/lib/auth-server'
-import { secureDb } from '@/lib/database-secure'
-import { eq, and } from 'drizzle-orm'
-import * as schema from '@/lib/schema'
+import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from '@/lib/auth-server'
+import { query } from '@/lib/database'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    // Get current user from session (JWT) or fallback to StackAuth
+    let user = await getCurrentUserFromRequest(request)
+    if (!user) {
+      user = await getCurrentUserFromStackAuth()
+    }
     if (!user || user.role !== 'provider') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { id } = await params
-    const { is_published } = await request.json()
-
-    if (typeof is_published !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid is_published value' }, { status: 400 })
+    
+    if (!user.isActive) {
+      return NextResponse.json({ error: 'Account deactivated' }, { status: 403 })
     }
 
-    // Verify the accommodation belongs to the provider
-    const accommodation = await secureDb.db
-      .select()
-      .from(schema.accommodations)
-      .where(and(
-        eq(schema.accommodations.id, id),
-        eq(schema.accommodations.providerId, user.id)
-      ))
-      .limit(1)
+    const { id } = await params
+    const body = await request.json()
+    const { is_published } = body
 
-    if (accommodation.length === 0) {
+    // Ensure is_published is a boolean
+    if (typeof is_published !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid is_published value. Must be true or false' }, { status: 400 })
+    }
+    
+    // Explicitly convert to boolean to ensure it's true or false
+    const publishStatus = Boolean(is_published)
+
+    // Get provider ID
+    const providerResult = await query`
+      SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
+    `
+    
+    if (providerResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+    }
+    
+    const providerId = providerResult.rows[0].id
+
+    // Verify the accommodation belongs to the provider
+    const accommodationResult = await query`
+      SELECT id, provider_id, is_published, listing_status, published_at, unpublished_at
+      FROM accommodations 
+      WHERE id = ${id} AND provider_id = ${providerId} AND is_active = true
+      LIMIT 1
+    `
+
+    if (accommodationResult.rows.length === 0) {
       return NextResponse.json({ error: 'Accommodation not found or not owned by provider' }, { status: 404 })
     }
 
-    // Update the accommodation
-    const [updatedAccommodation] = await secureDb.db
-      .update(schema.accommodations)
-      .set({
-        isPublished: is_published,
-        listingStatus: is_published ? 'published' : 'unpublished',
-        publishedAt: is_published ? new Date() : null,
-        unpublishedAt: !is_published ? new Date() : null,
-        updatedAt: new Date()
-      })
-      .where(eq(schema.accommodations.id, id))
-      .returning()
+    // Update the is_published column directly using SQL
+    const now = new Date().toISOString()
+    const listingStatus = publishStatus ? 'published' : 'unpublished'
+    
+    await query`
+      UPDATE accommodations 
+      SET 
+        is_published = ${publishStatus},
+        listing_status = ${listingStatus},
+        published_at = ${publishStatus ? now : null},
+        unpublished_at = ${!publishStatus ? now : null},
+        updated_at = ${now}
+      WHERE id = ${id}
+    `
+
+    // Fetch updated accommodation
+    const updatedResult = await query`
+      SELECT 
+        id,
+        is_published,
+        listing_status,
+        published_at,
+        unpublished_at
+      FROM accommodations 
+      WHERE id = ${id}
+      LIMIT 1
+    `
+
+    if (updatedResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Failed to fetch updated accommodation' }, { status: 500 })
+    }
+
+    const updated = updatedResult.rows[0]
+
+    // Ensure is_published is returned as a boolean
+    const isPublished = Boolean(updated.is_published)
 
     return NextResponse.json({
-      id: updatedAccommodation.id,
-      is_published: updatedAccommodation.isPublished,
-      listing_status: updatedAccommodation.listingStatus,
-      published_at: updatedAccommodation.publishedAt,
-      unpublished_at: updatedAccommodation.unpublishedAt
+      id: updated.id,
+      is_published: isPublished,
+      listing_status: updated.listing_status,
+      published_at: updated.published_at,
+      unpublished_at: updated.unpublished_at
     })
   } catch (error) {
     console.error('Error updating accommodation publication status:', error)

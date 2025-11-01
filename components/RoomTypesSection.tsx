@@ -35,6 +35,11 @@ export default function RoomTypesSection({
   const [filter, setFilter] = useState<'all' | 'single' | 'sharing'>('all')
   const [sortBy, setSortBy] = useState<'price' | 'availability' | 'name'>('price')
 
+  const [accommodationTotals, setAccommodationTotals] = useState<{
+    totalRooms: number
+    availableRooms: number
+  } | null>(null)
+
   const loadRoomTypes = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -43,6 +48,18 @@ export default function RoomTypesSection({
       if (response.ok) {
         const data = await response.json()
         setRoomTypes(data.roomTypes || [])
+        // Use database totals from API response as source of truth
+        if (data.totals) {
+          setAccommodationTotals({
+            totalRooms: Number(data.totals.totalRooms) || 0,
+            availableRooms: Number(data.totals.availableRooms) || 0
+          })
+        } else if (data.accommodation) {
+          setAccommodationTotals({
+            totalRooms: Number(data.accommodation.totalRooms) || 0,
+            availableRooms: Number(data.accommodation.availableRooms) || 0
+          })
+        }
       }
     } catch (error) {
       console.error('Failed to load room types:', error)
@@ -74,8 +91,9 @@ export default function RoomTypesSection({
   })
 
   const getRoomTypeStats = () => {
-    const totalRooms = roomTypes.reduce((sum, rt) => sum + rt.totalCount, 0)
-    const availableRooms = roomTypes.reduce((sum, rt) => sum + rt.availableCount, 0)
+    // Use database totals as source of truth, fallback to calculating from room types
+    const totalRooms = accommodationTotals?.totalRooms || roomTypes.reduce((sum, rt) => sum + rt.totalCount, 0)
+    const availableRooms = accommodationTotals?.availableRooms || roomTypes.reduce((sum, rt) => sum + rt.availableCount, 0)
     const priceRange = roomTypes.length > 0 
       ? {
           min: Math.min(...roomTypes.map(rt => rt.price)),
@@ -114,15 +132,15 @@ export default function RoomTypesSection({
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden">
+    <div className="space-y-6 w-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+        <div className="flex-1">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
             <Bed className="w-6 h-6 text-blue-400" />
             Room Types & Pricing
           </h2>
-          <p className="text-neutral-400">
+          <p className="text-neutral-400 text-sm sm:text-base">
             Choose from {roomTypes.length} room type{roomTypes.length !== 1 ? 's' : ''} starting from R{stats.priceRange.min}
           </p>
         </div>
@@ -134,16 +152,14 @@ export default function RoomTypesSection({
       </div>
 
       {/* Filters and Sorting */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-            <span className="text-sm text-neutral-400">Filter:</span>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Filter className="w-4 h-4 text-neutral-400" />
+          <span className="text-sm text-neutral-400">Filter:</span>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
-            className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full md:w-auto min-w-[120px]"
+            className="px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
           >
             <option value="all">All Types</option>
             <option value="single">Single</option>
@@ -151,12 +167,12 @@ export default function RoomTypesSection({
           </select>
         </div>
         
-        <div className="flex flex-col md:flex-row md:items-center gap-2">
+        <div className="flex items-center gap-3">
           <span className="text-sm text-neutral-400">Sort by:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full md:w-auto min-w-[120px]"
+            className="px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
           >
             <option value="price">Price</option>
             <option value="availability">Availability</option>
@@ -167,21 +183,19 @@ export default function RoomTypesSection({
 
       {/* Price Range Display */}
       {stats.priceRange.min !== stats.priceRange.max && (
-        <div className="p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="text-center flex-1">
-                <p className="text-sm text-neutral-400">Starting from</p>
-                <p className="text-xl lg:text-2xl font-bold text-white">R{stats.priceRange.min}</p>
-              </div>
-              <div className="text-center flex-1">
-                <p className="text-sm text-neutral-400">Up to</p>
-                <p className="text-xl lg:text-2xl font-bold text-white">R{stats.priceRange.max}</p>
-              </div>
+        <div className="p-5 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="text-center sm:text-left">
+              <p className="text-sm text-neutral-400 mb-2">Starting from</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">R{stats.priceRange.min}</p>
             </div>
-            <div className="text-left lg:text-right flex-shrink-0">
-              <p className="text-sm text-neutral-400">Price Range</p>
-              <p className="text-lg font-semibold text-white">
+            <div className="text-center sm:text-left">
+              <p className="text-sm text-neutral-400 mb-2">Up to</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">R{stats.priceRange.max}</p>
+            </div>
+            <div className="text-center sm:text-right">
+              <p className="text-sm text-neutral-400 mb-2">Price Range</p>
+              <p className="text-xl font-semibold text-white">
                 R{stats.priceRange.min} - R{stats.priceRange.max}
               </p>
             </div>
@@ -190,7 +204,7 @@ export default function RoomTypesSection({
       )}
 
       {/* Room Types Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10 lg:gap-12 items-start">
         {sortedRoomTypes.map((roomType) => (
           <RoomTypeCard
             key={roomType.id}
@@ -203,31 +217,31 @@ export default function RoomTypesSection({
       </div>
 
       {/* Summary */}
-      <div className="p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-            <div className="text-center">
-              <p className="text-sm text-neutral-400">Total Room Types</p>
-              <p className="text-xl font-bold text-white">{roomTypes.length}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-neutral-400">Available Rooms</p>
-              <p className="text-xl font-bold text-green-400">{stats.availableRooms}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-neutral-400">Total Rooms</p>
-              <p className="text-xl font-bold text-white">{stats.totalRooms}</p>
-            </div>
+      <div className="p-5 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="text-center sm:text-left">
+            <p className="text-sm text-neutral-400 mb-2">Total Room Types</p>
+            <p className="text-2xl font-bold text-white">{roomTypes.length}</p>
           </div>
-          
-          {showSelection && selectedRoomType && (
-            <div className="text-left lg:text-right">
-              <p className="text-sm text-neutral-400">Selected Room</p>
+          <div className="text-center sm:text-left">
+            <p className="text-sm text-neutral-400 mb-2">Available Rooms</p>
+            <p className="text-2xl font-bold text-green-400">{stats.availableRooms}</p>
+          </div>
+          <div className="text-center sm:text-right">
+            <p className="text-sm text-neutral-400 mb-2">Total Rooms</p>
+            <p className="text-2xl font-bold text-white">{stats.totalRooms}</p>
+          </div>
+        </div>
+        
+        {showSelection && selectedRoomType && (
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="text-center sm:text-left">
+              <p className="text-sm text-neutral-400 mb-2">Selected Room</p>
               <p className="text-lg font-semibold text-white">{selectedRoomType.name}</p>
               <p className="text-sm text-green-400">R{selectedRoomType.price}/month</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

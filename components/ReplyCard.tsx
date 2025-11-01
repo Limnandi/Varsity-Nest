@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ThumbsUp, ThumbsDown, Flag } from "lucide-react"
 import Image from "next/image"
+import StudentDetailsModal from "./StudentDetailsModal"
 
 interface Reply {
   id: string
@@ -14,6 +15,7 @@ interface Reply {
   last_name: string
   email: string
   profile_image_url?: string
+  university?: string
 }
 
 interface ReplyCardProps {
@@ -30,6 +32,7 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
     helpful: reply.helpful_votes,
     total: reply.total_votes
   })
+  const [showStudentDetails, setShowStudentDetails] = useState(false)
 
   const handleVote = async (isHelpful: boolean) => {
     if (isVoting || !onVote) return
@@ -67,6 +70,7 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
     : 0
 
   return (
+    <>
     <div 
       className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 ml-6 text-white shadow-lg hover:shadow-xl transition-all duration-300"
       onMouseEnter={() => setShowReportButton(true)}
@@ -74,24 +78,24 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setShowStudentDetails(true)}>
           {reply.profile_image_url ? (
             <Image
               src={reply.profile_image_url}
               alt={`${reply.first_name} ${reply.last_name}`}
               width={32}
               height={32}
-              className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/20 group-hover:border-blue-500/50 transition-all"
             />
           ) : (
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold text-sm group-hover:ring-2 group-hover:ring-blue-500/50 transition-all">
               {getInitials(reply.first_name, reply.last_name)}
             </div>
           )}
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white text-sm">
-                {reply.first_name} {reply.last_name}
+              <span className="font-medium text-white text-sm group-hover:text-blue-400 transition-colors">
+                {reply.first_name}{reply.university ? `, ${reply.university}` : ''}
               </span>
               <span className="text-xs text-neutral-400">
                 {formatDate(reply.created_at)}
@@ -161,6 +165,15 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
         )}
       </div>
     </div>
+    <StudentDetailsModal
+      isOpen={showStudentDetails}
+      onClose={() => setShowStudentDetails(false)}
+      studentName={`${reply.first_name} ${reply.last_name}`}
+      studentEmail={reply.email}
+      profileImageUrl={reply.profile_image_url}
+      createdAt={reply.created_at}
+    />
+    </>
   )
 }
 

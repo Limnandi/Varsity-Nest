@@ -6,18 +6,24 @@ import DashboardLayout from "@/components/DashboardLayout"
 import { Building, Users, TrendingUp, DollarSign, Settings } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 
-// For some reason at this time on this date, I could not commit changes, hence I'm writing them here - Added missing isLoading state to fix undefined variable error
-
 export default function ProviderDashboard() {
-  const [_isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     totalAccommodations: 0,
     activeBookings: 0,
     totalRevenue: 0,
     averageRating: 0,
+    averageReviewRating: 0,
     pendingReviews: 0,
-    upcomingMaintenance: 0
+    upcomingMaintenance: 0,
+    totalReviews: 0,
+    pendingBookings: 0
   })
+  const [billingInfo, setBillingInfo] = useState<{
+    monthlyFee: number
+    subscriptionStatus: string
+    nextPaymentDate: string
+  } | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -26,57 +32,50 @@ export default function ProviderDashboard() {
         const response = await fetch('/api/auth/session')
         
         if (response.ok) {
-          const userSession = await response.json()
-          const user = {
-            id: userSession.userId,
-            email: userSession.email,
-            firstName: userSession.firstName,
-            lastName: userSession.lastName,
-            role: userSession.role,
-            phone: userSession.phone,
-            studentNumber: userSession.studentNumber,
-            institution: userSession.institution,
-            isActive: userSession.isActive,
-            emailVerified: userSession.emailVerified,
-            createdAt: new Date(userSession.createdAt),
-            updatedAt: new Date(userSession.updatedAt),
-            university: userSession.university,
-            yearOfStudy: userSession.yearOfStudy,
-            course: userSession.course,
-            emergencyContactName: userSession.emergencyContactName,
-            emergencyContactPhone: userSession.emergencyContactPhone,
-          }
+          // Fetch stats and billing info in parallel
+          const [statsResponse, billingResponse] = await Promise.all([
+            fetch('/api/provider/stats', { credentials: 'include' }),
+            fetch('/api/provider/billing', { credentials: 'include' }).catch(() => null)
+          ])
           
-          try {
-            // Fetch stats from server-side API
-            const statsResponse = await fetch(`/api/provider/stats?providerId=${user.id}`)
-            
-            if (statsResponse.ok) {
-              const data = await statsResponse.json()
-              setStats(data.stats)
-            } else {
-              console.error('Failed to fetch provider stats:', statsResponse.statusText)
-              // Set default stats on error
-              setStats({
-                totalAccommodations: 0,
-                activeBookings: 0,
-                totalRevenue: 0,
-                averageRating: 0,
-                pendingReviews: 0,
-                upcomingMaintenance: 0
-              })
-            }
-          } catch (error) {
-            console.error('Error fetching provider stats:', error)
-            // Set default stats on error
+          if (statsResponse.ok) {
+            const data = await statsResponse.json()
+            setStats(data.stats || {
+              totalAccommodations: 0,
+              activeBookings: 0,
+              totalRevenue: 0,
+              averageRating: 0,
+              averageReviewRating: 0,
+              pendingReviews: 0,
+              upcomingMaintenance: 0,
+              totalReviews: 0,
+              pendingBookings: 0
+            })
+          } else {
+            console.error('Failed to fetch provider stats:', statsResponse.statusText)
             setStats({
               totalAccommodations: 0,
               activeBookings: 0,
               totalRevenue: 0,
               averageRating: 0,
+              averageReviewRating: 0,
               pendingReviews: 0,
-              upcomingMaintenance: 0
+              upcomingMaintenance: 0,
+              totalReviews: 0,
+              pendingBookings: 0
             })
+          }
+
+          // Fetch billing info if available
+          if (billingResponse && billingResponse.ok) {
+            const billingData = await billingResponse.json()
+            if (billingData.provider?.billingInfo) {
+              setBillingInfo({
+                monthlyFee: billingData.provider.billingInfo.monthlyFee || 0,
+                subscriptionStatus: billingData.provider.billingInfo.subscriptionStatus || 'inactive',
+                nextPaymentDate: billingData.provider.billingInfo.nextPaymentDate || new Date().toISOString()
+              })
+            }
           }
         } else {
           // No valid session, redirect to login
@@ -100,30 +99,50 @@ export default function ProviderDashboard() {
       value: stats.totalAccommodations,
       icon: Building,
       color: "bg-blue-500",
-      change: "+0 this month", // Will update with real change data
+      change: `${stats.totalAccommodations} properties`,
     },
     {
       title: "Monthly Revenue",
       value: formatZar(stats.totalRevenue, true),
       icon: DollarSign,
       color: "bg-green-500",
-      change: "Next payment: loading", // Will update with real data
+      change: billingInfo 
+        ? `Next payment: ${new Date(billingInfo.nextPaymentDate).toLocaleDateString()}`
+        : "No subscription active",
     },
     {
-      title: "Total Views",
-      value: stats.totalAccommodations, // Placeholder, will be updated
+      title: "Average Rating",
+      value: stats.averageReviewRating > 0 ? `${stats.averageReviewRating.toFixed(1)} stars` : "No ratings",
       icon: Users,
       color: "bg-purple-500",
-      change: "+0% this week", // Will update with real change data
+      change: `${stats.totalReviews || 0} reviews`,
     },
     {
-      title: "Bookings",
+      title: "Active Bookings",
       value: stats.activeBookings,
       icon: TrendingUp,
       color: "bg-orange-500",
-      change: "+0 this week", // Will update with real change data
+      change: `${stats.pendingBookings || 0} pending`,
     },
   ]
+
+  if (isLoading) {
+    return (
+      <DashboardLayout userRole="provider">
+        <div className="space-y-8 p-6">
+          <div className="animate-pulse space-y-8">
+            <div className="h-24 bg-gray-700 rounded-2xl"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 bg-gray-700 rounded-2xl"></div>
+              ))}
+            </div>
+            <div className="h-48 bg-gray-700 rounded-2xl"></div>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout userRole="provider">
@@ -213,23 +232,59 @@ export default function ProviderDashboard() {
         {/* Billing Status */}
         <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
           <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Billing Status</h2>
-          <div className="flex items-center justify-between p-6 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl">
-            <div className="flex items-center space-x-4">
-              <div className="w-4 h-4 bg-green-400 rounded-full shadow-lg shadow-green-500/50"></div>
-              <div>
-                <p className="font-semibold text-white text-lg">Account in Good Standing</p>
-                <p className="text-neutral-400">
-                  Loading payment info...
+          {billingInfo ? (
+            <div className={`flex items-center justify-between p-6 border backdrop-blur-xl rounded-xl ${
+              billingInfo.subscriptionStatus === 'active' 
+                ? 'border-green-500/50 bg-green-500/10' 
+                : billingInfo.subscriptionStatus === 'trial'
+                ? 'border-blue-500/50 bg-blue-500/10'
+                : 'border-orange-500/50 bg-orange-500/10'
+            }`}>
+              <div className="flex items-center space-x-4">
+                <div className={`w-4 h-4 rounded-full shadow-lg ${
+                  billingInfo.subscriptionStatus === 'active' 
+                    ? 'bg-green-400 shadow-green-500/50' 
+                    : billingInfo.subscriptionStatus === 'trial'
+                    ? 'bg-blue-400 shadow-blue-500/50'
+                    : 'bg-orange-400 shadow-orange-500/50'
+                }`}></div>
+                <div>
+                  <p className="font-semibold text-white text-lg">
+                    {billingInfo.subscriptionStatus === 'active' ? 'Account Active' :
+                     billingInfo.subscriptionStatus === 'trial' ? 'Trial Period' :
+                     'Subscription Inactive'}
+                  </p>
+                  <p className="text-neutral-400">
+                    Next payment: {new Date(billingInfo.nextPaymentDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-white text-xl">
+                  {formatZar(billingInfo.monthlyFee, true)}
                 </p>
+                <p className="text-neutral-400">Monthly fee</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-white text-xl">
-                R0
-              </p>
-              <p className="text-neutral-400">Monthly fee</p>
+          ) : (
+            <div className="flex items-center justify-between p-6 border border-blue-500/50 bg-blue-500/10 backdrop-blur-xl rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="w-4 h-4 bg-blue-400 rounded-full shadow-lg shadow-blue-500/50"></div>
+                <div>
+                  <p className="font-semibold text-white text-lg">No Active Subscription</p>
+                  <p className="text-neutral-400">
+                    Complete your first payment to activate
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/provider/billing/payment"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105"
+              >
+                Setup Payment
+              </Link>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

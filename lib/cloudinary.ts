@@ -359,22 +359,322 @@ export async function uploadImageFromBase64(
   }
 }
 
-export async function deleteImage(publicId: string) {
+/**
+ * Extract public_id from a Cloudinary URL
+ * Handles both full URLs and public_ids
+ */
+export function extractPublicIdFromUrl(urlOrPublicId: string): string {
+  if (!urlOrPublicId) {
+    return ""
+  }
+
+  if (!urlOrPublicId.includes('res.cloudinary.com')) {
+    return urlOrPublicId
+  }
+
   try {
-    const result = await cloudinary.uploader.destroy(publicId)
-    return result
+    const url = new URL(urlOrPublicId)
+    const pathParts = url.pathname.split('/').filter(part => part)
+    
+    const uploadIndex = pathParts.findIndex(part => part === 'upload')
+    if (uploadIndex === -1) {
+      return urlOrPublicId
+    }
+
+    const publicIdParts = pathParts.slice(uploadIndex + 1)
+    
+    if (publicIdParts.length === 0) {
+      return urlOrPublicId
+    }
+
+    let publicId = publicIdParts.join('/')
+    
+    const lastPart = publicIdParts[publicIdParts.length - 1]
+    if (lastPart && lastPart.includes('.')) {
+      publicId = publicId.substring(0, publicId.lastIndexOf('.'))
+    }
+
+    return publicId
   } catch (error) {
-    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete', publicId })
-    throw new Error("Failed to delete image")
+    return urlOrPublicId
   }
 }
 
-export async function deleteDocument(publicId: string) {
+/**
+ * Delete a single image from Cloudinary using Admin API
+ * Automatically removes all derived versions and clears CDN cache
+ * Uses default resource_type (image) and type (upload)
+ */
+export async function deleteImage(publicId: string): Promise<{ success: boolean; result?: any; error?: string }> {
   try {
-    const result = await cloudinary.uploader.destroy(publicId, { resource_type: "raw" })
-    return result
+    const extractedPublicId = extractPublicIdFromUrl(publicId)
+    
+    const result = await cloudinary.api.delete_resources(
+      [extractedPublicId],
+      {
+        invalidate: true
+      }
+    )
+    
+    return {
+      success: true,
+      result
+    }
   } catch (error) {
     captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete', publicId })
-    throw new Error("Failed to delete document")
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete image"
+    }
+  }
+}
+
+/**
+ * Delete multiple images from Cloudinary using Admin API
+ * Automatically removes all derived versions and clears CDN cache
+ * Handles batch deletion for up to 100 images per call (Cloudinary limit)
+ * Uses default resource_type (image) and type (upload)
+ */
+export async function deleteImages(publicIds: string[]): Promise<{ success: boolean; result?: any; error?: string }> {
+  try {
+    if (!publicIds || publicIds.length === 0) {
+      return {
+        success: true,
+        result: { deleted: {} }
+      }
+    }
+
+    const extractedPublicIds = publicIds.map(id => extractPublicIdFromUrl(id)).filter(id => id && id.length > 0)
+    
+    if (extractedPublicIds.length === 0) {
+      return {
+        success: true,
+        result: { deleted: {} }
+      }
+    }
+
+    const BATCH_SIZE = 100
+    const batches: string[][] = []
+    
+    for (let i = 0; i < extractedPublicIds.length; i += BATCH_SIZE) {
+      batches.push(extractedPublicIds.slice(i, i + BATCH_SIZE))
+    }
+
+    const results: any[] = []
+    for (const batch of batches) {
+      try {
+        const result = await cloudinary.api.delete_resources(batch, {
+          invalidate: true
+        })
+        results.push(result)
+      } catch (batchError) {
+        console.error('Error deleting batch:', batchError)
+        captureException(batchError instanceof Error ? batchError : new Error(String(batchError)), { 
+          component: 'cloudinary-delete-batch', 
+          batchSize: batch.length 
+        })
+      }
+    }
+
+    const combinedResult = {
+      deleted: {} as Record<string, string>,
+      not_found: [] as string[]
+    }
+
+    for (const result of results) {
+      if (result.deleted) {
+        Object.assign(combinedResult.deleted, result.deleted)
+      }
+      if (result.not_found) {
+        combinedResult.not_found.push(...result.not_found)
+      }
+    }
+    
+    return {
+      success: true,
+      result: combinedResult
+    }
+  } catch (error) {
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete-multiple', publicIds })
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete images"
+    }
+  }
+}
+
+/**
+ * Delete a single document from Cloudinary using Admin API
+ * Automatically removes all derived versions and clears CDN cache
+ * Uses resource_type 'raw' for documents
+ */
+export async function deleteDocument(publicId: string): Promise<{ success: boolean; result?: any; error?: string }> {
+  try {
+    const extractedPublicId = extractPublicIdFromUrl(publicId)
+    
+    const result = await cloudinary.api.delete_resources(
+      [extractedPublicId],
+      {
+        resource_type: 'raw',
+        invalidate: true
+      }
+    )
+    
+    return {
+      success: true,
+      result
+    }
+  } catch (error) {
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete', publicId })
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete document"
+    }
+  }
+}
+
+/**
+ * Delete images by prefix (useful for deleting all images in a folder)
+ * Supports up to 1000 assets when deleting by prefix
+ */
+export async function deleteImagesByPrefix(prefix: string): Promise<{ success: boolean; result?: any; error?: string }> {
+  try {
+    if (!prefix || prefix.length === 0) {
+      return {
+        success: false,
+        error: "Prefix is required"
+      }
+    }
+
+    const result = await cloudinary.api.delete_resources_by_prefix(
+      prefix,
+      {
+        invalidate: true
+      }
+    )
+    
+    return {
+      success: true,
+      result
+    }
+  } catch (error) {
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete-by-prefix', prefix })
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete images by prefix"
+    }
+  }
+}
+
+/**
+ * Delete images by tag (useful for deleting all images with a specific tag)
+ * Supports up to 1000 assets when deleting by tag
+ */
+export async function deleteImagesByTag(tag: string): Promise<{ success: boolean; result?: any; error?: string }> {
+  try {
+    if (!tag || tag.length === 0) {
+      return {
+        success: false,
+        error: "Tag is required"
+      }
+    }
+
+    const result = await cloudinary.api.delete_resources_by_tag(
+      tag,
+      {
+        invalidate: true
+      }
+    )
+    
+    return {
+      success: true,
+      result
+    }
+  } catch (error) {
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-delete-by-tag', tag })
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete images by tag"
+    }
+  }
+}
+
+/**
+ * Replace an image by uploading with the same public_id
+ * This overwrites the original and all transformed versions
+ */
+export async function replaceImage(
+  file: File,
+  existingPublicId: string,
+  options: SecureUploadOptions = {}
+): Promise<{
+  success: boolean
+  result?: any
+  error?: string
+  warnings?: string[]
+}> {
+  try {
+    const extractedPublicId = extractPublicIdFromUrl(existingPublicId)
+    const secureFilename = extractedPublicId || FileUploadMiddleware.generateSecureFilename(file.name, options.userId || "unknown")
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      const transformations = []
+      
+      if (options.compressImages !== false) {
+        transformations.push({ 
+          width: options.maxWidth || 1200, 
+          height: options.maxHeight || 800, 
+          crop: "limit" 
+        })
+        transformations.push({ quality: options.quality || "auto" })
+        transformations.push({ fetch_format: "auto" })
+      }
+
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: options.folder || "varsity-nest",
+            public_id: secureFilename,
+            resource_type: "image",
+            use_filename: false,
+            unique_filename: false,
+            overwrite: true,
+            transformation: transformations,
+            invalidate: true,
+            tags: [`user:${options.userId || "unknown"}`, `purpose:${options.purpose || "accommodation"}`, 'secure-upload', 'replacement'],
+            access_mode: "authenticated",
+            context: {
+              original_filename: file.name,
+              uploaded_by: options.userId || "unknown",
+              upload_purpose: options.purpose || "accommodation",
+              replaced: "true"
+            }
+          },
+          (error, result) => {
+            if (error) {
+              captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-replace', fileName: file.name, userId: options.userId })
+              reject(error)
+            } else {
+              resolve(result)
+            }
+          },
+        )
+        .end(buffer)
+    })
+
+    return {
+      success: true,
+      result: uploadResult,
+      warnings: []
+    }
+  } catch (error) {
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'cloudinary-replace', fileName: file.name, userId: options.userId })
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to replace image"
+    }
   }
 }

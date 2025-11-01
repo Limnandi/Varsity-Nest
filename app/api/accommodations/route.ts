@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { query } from '@/lib/database'
 import { getCurrentUserFromRequest } from '@/lib/auth-server'
 import { fetchAccommodationsByProvider, insertAccommodation } from '@/lib/repos/accommodations'
 import { OptimizedAccommodationRepository } from '@/lib/database-optimized'
@@ -38,13 +39,14 @@ export const GET = ApiMiddleware.withMiddleware(
 
       let accommodations
       if (providerId) {
-        accommodations = await fetchAccommodationsByProvider(providerId, limit || 50)
+        accommodations = await fetchAccommodationsByProvider(providerId, limit || 24)
       } else if (status) {
-        accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus(status, limit || 50, offset || 0)
+        accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus(status, limit || 24, offset || 0)
       } else if (featured === true) {
-        accommodations = await OptimizedAccommodationRepository.getFeaturedAccommodations(limit || 50)
+        accommodations = await OptimizedAccommodationRepository.getFeaturedAccommodations(limit || 24)
       } else {
-        accommodations = await OptimizedAccommodationRepository.getAccommodationsByStatus('accredited', limit || 50, offset || 0)
+        // Default: show only published & active accommodations
+        accommodations = await OptimizedAccommodationRepository.getPublishedAccommodations(limit || 24, offset || 0)
       }
 
       return ApiMiddleware.createResponse(
@@ -72,19 +74,29 @@ export const GET = ApiMiddleware.withMiddleware(
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUserFromRequest(request)
+    // Resolve current user from secure JWT or StackAuth fallback
+    let user = await getCurrentUserFromRequest(request)
+    if (!user) {
+      const { getCurrentUserFromStackAuth } = await import('@/lib/auth-server')
+      user = await getCurrentUserFromStackAuth()
+    }
+
     if (!user || user.role !== 'provider') {
+      console.error('[ACCOM POST] Unauthorized', { userId: user?.id, role: user?.role })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const contentType = request.headers.get('content-type') || ''
+    console.log('[ACCOM POST] Content-Type:', contentType)
     let payload: any = {}
     let imagesToUpload: File[] = []
+    let uploadedImages: string[] = []
 
     if (contentType.includes('multipart/form-data')) {
       const form = await request.formData()
       
       // Validate and sanitize form data
+      const accRaw = String(form.get('accreditation_status') || 'accredited')
       const formData = {
         name: String(form.get('title') || form.get('name') || ''),
         address: String(form.get('address') || ''),
@@ -93,7 +105,7 @@ export async function POST(request: NextRequest) {
         area: String(form.get('area') || ''),
         distance: form.get('distance') ? Number(form.get('distance')) : undefined,
         amenities: JSON.parse(String(form.get('amenities') || '[]')),
-        accreditationStatus: String(form.get('accreditation_status') || 'accredited'),
+        accreditation_status: accRaw.includes('_') ? accRaw.replace('_', '-') : accRaw,
         featured: String(form.get('featured') || 'false') === 'true',
         available_rooms: Number(form.get('available_rooms') || 0),
         total_rooms: Number(form.get('total_rooms') || 0),
@@ -102,11 +114,38 @@ export async function POST(request: NextRequest) {
         has_sharing_rooms: String(form.get('has_sharing_rooms') || 'false') === 'true',
         single_room_price: Number(form.get('single_room_price') || 0),
         sharing_room_price: Number(form.get('sharing_room_price') || 0),
+        // Additional optional fields present in DB
+        contact_email: String(form.get('contact_email') || ''),
+        contact_phone: String(form.get('contact_phone') || ''),
+        website_url: String(form.get('website_url') || ''),
+        city: String(form.get('city') || ''),
+        province: String(form.get('province') || ''),
+        postal_code: String(form.get('postal_code') || ''),
+        accommodation_type: String(form.get('accommodation_type') || ''),
+        max_occupancy: form.get('max_occupancy') ? Number(form.get('max_occupancy')) : undefined,
       }
+      console.log('[ACCOM POST] Parsed formData summary:', {
+        name: formData.name,
+        price: formData.price,
+        total_rooms: formData.total_rooms,
+        available_rooms: formData.available_rooms,
+        accreditation_status: formData.accreditation_status,
+        has_single_rooms: formData.has_single_rooms,
+        has_sharing_rooms: formData.has_sharing_rooms,
+      })
       
-      // Validate the form data
-      const validation = validateRequest(accommodationCreateSchema, formData)
+      // For multipart, validate using a schema tailored to this form (files validated separately)
+      const multipartSchema = accommodationCreateSchema
+        .omit({ images: true })
+        .extend({
+          // Allow shorter descriptions for draft/internal listings
+          description: (accommodationCreateSchema.shape as any).description.min(1, "Description required"),
+          // Be permissive on name for provider-entered listings
+          name: (accommodationCreateSchema.shape as any).name.max(200),
+        })
+      const validation = validateRequest(multipartSchema, formData)
       if (!validation.success) {
+        console.error('[ACCOM POST] Validation errors:', validation.errors)
         return NextResponse.json(
           { error: 'Invalid form data', details: validation.errors },
           { status: 400 }
@@ -117,9 +156,15 @@ export async function POST(request: NextRequest) {
       
       // Use secure file upload middleware
       const { FileUploadMiddleware } = await import('@/lib/middleware/file-upload')
-      const fileResult = await FileUploadMiddleware.processFileUploads(request, {
+      const fileResult = await FileUploadMiddleware.processFormData(form, request, {
         purpose: 'accommodation',
-        maxFiles: 10
+        maxFiles: 11
+      })
+      console.log('[ACCOM POST] File middleware result:', {
+        files: fileResult.files?.length || 0,
+        errors: fileResult.errors,
+        warnings: fileResult.warnings,
+        quarantined: fileResult.quarantinedFiles?.length || 0,
       })
 
       if (fileResult.errors.length > 0) {
@@ -140,22 +185,42 @@ export async function POST(request: NextRequest) {
 
       imagesToUpload = fileResult.files
     } else {
-      const jsonData = await request.json()
-      
-      // Validate JSON data
-      const validation = validateRequest(accommodationCreateSchema, jsonData)
+      const raw = await request.json()
+      // Normalize JSON body to match schema expectations
+      const accRaw = String(raw.accreditation_status || 'accredited')
+      const jsonData = {
+        ...raw,
+        price: Number(raw.price || 0),
+        total_rooms: Number(raw.total_rooms || 0),
+        available_rooms: Number(raw.available_rooms ?? 0),
+        single_room_price: raw.single_room_price != null ? Number(raw.single_room_price) : undefined,
+        sharing_room_price: raw.sharing_room_price != null ? Number(raw.sharing_room_price) : undefined,
+        distance: raw.distance != null ? Number(raw.distance) : undefined,
+        accreditation_status: accRaw.includes('_') ? accRaw.replace('_', '-') : accRaw,
+      }
+
+      // Relax description/name like multipart path
+      const jsonSchema = accommodationCreateSchema
+        .extend({
+          description: (accommodationCreateSchema.shape as any).description.min(1, 'Description required'),
+          name: (accommodationCreateSchema.shape as any).name.max(200),
+        })
+
+      const validation = validateRequest(jsonSchema, jsonData)
       if (!validation.success) {
         return NextResponse.json(
           { error: 'Invalid JSON data', details: validation.errors },
           { status: 400 }
         )
       }
-      
+
       payload = validation.data
-      imagesToUpload = (payload.images as File[]) || []
+      // JSON path already contains URLs; no File[] uploads here
+      imagesToUpload = []
+      // Use client-provided image URLs directly for persistence
+      uploadedImages = [...(((payload as any).images as string[]) || [])]
     }
 
-    const uploadedImages: string[] = []
     const uploadWarnings: string[] = []
     
     for (const file of imagesToUpload) {
@@ -164,7 +229,7 @@ export async function POST(request: NextRequest) {
         const result = await uploadImageSecurely(file, {
           folder: 'varsity-nest/accommodations',
           purpose: 'accommodation',
-          userId: 'unknown', // This should be extracted from session
+          userId: user.id,
           generateThumbnails: true,
           compressImages: true
         })
@@ -183,6 +248,22 @@ export async function POST(request: NextRequest) {
         // Continue with other images even if one fails
       }
     }
+    // Defensive cap: ensure we store at most 11 images (card + gallery up to 10)
+    if (uploadedImages.length > 11) {
+      console.warn('[ACCOM POST] More than 11 images provided; truncating to 11')
+      uploadedImages.length = 11
+    }
+    console.log('[ACCOM POST] Uploaded image count:', uploadedImages.length)
+
+    // Resolve providerId from providers table for this user
+    const providerIdResult = await query`
+      SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
+    `
+
+    if (providerIdResult.rows.length === 0) {
+      console.error('[ACCOM POST] Provider profile not found for user', user.id)
+      return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+    }
 
     const record = await insertAccommodation({
       name: payload.name,
@@ -191,8 +272,8 @@ export async function POST(request: NextRequest) {
       price: Number(payload.price) || 0,
       amenities: payload.amenities || [],
       images: uploadedImages,
-      accreditation_status: payload.accreditation_status || 'accredited',
-      provider_id: user.id,
+      accreditation_status: (payload.accreditation_status as string)?.replace('-', '_') || 'accredited',
+      provider_id: providerIdResult.rows[0].id,
       area: payload.area || null,
       distance: payload.distance || null,
       featured: Boolean(payload.featured),
@@ -205,10 +286,30 @@ export async function POST(request: NextRequest) {
       sharing_room_price: Number(payload.sharing_room_price) || 0,
       listing_status: 'draft',
       is_published: false,
+      contact_email: payload.contact_email || undefined,
+      contact_phone: payload.contact_phone || undefined,
+      website_url: payload.website_url || undefined,
+      city: payload.city || undefined,
+      province: payload.province || undefined,
+      postal_code: payload.postal_code || undefined,
+      accommodation_type: payload.accommodation_type || undefined,
+      max_occupancy: payload.max_occupancy || undefined,
     })
+    console.log('[ACCOM POST] Inserted accommodation id:', record.id)
+
+    // Set card_image_url to the first uploaded image if the column exists
+    try {
+      if (uploadedImages.length > 0) {
+        const { query } = await import('@/lib/database')
+        await query`UPDATE accommodations SET card_image_url = ${uploadedImages[0]} WHERE id = ${record.id}`
+      }
+    } catch (e) {
+      console.warn('[ACCOM POST] Unable to set card_image_url (column may not exist):', e)
+    }
 
     return NextResponse.json(record, { status: 201 })
   } catch (error) {
+    console.error('[ACCOM POST] Unhandled error:', error)
     return ApiErrorResponseBuilder.createDatabaseErrorResponse(
       error instanceof Error ? error : new Error(String(error)),
       request,

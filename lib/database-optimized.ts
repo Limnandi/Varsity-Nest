@@ -150,26 +150,16 @@ export class OptimizedAccommodationRepository {
           .select({
             id: schema.accommodations.id,
             name: schema.accommodations.name,
-            description: schema.accommodations.description,
             address: schema.accommodations.address,
             price: schema.accommodations.price,
             images: schema.accommodations.images,
-            amenities: schema.accommodations.amenities,
-            area: schema.accommodations.area,
-            distance: schema.accommodations.distance,
-            rating: schema.accommodations.rating,
-            reviewCount: schema.accommodations.reviewCount,
-            isOpen: schema.accommodations.isOpen,
             featured: schema.accommodations.featured,
-            availableRooms: schema.accommodations.availableRooms,
-            totalRooms: schema.accommodations.totalRooms,
-            isVerified: schema.accommodations.isVerified,
-            accreditationStatus: schema.accommodations.accreditationStatus,
           })
           .from(schema.accommodations)
           .where(and(
             eq(schema.accommodations.isActive, true),
-            eq(schema.accommodations.featured, true)
+            eq(schema.accommodations.featured, true),
+            sql`accommodations.is_published = true`
           ))
           .orderBy(desc(schema.accommodations.createdAt))
           .limit(limit)
@@ -181,18 +171,18 @@ export class OptimizedAccommodationRepository {
           address: acc.address,
           price: acc.price,
           images: acc.images || [],
-          amenities: acc.amenities || [],
+          amenities: [],
           accreditation_status: 'accredited',
           provider_id: null,
-          area: acc.area,
-          distance: acc.distance,
-          rating: acc.rating,
-          review_count: acc.reviewCount,
-          is_open: acc.isOpen,
+          area: undefined,
+          distance: undefined,
+          rating: undefined,
+          review_count: undefined,
+          is_open: undefined,
           featured: acc.featured,
-          available_rooms: acc.availableRooms,
-          total_rooms: acc.totalRooms,
-          is_verified: acc.isVerified
+          available_rooms: undefined,
+          total_rooms: undefined,
+          is_verified: undefined
         }))
       }
     )
@@ -254,26 +244,16 @@ export class OptimizedAccommodationRepository {
           .select({
             id: schema.accommodations.id,
             name: schema.accommodations.name,
-            description: schema.accommodations.description,
             address: schema.accommodations.address,
             price: schema.accommodations.price,
             images: schema.accommodations.images,
-            amenities: schema.accommodations.amenities,
-            area: schema.accommodations.area,
-            distance: schema.accommodations.distance,
-            rating: schema.accommodations.rating,
-            reviewCount: schema.accommodations.reviewCount,
-            isOpen: schema.accommodations.isOpen,
-            featured: schema.accommodations.featured,
-            availableRooms: schema.accommodations.availableRooms,
-            totalRooms: schema.accommodations.totalRooms,
-            isVerified: schema.accommodations.isVerified,
             accreditationStatus: schema.accommodations.accreditationStatus,
           })
           .from(schema.accommodations)
           .where(and(
             eq(schema.accommodations.isActive, true),
-            eq(schema.accommodations.accreditationStatus, status as any)
+            eq(schema.accommodations.accreditationStatus, status as any),
+            sql`accommodations.is_published = true`
           ))
           .orderBy(desc(schema.accommodations.createdAt))
           .limit(limit)
@@ -286,18 +266,18 @@ export class OptimizedAccommodationRepository {
           address: acc.address,
           price: acc.price,
           images: acc.images || [],
-          amenities: acc.amenities || [],
+          amenities: [],
           accreditation_status: acc.accreditationStatus,
           provider_id: null,
-          area: acc.area,
-          distance: acc.distance,
-          rating: acc.rating,
-          review_count: acc.reviewCount,
-          is_open: acc.isOpen,
-          featured: acc.featured,
-          available_rooms: acc.availableRooms,
-          total_rooms: acc.totalRooms,
-          is_verified: acc.isVerified
+          area: undefined,
+          distance: undefined,
+          rating: undefined,
+          review_count: undefined,
+          is_open: undefined,
+          featured: undefined,
+          available_rooms: undefined,
+          total_rooms: undefined,
+          is_verified: undefined
         }))
       }
     )
@@ -319,6 +299,136 @@ export class OptimizedAccommodationRepository {
       console.warn(`Cache set error for ${cacheKey}:`, error)
     }
     
+    return result
+  }
+
+  static async getActiveAccommodations(limit = 200, offset = 0) {
+    const cacheKey = `accommodations:active:${limit}:${offset}`
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        if (typeof cached === 'string') return JSON.parse(cached)
+        await redis.del(cacheKey)
+      }
+    } catch (e) {
+      try { await redis.del(cacheKey) } catch {}
+    }
+
+    const result = await QueryMonitor.executeWithMonitoring(
+      "getActiveAccommodations",
+      async () => {
+        const accommodations = await getDB()
+          .select({
+            id: schema.accommodations.id,
+            name: schema.accommodations.name,
+            address: schema.accommodations.address,
+            price: schema.accommodations.price,
+            images: schema.accommodations.images,
+            accreditationStatus: schema.accommodations.accreditationStatus,
+          })
+          .from(schema.accommodations)
+          .where(eq(schema.accommodations.isActive, true))
+          .orderBy(desc(schema.accommodations.createdAt))
+          .limit(limit)
+          .offset(offset)
+
+        return accommodations.map((acc: any) => ({
+          id: acc.id,
+          name: acc.name,
+          address: acc.address,
+          price: acc.price,
+          images: acc.images || [],
+          amenities: [],
+          accreditation_status: acc.accreditationStatus,
+          provider_id: null,
+          area: undefined,
+          distance: undefined,
+          rating: undefined,
+          review_count: undefined,
+          is_open: undefined,
+          featured: undefined,
+          available_rooms: undefined,
+          total_rooms: undefined,
+          is_verified: undefined,
+        }))
+      }
+    )
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(result), { ex: this.CACHE_TTL })
+    } catch {}
+
+    return result
+  }
+
+  static async getPublishedAccommodations(limit = 200, offset = 0) {
+    const cacheKey = `accommodations:published:${limit}:${offset}`
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        if (typeof cached === 'string') return JSON.parse(cached)
+        await redis.del(cacheKey)
+      }
+    } catch (_) {
+      try { await redis.del(cacheKey) } catch {}
+    }
+
+    const result = await QueryMonitor.executeWithMonitoring(
+      "getPublishedAccommodations",
+      async () => {
+        const accommodations = await getDB()
+          .select({
+            id: schema.accommodations.id,
+            name: schema.accommodations.name,
+            description: schema.accommodations.description,
+            address: schema.accommodations.address,
+            price: schema.accommodations.price,
+            images: schema.accommodations.images,
+            amenities: schema.accommodations.amenities,
+            area: schema.accommodations.area,
+            distance: schema.accommodations.distance,
+            rating: schema.accommodations.rating,
+            reviewCount: schema.accommodations.reviewCount,
+            isOpen: schema.accommodations.isOpen,
+            featured: schema.accommodations.featured,
+            availableRooms: schema.accommodations.availableRooms,
+            totalRooms: schema.accommodations.totalRooms,
+            isVerified: schema.accommodations.isVerified,
+            accreditationStatus: schema.accommodations.accreditationStatus,
+          })
+          .from(schema.accommodations)
+          .where(and(
+            eq(schema.accommodations.isActive, true),
+            sql`accommodations.is_published = true`
+          ))
+          .orderBy(desc(schema.accommodations.createdAt))
+          .limit(limit)
+          .offset(offset)
+
+        return accommodations.map((acc: any) => ({
+          id: acc.id,
+          name: acc.name,
+          description: acc.description,
+          address: acc.address,
+          price: acc.price,
+          images: acc.images || [],
+          amenities: acc.amenities || [],
+          accreditation_status: acc.accreditationStatus,
+          provider_id: null,
+          area: acc.area,
+          distance: acc.distance,
+          rating: acc.rating,
+          review_count: acc.reviewCount,
+          is_open: acc.isOpen,
+          featured: acc.featured,
+          available_rooms: acc.availableRooms,
+          total_rooms: acc.totalRooms,
+          is_verified: acc.isVerified,
+        }))
+      }
+    )
+
+    try { await redis.set(cacheKey, JSON.stringify(result), { ex: this.CACHE_TTL }) } catch {}
     return result
   }
   
