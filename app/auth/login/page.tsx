@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from
 import ReCAPTCHA from "react-google-recaptcha"
 import { publicEnv } from "@/lib/env.client"
 import EmailVerificationModal from "@/components/EmailVerificationModal"
+import ForgotPasswordModal from "@/components/ForgotPasswordModal"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState("")
   const [isPending, setIsPending] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false)
   const [verificationData, setVerificationData] = useState<{
     userId: string
     firstName?: string
@@ -145,18 +147,13 @@ export default function LoginPage() {
     }
   }
 
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = () => {
     setError("")
-    if (!email) {
-      setError("Enter your email first, then click Forgot Password")
-      return
-    }
-    try {
-      await app.sendForgotPasswordEmail(email)
-      setError("If an account exists, a reset link was sent.")
-    } catch (e: any) {
-      setError(e.message || "Could not send reset email")
-    }
+    setShowForgotPasswordModal(true)
+  }
+
+  const closeForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false)
   }
 
   const closeVerificationModal = () => {
@@ -165,160 +162,191 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 max-w-md w-full">
-          {/* Home Button */}
-          <Link 
-            href="/" 
-            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
-          >
-            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
-          </Link>
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Welcome Back</h1>
-            <p className="text-neutral-300 text-lg">Access your Varsity Nest dashboard</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-lg w-full">
+        {/* Home Button */}
+        <Link 
+          href="/" 
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+        >
+          <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+        </Link>
 
+        {/* Header Section */}
+        <div className="text-center mb-10">
+          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+            Welcome Back
+          </h1>
+          <p className="text-neutral-300 text-base mt-1">Sign in to access your Varsity Nest dashboard</p>
+        </div>
+
+        {/* Messages */}
+        <div className="space-y-4 mb-8">
           {successMessage && (
-            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 text-sm">{successMessage}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <span className="text-green-300 text-sm leading-relaxed">{successMessage}</span>
             </div>
           )}
 
           {error && (
-            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex flex-col space-y-2">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-400" />
-                <span className="text-red-300 text-sm">{error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex flex-col space-y-2">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <span className="text-red-300 text-sm leading-relaxed">{error}</span>
               </div>
               {error.includes('verify your email') && (
-                <Link href="/auth/check-email" className="text-xs text-blue-400 hover:text-blue-300 underline ml-8">
+                <Link href="/auth/check-email" className="text-xs text-blue-400 hover:text-blue-300 underline ml-8 mt-1">
                   Resend verification email →
                 </Link>
               )}
             </div>
           )}
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Email Address *</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isPending}
-                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="you@varsitynest.space"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isPending}
-                  className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isPending}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-center">
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey={publicEnv.RECAPTCHA_SITE_KEY}
+        {/* Form Section */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email Field */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isPending}
+                className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="you@varsitynest.space"
               />
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={isPending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <span className="relative z-10">
-                {isPending ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <Loader2 className="animate-spin h-5 w-5" />
-                    <span>Signing in...</span>
-                  </div>
-                ) : (
-                  "Sign In"
-                )}
-              </span>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-
-            <div className="flex items-center justify-between">
-              <div className="group relative w-full">
-                <div className="!w-full !px-6 !py-3 !bg-black/20 !text-white !border !border-white/20 !rounded-xl !font-medium !shadow-lg !hover:bg-white/5 !hover:shadow-blue-500/20 !transition-all !duration-300 !hover:scale-105 !active:scale-95 !flex !items-center !justify-center !space-x-3 !backdrop-blur-xl">
-                  <OAuthButton 
-                    provider="google" 
-                    type="sign-in"
-                  />
-                </div>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-              </div>
+          {/* Password Field */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isPending}
+                className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="Enter your password"
+              />
               <button
                 type="button"
-                onClick={handleForgotPassword}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isPending}
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                Forgot password?
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
               </button>
             </div>
+          </div>
 
-          <div className="text-center">
-            <p className="text-sm text-neutral-400">
+          {/* ReCAPTCHA */}
+          <div className="flex justify-center py-2">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={publicEnv.RECAPTCHA_SITE_KEY}
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isPending}
+            className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <span className="relative z-10 flex items-center justify-center">
+              {isPending ? (
+                <>
+                  <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </span>
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </button>
+
+          {/* OAuth Button */}
+          <div className="flex items-center justify-between">
+            <div className="group relative w-full">
+              <div className="!w-full !px-6 !py-3 !bg-black/20 !text-white !border !border-white/20 !rounded-xl !font-medium !shadow-lg !hover:bg-white/5 !hover:shadow-blue-500/20 !transition-all !duration-300 !hover:scale-105 !active:scale-95 !flex !items-center !justify-center !space-x-3 !backdrop-blur-xl">
+                <OAuthButton 
+                  provider="google" 
+                  type="sign-in"
+                />
+              </div>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+            </div>
+          </div>
+
+          {/* Forgot Password Link */}
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={isPending}
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium disabled:opacity-50"
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          {/* Register Link */}
+          <div className="pt-4 border-t border-white/10">
+            <p className="text-center text-sm text-neutral-400">
               Don&apos;t have an account?{" "}
               <Link
                 href="/auth/register"
-                className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
               >
                 Register here
               </Link>
             </p>
           </div>
-          </form>
+        </form>
 
-      {/* Email Verification Modal */}
-      {verificationData && (
-        <EmailVerificationModal
-          isOpen={showVerificationModal}
-          onClose={closeVerificationModal}
-          email={email}
-          userId={verificationData.userId}
-          firstName={verificationData.firstName}
-          lastName={verificationData.lastName}
+        {/* Email Verification Modal */}
+        {verificationData && (
+          <EmailVerificationModal
+            isOpen={showVerificationModal}
+            onClose={closeVerificationModal}
+            email={email}
+            userId={verificationData.userId}
+            firstName={verificationData.firstName}
+            lastName={verificationData.lastName}
+          />
+        )}
+
+        {/* Forgot Password Modal */}
+        <ForgotPasswordModal
+          isOpen={showForgotPasswordModal}
+          onClose={closeForgotPasswordModal}
+          initialEmail={email}
         />
-      )}
       </div>
     </div>
   )
