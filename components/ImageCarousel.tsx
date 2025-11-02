@@ -46,13 +46,13 @@ export default function ImageCarousel({ images = [] as string[] }) {
     setShowFullscreenViewer(false)
   }, [])
 
-  const nextFullscreenSlide = () => {
+  const nextFullscreenSlide = useCallback(() => {
     setSelectedImageIndex((prev) => (prev + 1) % totalSlides)
-  }
+  }, [totalSlides])
 
-  const prevFullscreenSlide = () => {
+  const prevFullscreenSlide = useCallback(() => {
     setSelectedImageIndex((prev) => (prev - 1 + totalSlides) % totalSlides)
-  }
+  }, [totalSlides])
 
   useEffect(() => {
     if (showGalleryModal || showFullscreenViewer) {
@@ -92,7 +92,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
       document.removeEventListener("keydown", handleEscape)
       document.removeEventListener("keydown", handleArrowKeys)
     }
-  }, [showFullscreenViewer, totalSlides, closeFullscreenViewer])
+  }, [showFullscreenViewer, closeFullscreenViewer, nextFullscreenSlide, prevFullscreenSlide])
 
   return (
     <>
