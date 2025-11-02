@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Phone, Mail, MapPin, Clock, Send } from "lucide-react"
+import { Phone, Mail, Clock, Send, CheckCircle, AlertCircle } from "lucide-react"
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -14,17 +14,36 @@ export default function Contact() {
     message: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitMessage(null)
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
-    alert("Thank you for your message! We'll get back to you soon.")
-    setFormData({ name: "", email: "", phone: "", subject: "", message: "" })
-    setIsSubmitting(false)
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to send message. Please try again.")
+      }
+
+      setSubmitMessage({ type: 'success', text: data.message || "Thank you for your message! We'll get back to you soon." })
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "" })
+    } catch (error: any) {
+      console.error("Contact form error:", error)
+      setSubmitMessage({ type: 'error', text: error.message || "Failed to send message. Please try again later." })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -56,7 +75,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1 text-white">Phone</h3>
-                  <p className="text-neutral-300">+27 51 123 4567</p>
+                  <p className="text-neutral-300">+27 62 407 9139</p>
                   <p className="text-sm text-neutral-500">Mon-Fri 8AM-6PM</p>
                 </div>
               </div>
@@ -67,14 +86,14 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1 text-white">Email</h3>
-                  <a href="mailto:info@massiveoperations.co.za" className="text-blue-400 hover:text-blue-300 transition-colors">
-                    info@massiveoperations.co.za
+                  <a href="mailto:support@varsitynest.space" className="text-blue-400 hover:text-blue-300 transition-colors">
+                  support@varsitynest.space
                   </a>
                   <p className="text-sm text-neutral-500">We&apos;ll respond within 24 hours</p>
                 </div>
               </div>
 
-              <div className="flex items-start space-x-4">
+              {/* <div className="flex items-start space-x-4">
                 <div className="p-3 border border-purple-500/50 bg-purple-500/10 rounded-xl">
                   <MapPin className="w-6 h-6 text-purple-400" />
                 </div>
@@ -87,7 +106,7 @@ export default function Contact() {
                   </p>
                   <p className="text-sm text-neutral-500">Visit by appointment</p>
                 </div>
-              </div>
+              </div> */}
 
               <div className="flex items-start space-x-4">
                 <div className="p-3 border border-orange-500/50 bg-orange-500/10 rounded-xl">
@@ -106,6 +125,24 @@ export default function Contact() {
           {/* Contact Form */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
             <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Send us a Message</h2>
+
+            {/* Messages */}
+            {submitMessage && (
+              <div className={`mb-6 p-4 border rounded-xl flex items-start space-x-3 ${
+                submitMessage.type === 'success' 
+                  ? 'border-green-500/30 bg-green-500/10' 
+                  : 'border-red-500/30 bg-red-500/10'
+              }`}>
+                {submitMessage.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                )}
+                <span className={submitMessage.type === 'success' ? 'text-green-300' : 'text-red-300'}>
+                  {submitMessage.text}
+                </span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
