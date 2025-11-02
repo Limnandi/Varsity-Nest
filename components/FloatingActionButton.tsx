@@ -19,7 +19,7 @@ export default function FloatingActionButton() {
             <Phone className="w-6 h-6" />
           </a>
           <a
-            href="mailto:info@massiveoperations.co.za"
+            href="mailto:support@varsitynest.space"
             className="flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
             title="Email us"
           >
