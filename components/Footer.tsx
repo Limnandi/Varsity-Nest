@@ -101,10 +101,10 @@ export default function Footer() {
                   <Mail className="w-5 h-5 text-purple-400" />
                 </div>
                 <a
-                  href="mailto:info@massiveoperations.co.za"
+                  href="mailto:support@varsitynest.space"
                   className="text-neutral-300 hover:text-white transition-colors"
                 >
-                  info@massiveoperations.co.za
+                  support@varsitynest.space
                 </a>
               </li>
               <li className="flex items-start space-x-4 group">
@@ -129,6 +129,12 @@ export default function Footer() {
             </Link>
             <Link href="/terms" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Terms of Service
+            </Link>
+            <Link href="/cookies" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
+              Cookies Policy
+            </Link>
+            <Link href="/disclaimer" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
+              Disclaimer
             </Link>
             <Link href="/contact" className="text-neutral-400 hover:text-white text-sm transition-colors hover:underline">
               Support
