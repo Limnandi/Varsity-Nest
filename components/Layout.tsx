@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
@@ -12,6 +13,72 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname()
+
+  // Disable right-click and common developer shortcuts globally
+  useEffect(() => {
+    // Prevent right-click context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+      return false
+    }
+
+    // Prevent common developer shortcuts
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      // Disable F12 (Developer Tools)
+      if (e.key === "F12") {
+        e.preventDefault()
+        return
+      }
+
+      // Disable Ctrl+Shift+I (Developer Tools)
+      if (e.ctrlKey && e.shiftKey && e.key === "I") {
+        e.preventDefault()
+        return
+      }
+
+      // Disable Ctrl+Shift+J (Console)
+      if (e.ctrlKey && e.shiftKey && e.key === "J") {
+        e.preventDefault()
+        return
+      }
+
+      // Disable Ctrl+U (View Source)
+      if (e.ctrlKey && e.key === "u") {
+        e.preventDefault()
+        return
+      }
+
+      // Disable Ctrl+S (Save Page)
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault()
+        return
+      }
+    }
+
+    // Prevent text selection on common select-all shortcuts
+    const handleSelectStart = (e: Event) => {
+      const target = e.target as HTMLElement
+      // Allow selection in input fields and textareas
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return true
+      }
+      // Prevent selection on other elements
+      e.preventDefault()
+      return false
+    }
+
+    // Add event listeners
+    document.addEventListener("contextmenu", handleContextMenu)
+    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("selectstart", handleSelectStart)
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu)
+      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("selectstart", handleSelectStart)
+    }
+  }, [])
 
   // Define public pages that should show navbar and footer
   const publicPages = [
