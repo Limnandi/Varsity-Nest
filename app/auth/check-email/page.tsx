@@ -1,15 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useUser } from "@stackframe/stack"
-import { Mail, RefreshCw, ArrowLeft, CheckCircle } from "lucide-react"
+import { Mail, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default function CheckEmailPage() {
   const user = useUser()
-  const [isResending, setIsResending] = useState(false)
-  const [resendSuccess, setResendSuccess] = useState(false)
-  const [resendError, setResendError] = useState<string | null>(null)
 
   // Check if user is already verified
   useEffect(() => {
@@ -19,35 +16,6 @@ export default function CheckEmailPage() {
       window.location.href = redirectUrl
     }
   }, [user])
-
-  const handleResendVerification = async () => {
-    if (!user) return
-
-    setIsResending(true)
-    setResendError(null)
-    setResendSuccess(false)
-
-    try {
-      // Use existing resend-verification API
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: (user as any).id })
-      })
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to send verification email')
-      }
-
-      setResendSuccess(true)
-    } catch (error: any) {
-      console.error("Failed to resend verification email:", error)
-      setResendError(error.message || "Failed to resend verification email. Please try again.")
-    } finally {
-      setIsResending(false)
-    }
-  }
 
   if (!user) {
     return (
@@ -88,41 +56,7 @@ export default function CheckEmailPage() {
             <p className="mt-2 text-xs text-neutral-500">Email delivery may take a few minutes. Please check your inbox and spam folder.</p>
           </div>
 
-          {resendSuccess && (
-            <div className="flex items-center space-x-3 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl">
-              <CheckCircle className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 text-sm">Verification email sent successfully!</span>
-            </div>
-          )}
-
-          {resendError && (
-            <div className="flex items-center space-x-3 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl">
-              <span className="text-red-300 text-sm">{resendError}</span>
-            </div>
-          )}
-
           <div className="space-y-4">
-            <button 
-              onClick={handleResendVerification}
-              disabled={isResending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
-            >
-              <span className="relative z-10 flex items-center">
-                {isResending ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-5 h-5 mr-2" />
-                    Resend Verification Email
-                  </>
-                )}
-              </span>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-
             <Link href="/auth/login">
               <button className="group relative w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center">
                 <span className="relative z-10 flex items-center">
