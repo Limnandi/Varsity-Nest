@@ -156,118 +156,140 @@ export default function StudentRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 max-w-2xl w-full">
-          {/* Home Button */}
-          <Link 
-            href="/" 
-            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
-          >
-            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
-          </Link>
-          <div className="text-center mb-8">
-            <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl w-fit mx-auto mb-4">
-              <GraduationCap className="w-16 h-16 text-blue-400" />
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-2xl tracking-tight">Student Registration</h1>
-            <p className="text-neutral-300 text-lg">Join Varsity Nest with your university email</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-2xl w-full">
+        {/* Home Button */}
+        <Link 
+          href="/" 
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+        >
+          <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+        </Link>
 
+        {/* Header Section */}
+        <div className="text-center mb-10">
+          <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/50 bg-blue-500/10 rounded-full flex items-center justify-center shadow-[0_0_20px_theme(colors.blue.500/40%)]">
+            <GraduationCap className="w-12 h-12 text-blue-400" />
+          </div>
+          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+            Student Registration
+          </h1>
+          <p className="text-neutral-300 text-base mt-1">Join Varsity Nest with your university email</p>
+        </div>
+
+        {/* Messages */}
+        <div className="space-y-4 mb-8">
           {state?.error && (
-            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <span className="text-red-300 text-sm">{state.error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <span className="text-red-300 text-sm leading-relaxed">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 text-sm">{state.message}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <span className="text-green-300 text-sm leading-relaxed">{state.message}</span>
             </div>
           )}
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Form Section */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Full Name *</label>
+                <label htmlFor="name" className="block text-sm font-semibold text-neutral-200 mb-2.5">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="name"
                     type="text"
                     name="name"
                     required
-                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="John Doe"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">University Email *</label>
+                <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5">University Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="email"
                     type="email"
                     name="email"
                     required
-                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="student@ufs4life.ac.za"
                   />
                 </div>
               </div>
             </div>
             
-            <div className="text-center">
+            <div className="text-center pb-2">
               <p className="text-xs text-neutral-500">
-                Enter your university email address.
+                Please use your university email address
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
+                <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                    placeholder="Enter password (min 8 characters)"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Min. 8 characters"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                    disabled={isPending}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
                 {/* Password Strength Indicator */}
-                <div className="mt-3">
-                  <PasswordStrengthIndicator password={password} show={password.length > 0} />
-                </div>
+                {password && (
+                  <div className="mt-2.5">
+                    <PasswordStrengthIndicator password={password} show={password.length > 0} />
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-neutral-200 mb-2.5">Confirm Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     required
-                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                    placeholder="Confirm your password"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Confirm password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                    disabled={isPending}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -275,63 +297,92 @@ export default function StudentRegistrationPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Cell Number</label>
+                <label htmlFor="cellNumber" className="block text-sm font-semibold text-neutral-200 mb-2.5">Cell Number</label>
                 <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="cellNumber"
                     type="tel"
                     name="cellNumber"
                     value={cellNumber}
                     onChange={handleCellNumberChange}
-                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="012 345 6789"
                   />
                 </div>
                 <p className="text-xs text-neutral-500 mt-2">
-                  Enter your cell number
+                  Optional
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Student Number *</label>
+                <label htmlFor="studentNumber" className="block text-sm font-semibold text-neutral-200 mb-2.5">Student Number</label>
                 <div className="relative">
-                  <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="studentNumber"
                     type="text"
                     name="studentNumber"
                     required
-                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="e.g., 2023123456"
                   />
                 </div>
               </div>
             </div>
 
+            {/* Terms Notice */}
+            <div className="pt-2 pb-4">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+                By clicking Create Account, you agree to our{" "}
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Terms
+                </Link>
+                ,{" "}
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Privacy Policy
+                </Link>
+                {" "}and{" "}
+                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Cookies Policy
+                </Link>
+                .
+              </p>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
             >
               <span className="relative z-10 flex items-center justify-center">
-                {isPending && (
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                {isPending ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
                 )}
-                {isPending ? "Creating Account..." : "Create Account"}
               </span>
               <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
 
-            <div className="text-center">
-              <p className="text-sm text-neutral-400">
+            {/* Register Link */}
+            <div className="pt-4 border-t border-white/10">
+              <p className="text-center text-sm text-neutral-400">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                  className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   Sign in here
                 </Link>

@@ -221,62 +221,74 @@ export default function ProviderRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-8 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8 max-w-2xl w-full">
-          {/* Home Button */}
-          <Link 
-            href="/" 
-            className="absolute top-4 left-4 group p-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
-          >
-            <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
-          </Link>
-          <div className="text-center mb-6">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl border border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_theme(colors.purple.500/40%)] mb-4">
-              <Building className="w-8 h-8 text-purple-400" />
-            </div>
-            <h1 className="text-2xl font-semibold text-white mb-2">Create Provider Account</h1>
-            <p className="text-sm text-neutral-400">Register as a service provider</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-2xl w-full">
+        {/* Home Button */}
+        <Link 
+          href="/" 
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+        >
+          <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+        </Link>
 
+        {/* Header Section */}
+        <div className="text-center mb-10">
+          <div className="mx-auto mb-6 w-20 h-20 border border-purple-500/50 bg-purple-500/10 rounded-full flex items-center justify-center shadow-[0_0_20px_theme(colors.purple.500/40%)]">
+            <Building className="w-12 h-12 text-purple-400" />
+          </div>
+          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+            Provider Registration
+          </h1>
+          <p className="text-neutral-300 text-base mt-1">Register as a service provider</p>
+        </div>
+
+        {/* Messages */}
+        <div className="space-y-4 mb-8">
           {state?.error && (
-            <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <span className="text-red-300 text-sm">{state.error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <span className="text-red-300 text-sm leading-relaxed">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="mb-6 p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 text-sm">{state.message}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <span className="text-green-300 text-sm leading-relaxed">{state.message}</span>
             </div>
           )}
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Form Section */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">First Name *</label>
+                <label htmlFor="firstName" className="block text-sm font-semibold text-neutral-200 mb-2.5">First Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="firstName"
                     type="text"
                     name="firstName"
                     required
-                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="John"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Last Name *</label>
+                <label htmlFor="lastName" className="block text-sm font-semibold text-neutral-200 mb-2.5">Last Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="lastName"
                     type="text"
                     name="lastName"
                     required
-                    className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Doe"
                   />
                 </div>
@@ -284,16 +296,18 @@ export default function ProviderRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Email Address *</label>
+              <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                 <input
+                  id="email"
                   type="email"
                   name="email"
                   required
                   onBlur={(e) => checkEmailAvailability(e.target.value)}
                   onChange={() => setEmailCheckMessage(null)}
-                  className="w-full pl-12 pr-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                  disabled={isPending}
+                  className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="provider@varsitynest.space"
                 />
               </div>
@@ -307,73 +321,87 @@ export default function ProviderRegistrationPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Phone Number</label>
+                <label htmlFor="phone" className="block text-sm font-semibold text-neutral-200 mb-2.5">Phone Number</label>
                 <input
+                  id="phone"
                   type="tel"
                   name="phone"
-                  className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                  disabled={isPending}
+                  className="w-full px-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="+27 82 123 4567"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Institution/Company *</label>
+                <label htmlFor="institution" className="block text-sm font-semibold text-neutral-200 mb-2.5">Institution/Company</label>
                 <input
+                  id="institution"
                   type="text"
                   name="institution"
                   required
-                  className="w-full px-4 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                  disabled={isPending}
+                  className="w-full px-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Your Company Name"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Password *</label>
+                <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                    placeholder="Enter password (min 8 characters)"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Min. 8 characters"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                    disabled={isPending}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
                 {/* Password Strength Indicator */}
-                <div className="mt-3">
-                  <PasswordStrengthIndicator password={password} show={password.length > 0} />
-                </div>
+                {password && (
+                  <div className="mt-2.5">
+                    <PasswordStrengthIndicator password={password} show={password.length > 0} />
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Confirm Password *</label>
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-neutral-200 mb-2.5">Confirm Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
                   <input
+                    id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     required
-                    className="w-full pl-12 pr-14 py-4 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                    placeholder="Confirm your password"
+                    disabled={isPending}
+                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Confirm password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                    disabled={isPending}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -382,27 +410,29 @@ export default function ProviderRegistrationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-3">Are you accredited? *</label>
-              <div className="space-y-4">
-                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
+              <label className="block text-sm font-semibold text-neutral-200 mb-2.5">Are you accredited?</label>
+              <div className="space-y-3">
+                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
                   <input
                     type="radio"
                     name="accreditation"
                     value="yes"
                     checked={isAccredited === "yes"}
                     onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
-                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20"
+                    disabled={isPending}
+                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20 disabled:opacity-50"
                   />
                   <span className="text-white">Yes, I am accredited</span>
                 </label>
-                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
+                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
                   <input
                     type="radio"
                     name="accreditation"
                     value="no"
                     checked={isAccredited === "no"}
                     onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
-                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20"
+                    disabled={isPending}
+                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20 disabled:opacity-50"
                   />
                   <span className="text-white">No, but I&apos;m working towards accreditation</span>
                 </label>
@@ -411,23 +441,25 @@ export default function ProviderRegistrationPage() {
 
             {isAccredited === "yes" && (
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Accredited by:</label>
+                <label className="block text-sm font-semibold text-neutral-200 mb-2.5">Accredited by:</label>
                 <div className="space-y-3">
-                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
+                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
                     <input
                       type="checkbox"
                       checked={accreditedBy.includes("UFS")}
                       onChange={(e) => handleAccreditationChange("UFS", e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20"
+                      disabled={isPending}
+                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20 disabled:opacity-50"
                     />
                     <span className="text-white">University of the Free State (UFS)</span>
                   </label>
-                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer">
+                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
                     <input
                       type="checkbox"
                       checked={accreditedBy.includes("CUT")}
                       onChange={(e) => handleAccreditationChange("CUT", e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20"
+                      disabled={isPending}
+                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20 disabled:opacity-50"
                     />
                     <span className="text-white">Central University of Technology (CUT)</span>
                   </label>
@@ -437,12 +469,12 @@ export default function ProviderRegistrationPage() {
 
             {isAccredited === "yes" && (
               <div>
-                <label className="block text-sm font-medium text-neutral-300 mb-3">Upload Documents (1-2 files) *</label>
+                <label className="block text-sm font-semibold text-neutral-200 mb-2.5">Upload Documents (1-2 files)</label>
                 <div className="border-2 border-dashed border-white/20 bg-black/20 backdrop-blur-xl rounded-xl p-8 text-center">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-4">
                     <Upload className="w-8 h-8 text-blue-400" />
                   </div>
-                  <p className="text-neutral-300 mb-4">
+                  <p className="text-neutral-300 text-sm mb-4">
                     Upload accreditation certificates, business registration, or other relevant documents
                   </p>
                   <input
@@ -450,12 +482,14 @@ export default function ProviderRegistrationPage() {
                     multiple
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={handleFileUpload}
+                    disabled={isPending}
                     className="hidden"
                     id="file-upload"
                   />
                   <label
                     htmlFor="file-upload"
-                    className="group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 cursor-pointer"
+                    className={`group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 cursor-pointer ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    style={{ pointerEvents: isPending ? 'none' : 'auto' }}
                   >
                     <span className="relative z-10">Choose Files</span>
                     <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -469,11 +503,12 @@ export default function ProviderRegistrationPage() {
                   <div className="mt-6 space-y-3">
                     {uploadedFiles.map((file, index) => (
                       <div key={index} className="flex items-center justify-between p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                        <span className="text-sm text-neutral-300">{file.name}</span>
+                        <span className="text-sm text-neutral-300 truncate flex-1 mr-3">{file.name}</span>
                         <button
                           type="button"
                           onClick={() => removeFile(index)}
-                          className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg"
+                          disabled={isPending}
+                          className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg disabled:opacity-50 flex-shrink-0"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -484,23 +519,54 @@ export default function ProviderRegistrationPage() {
               </div>
             )}
 
+            {/* Terms Notice */}
+            <div className="pt-2 pb-4">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+                By clicking Create Provider Account, you agree to our{" "}
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Terms
+                </Link>
+                ,{" "}
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Privacy Policy
+                </Link>
+                {" "}and{" "}
+                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Cookies Policy
+                </Link>
+                .
+              </p>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
             >
-              <span className="relative z-10">
-                {isPending ? "Creating Account..." : "Create Provider Account"}
+              <span className="relative z-10 flex items-center justify-center">
+                {isPending ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Provider Account"
+                )}
               </span>
               <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
 
-            <div className="text-center">
-              <p className="text-sm text-neutral-400">
+            {/* Register Link */}
+            <div className="pt-4 border-t border-white/10">
+              <p className="text-center text-sm text-neutral-400">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                  className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   Sign in here
                 </Link>
