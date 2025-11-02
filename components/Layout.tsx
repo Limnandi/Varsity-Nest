@@ -23,6 +23,8 @@ export default function Layout({ children }: LayoutProps) {
     "/contact", // Contact page
     "/privacy", // Privacy policy
     "/terms", // Terms of service
+    "/cookies", // Cookies policy
+    "/disclaimer", // Disclaimer
     "/listing", // Individual listing pages
     "/student/profile", // Student profile page
     "/student/settings", // Student settings page
