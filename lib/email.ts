@@ -28,11 +28,13 @@ export async function sendVerificationEmailViaStack(userId: string): Promise<Ema
       return { success: false, message: 'Email contact channel not found' }
     }
 
-    // Use Stack Auth's native verification system
+    // Use Stack Auth's native verification system (automatically uses email_verification template)
+    // This method uses Stack Auth's built-in verification system which handles the template
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.varsitynest.space'
     const callbackUrl = `${appUrl}/auth/verify-email?userId=${userId}`
     
     // Call Stack Auth's send-verification-code endpoint
+    // This automatically uses the built-in email_verification template
     const response = await fetch(
       `https://api.stack-auth.com/api/v1/contact-channels/${userId}/${emailChannel.id}/send-verification-code`,
       {
@@ -53,7 +55,7 @@ export async function sendVerificationEmailViaStack(userId: string): Promise<Ema
       const errorData = await response.json().catch(() => ({}))
       console.error('Stack Auth verification email failed:', errorData)
       
-      // Fallback to custom email with Stack Auth's sendEmail method
+      // Fallback to using Stack Auth's email_verification template via sendEmail
       return await sendCustomVerificationEmail(userId, user.primaryEmail || '')
     }
 
@@ -61,7 +63,7 @@ export async function sendVerificationEmailViaStack(userId: string): Promise<Ema
   } catch (error: any) {
     console.error('Stack Auth verification email error:', error)
     
-    // Fallback to custom email
+    // Fallback to using Stack Auth's email_verification template via sendEmail
     try {
       const app = getStackServerApp()
       const user = await app.getUser(userId)
@@ -80,34 +82,11 @@ async function sendCustomVerificationEmail(userId: string, _email: string): Prom
   try {
     const app = getStackServerApp()
     
-    // Generate verification token using Stack Auth's method
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.varsitynest.space'
-    const verificationLink = `${appUrl}/auth/verify-email?userId=${userId}&token=stack-auth-verification`
-    
-    // Use Stack Auth's sendEmail method with custom HTML
+    // Use Stack Auth's built-in email_verification template
     const result = await app.sendEmail({
       userIds: [userId],
-      subject: 'Verify your Varsity Nest account',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #2563eb, #7c3aed); padding: 24px; color: #fff;">
-            <h1 style="margin: 0; font-size: 20px;">Varsity Nest</h1>
-          </div>
-          <div style="padding: 24px; background: #ffffff; color: #0f172a;">
-            <h2 style="margin: 0 0 12px 0; font-size: 18px;">Verify your email</h2>
-            <p style="margin: 0 0 16px 0; line-height: 1.5;">To complete your registration, please verify your email:</p>
-            <p style="margin: 0 0 16px 0; line-height: 1.5;">
-              <a href="${verificationLink}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                Verify Email
-              </a>
-            </p>
-            <p style="margin: 0 0 8px 0; font-size: 12px; color: #475569;">If you didn't request this, you can safely ignore this email.</p>
-          </div>
-          <div style="padding: 16px 24px; background: #f8fafc; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0;">
-            © Varsity Nest
-          </div>
-        </div>
-      `,
+      templateId: 'email_verification',
+      subject: 'Verify your email address',
     })
 
     if ((result as any).status === 'error') {
