@@ -1,56 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronDown, Menu, X } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import StudentAuthProvider from "./StudentAuthProvider"
 import StudentAuthSection from "./StudentAuthSection"
 
 export default function Navbar() {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [_isUserMenuOpen, _setIsUserMenuOpen] = useState(false)
-  const [adminSettings, setAdminSettings] = useState({
-    showProvisionallyAccredited: true,
-    showNonAccredited: true,
-  })
-  
-  // Student authentication is now handled by StudentAuthProvider
-
-  useEffect(() => {
-    // Fetch admin settings from API; ignore unauthorized
-    const fetchAdminSettings = async () => {
-      try {
-        const response = await fetch('/api/admin/settings', { credentials: 'include' })
-        if (response.ok) {
-          const { settings } = await response.json()
-          setAdminSettings({
-            showProvisionallyAccredited: settings.show_provisionally_accredited ?? true,
-            showNonAccredited: settings.show_non_accredited ?? true,
-          })
-        }
-        // Silently ignore unauthorized/forbidden (non-admin users)
-      } catch (error) {
-        // Silently fail - keep defaults
-        // Non-admin users will see all accommodations by default
-      }
-    }
-
-    fetchAdminSettings()
-
-    const handleStorageChange = () => {
-      fetchAdminSettings()
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    window.addEventListener("adminSettingsUpdated", handleStorageChange)
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange)
-      window.removeEventListener("adminSettingsUpdated", handleStorageChange)
-    }
-  }, [])
 
   return (
     <nav className="relative z-40 bg-gradient-to-r from-[#02042b] to-[#040945] backdrop-blur-xl border-b border-white/10 shadow-2xl">
@@ -103,63 +62,15 @@ export default function Navbar() {
               <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 group-hover:w-full group-hover:left-0 transition-all duration-300"></div>
             </Link>
             
-            {/* Accommodations Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="relative flex items-center space-x-2 px-4 py-2 text-white hover:text-blue-300 transition-all duration-300 font-medium rounded-lg group"
-              >
-                <span className="relative z-10">Accommodations</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''} relative z-10`} />
-                <div className="absolute inset-0 bg-white/5 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-                <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 group-hover:w-full group-hover:left-0 transition-all duration-300"></div>
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute top-full left-0 mt-3 w-72 bg-black/40 backdrop-blur-2xl text-white rounded-2xl shadow-2xl shadow-blue-500/20 py-4 border border-white/20 animate-in slide-in-from-top-2 duration-300">
-                  <Link
-                    href="/accommodations/accredited"
-                    className="group flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-green-500/10 hover:to-emerald-500/10 hover:text-green-300 transition-all duration-300 font-medium rounded-xl mx-2 relative overflow-hidden"
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    <div className="relative">
-                      <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg group-hover:shadow-green-500/50 transition-all duration-300"></div>
-                      <div className="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-20 group-hover:opacity-40"></div>
-                    </div>
-                    <span className="relative z-10">Accredited</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                  </Link>
-                  {adminSettings.showProvisionallyAccredited && (
-                    <Link
-                      href="/accommodations/provisionally-accredited"
-                      className="group flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-yellow-500/10 hover:to-amber-500/10 hover:text-yellow-300 transition-all duration-300 font-medium rounded-xl mx-2 relative overflow-hidden"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <div className="relative">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-lg group-hover:shadow-yellow-500/50 transition-all duration-300"></div>
-                        <div className="absolute inset-0 w-2 h-2 bg-yellow-400 rounded-full animate-ping opacity-20 group-hover:opacity-40"></div>
-                      </div>
-                      <span className="relative z-10">Provisionally-Accredited</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-amber-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                    </Link>
-                  )}
-                  {adminSettings.showNonAccredited && (
-                    <Link
-                      href="/accommodations/non-accredited"
-                      className="group flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-gray-500/10 hover:to-slate-500/10 hover:text-gray-300 transition-all duration-300 font-medium rounded-xl mx-2 relative overflow-hidden"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <div className="relative">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full shadow-lg group-hover:shadow-gray-500/50 transition-all duration-300"></div>
-                        <div className="absolute inset-0 w-2 h-2 bg-gray-400 rounded-full animate-ping opacity-20 group-hover:opacity-40"></div>
-                      </div>
-                      <span className="relative z-10">Non-Accredited</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-gray-500/5 to-slate-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* Accommodations Link */}
+            <Link
+              href="/accommodations"
+              className="relative px-4 py-2 text-white hover:text-blue-300 transition-all duration-300 font-medium rounded-lg group"
+            >
+              <span className="relative z-10">Accommodations</span>
+              <div className="absolute inset-0 bg-white/5 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+              <div className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 group-hover:w-full group-hover:left-0 transition-all duration-300"></div>
+            </Link>
 
             <Link
               href="/contact"
@@ -216,51 +127,14 @@ export default function Navbar() {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
               </Link>
               
-              <div className="px-4 py-2">
-                <p className="text-white font-medium mb-3 text-lg bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Accommodations</p>
-                <div className="space-y-2 ml-4">
-                  <Link
-                    href="/accommodations/accredited"
-                    className="group flex items-center py-2 text-neutral-300 hover:text-green-300 transition-all duration-300 relative overflow-hidden"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <div className="relative mr-3">
-                      <div className="w-2 h-2 bg-green-400 rounded-full group-hover:shadow-green-500/50 transition-all duration-300"></div>
-                      <div className="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-20 group-hover:opacity-40"></div>
-                    </div>
-                    <span className="relative z-10">Accredited</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                  </Link>
-                  {adminSettings.showProvisionallyAccredited && (
-                    <Link
-                      href="/accommodations/provisionally-accredited"
-                      className="group flex items-center py-2 text-neutral-300 hover:text-yellow-300 transition-all duration-300 relative overflow-hidden"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div className="relative mr-3">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full group-hover:shadow-yellow-500/50 transition-all duration-300"></div>
-                        <div className="absolute inset-0 w-2 h-2 bg-yellow-400 rounded-full animate-ping opacity-20 group-hover:opacity-40"></div>
-                      </div>
-                      <span className="relative z-10">Provisionally-Accredited</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-amber-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                    </Link>
-                  )}
-                  {adminSettings.showNonAccredited && (
-                    <Link
-                      href="/accommodations/non-accredited"
-                      className="group flex items-center py-2 text-neutral-300 hover:text-gray-300 transition-all duration-300 relative overflow-hidden"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div className="relative mr-3">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full group-hover:shadow-gray-500/50 transition-all duration-300"></div>
-                        <div className="absolute inset-0 w-2 h-2 bg-gray-400 rounded-full animate-ping opacity-20 group-hover:opacity-40"></div>
-                      </div>
-                      <span className="relative z-10">Non-Accredited</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-gray-500/5 to-slate-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                    </Link>
-                  )}
-                </div>
-              </div>
+              <Link
+                href="/accommodations"
+                className="block px-4 py-3 text-white hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 font-medium rounded-xl mx-2 group relative overflow-hidden"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="relative z-10">Accommodations</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+              </Link>
               
               <Link
                 href="/contact"

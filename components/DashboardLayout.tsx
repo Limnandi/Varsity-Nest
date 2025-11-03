@@ -48,6 +48,7 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/admin/providers", label: "Providers", icon: Building },
+    { href: "/admin/properties", label: "Properties", icon: Building },
     { href: "/admin/students", label: "Students", icon: GraduationCap },
     { href: "/admin/domains", label: "Domains", icon: Globe },
     { href: "/admin/reports", label: "Reports", icon: FileText },
