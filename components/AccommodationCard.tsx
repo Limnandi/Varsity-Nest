@@ -166,18 +166,20 @@ export default function AccommodationCard({
           </span>
         </div>
 
-        {/* Favorite Button */}
-        <button
-          onClick={handleWishlistToggle}
-          disabled={isLoading}
-          className={`absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/10 transition-all duration-300 ${
-            isLoading ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          <Heart className={`w-4 h-4 ${isFavorited ? "text-red-400 fill-current" : "text-white/80"} ${
-            isLoading ? 'animate-pulse' : ''
-          }`} />
-        </button>
+        {/* Favorite Button (visible only for authenticated students) */}
+        {isAuthenticated && studentUser && (
+          <button
+            onClick={handleWishlistToggle}
+            disabled={isLoading}
+            className={`absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/10 transition-all duration-300 ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <Heart className={`w-4 h-4 ${isFavorited ? "text-red-400 fill-current" : "text-white/80"} ${
+              isLoading ? 'animate-pulse' : ''
+            }`} />
+          </button>
+        )}
 
         {/* Availability Badge */}
         {isOpen && (

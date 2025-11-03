@@ -307,7 +307,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                   <Calendar className="w-4 h-4 mr-2" />
                   Schedule Viewing
                 </button>
-                <WishlistButton accommodationId={id} />
+                {currentUserRole === 'student' && (
+                  <WishlistButton accommodationId={id} />
+                )}
               </div>
             </div>
           </div>
