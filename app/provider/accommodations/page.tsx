@@ -265,7 +265,9 @@ export default function ProviderAccommodations() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {userAccommodations.map((accommodation) => (
-                <div key={accommodation.id} className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl shadow-xl overflow-hidden hover:shadow-blue-500/20 transition-all duration-300">
+                <div key={accommodation.id} className={`relative border border-white/10 rounded-xl shadow-xl overflow-hidden hover:shadow-blue-500/20 transition-all duration-300 ${
+                  accommodation.is_active ? 'bg-black/20' : 'bg-black/10 grayscale opacity-70'
+                }`}>
                   <div className="relative h-36">
                     <Image 
                       src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} 
@@ -291,7 +293,14 @@ export default function ProviderAccommodations() {
                     </div>
                   </div>
 
-                  <div className="p-4 text-white">
+                  {!accommodation.is_active && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
+                      <div className="text-center text-white bg-red-500/20 border border-red-500/40 rounded-xl p-4 max-w-sm">
+                        <p className="text-sm font-semibold">this property has been suspended by platform team. Please see the email we sent for more details. You can reply to it for any queries or email us at query@varsitynest.space.</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-4 text-white relative">
                     <h3 className="text-lg font-semibold mb-2 text-white line-clamp-1">{accommodation.name}</h3>
 
                     <div className="flex items-center text-neutral-300 text-xs mb-2">
