@@ -397,10 +397,9 @@ export class OptimizedAccommodationRepository {
             accreditationStatus: schema.accommodations.accreditationStatus,
           })
           .from(schema.accommodations)
-          .where(and(
-            eq(schema.accommodations.isActive, true),
+          .where(
             sql`accommodations.is_published = true`
-          ))
+          )
           .orderBy(desc(schema.accommodations.createdAt))
           .limit(limit)
           .offset(offset)
