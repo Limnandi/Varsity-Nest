@@ -244,7 +244,7 @@ export default function StudentWishlistPage() {
                 : "Start exploring accommodations and save your favorites"}
             </p>
             <button
-              onClick={() => router.push('/accommodations/accredited')}
+              onClick={() => router.push('/accommodations')}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
             >
               Browse Accommodations

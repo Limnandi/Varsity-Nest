@@ -21,7 +21,7 @@ export default function NotFound() {
               <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Link>
             <Link
-              href="/accommodations/accredited"
+              href="/accommodations"
               className="group relative border border-white/20 bg-white/5 text-white px-6 py-3 rounded-xl font-medium hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <span className="relative z-10">Browse Accommodations</span>

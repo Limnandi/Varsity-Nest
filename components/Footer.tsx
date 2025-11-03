@@ -48,14 +48,14 @@ export default function Footer() {
             <h3 className="text-xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Quick Links</h3>
             <ul className="space-y-4">
               <li>
-                <Link href="/accommodations/accredited" className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2">
+                <Link href="/accommodations" className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2">
                   <div className="w-2 h-2 bg-blue-400 rounded-full mr-3 group-hover:bg-blue-300 transition-colors"></div>
                   Accredited Properties
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/accommodations/provisionally-accredited"
+                  href="/accommodations"
                   className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2"
                 >
                   <div className="w-2 h-2 bg-yellow-400 rounded-full mr-3 group-hover:bg-yellow-300 transition-colors"></div>
@@ -64,7 +64,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/accommodations/non-accredited"
+                  href="/accommodations"
                   className="group flex items-center text-neutral-300 hover:text-white transition-all duration-300 hover:translate-x-2"
                 >
                   <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:bg-gray-300 transition-colors"></div>
