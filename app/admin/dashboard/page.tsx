@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { DocumentViewer } from "@/components/DocumentViewer"
 import { useState, useEffect } from "react"
-import { Building, Users, DollarSign, TrendingUp, Eye, Plus, AlertTriangle } from "lucide-react"
+import { Building, Users, DollarSign, TrendingUp, Eye, AlertTriangle } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 
 export default function AdminDashboard() {
@@ -223,17 +223,7 @@ export default function AdminDashboard() {
           {/* Quick Actions */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
             <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <button className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-500/20 text-left">
-                <div className="p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl mr-4 group-hover:bg-blue-500/20 transition-all duration-300">
-                  <Plus className="w-8 h-8 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-lg group-hover:text-blue-300 transition-colors">Add Accommodation</h3>
-                  <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors">Create new listing</p>
-                </div>
-              </button>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <button className="group flex items-center p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-green-500/20 text-left">
                 <div className="p-4 border border-green-500/50 bg-green-500/10 rounded-xl mr-4 group-hover:bg-green-500/20 transition-all duration-300">
                   <Users className="w-8 h-8 text-green-400" />
