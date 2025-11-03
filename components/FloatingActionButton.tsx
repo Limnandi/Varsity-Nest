@@ -12,7 +12,7 @@ export default function FloatingActionButton() {
       {isOpen && (
         <div className="absolute bottom-16 right-0 space-y-3 animate-in slide-in-from-bottom-2 duration-200">
           <a
-            href="tel:+27511234567"
+            href="tel:+27624079139"
             className="flex items-center justify-center w-12 h-12 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-colors"
             title="Call us"
           >
