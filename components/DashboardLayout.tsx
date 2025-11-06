@@ -21,7 +21,7 @@ import Image from "next/image"
 // Removed ProductionModeSwitch import
 
 interface DashboardLayoutProps {
-  userRole: "admin" | "provider"
+  userRole: "admin" | "provider" | "agent"
   children: React.ReactNode
 }
 
@@ -62,7 +62,14 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
     { href: "/provider/settings", label: "Settings", icon: Settings },
   ]
 
-  const navItems = userRole === "admin" ? adminNavItems : providerNavItems
+  const agentNavItems = [
+    { href: "/agent/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/agent/accommodations", label: "My Accommodations", icon: Building },
+    { href: "/agent/billing", label: "Billing", icon: DollarSign },
+    { href: "/agent/settings", label: "Settings", icon: Settings },
+  ]
+
+  const navItems = userRole === "admin" ? adminNavItems : userRole === "provider" ? providerNavItems : agentNavItems
 
   const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
     const [isActive, setIsActive] = useState(false)
