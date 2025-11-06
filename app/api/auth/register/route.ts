@@ -107,12 +107,14 @@ export async function POST(request: NextRequest) {
       
       const user = userById || userByEmail
       
-      // If user exists and is already a provider, reject duplicate registration
-      if (user && user.role === 'provider') {
-        console.warn(`Duplicate provider registration attempt: ${email} (ID: ${userId})`)
+      const role = String(form.get('role') || 'provider')
+      
+      // If user exists and is already registered with the same role, reject duplicate registration
+      if (user && user.role === role) {
+        console.warn(`Duplicate ${role} registration attempt: ${email} (ID: ${userId})`)
         return NextResponse.json({ 
-          error: 'Email already registered as a provider',
-          details: 'This email is already associated with a provider account. Please log in instead.'
+          error: `Email already registered as a ${role}`,
+          details: `This email is already associated with a ${role} account. Please log in instead.`
         }, { status: 409 }) // 409 Conflict
       }
       
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
             password: 'stackauth',
             firstName: firstName,
             lastName: lastName,
-            role: 'provider',
+            role: role as 'provider' | 'agent',
             phone: phone || null,
             studentNumber: null,
             institution: null,
@@ -141,12 +143,12 @@ export async function POST(request: NextRequest) {
         
         console.log(`SUCCESS: User created in Neon with ID: ${userId}`)
       } else {
-        // Update existing user to provider role
-        console.log(`Updating existing user (${user.id}) to provider role`)
+        // Update existing user to the specified role
+        console.log(`Updating existing user (${user.id}) to ${role} role`)
         await secureDb.db
           .update(schema.users)
           .set({
-            role: 'provider',
+            role: role as 'provider' | 'agent',
             firstName: firstName,
             lastName: lastName,
             phone: phone || null,
@@ -155,90 +157,139 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date()
           })
           .where(eq(schema.users.id, userId))
-        console.log(`SUCCESS: User ${userId} updated to provider role`)
+        console.log(`SUCCESS: User ${userId} updated to ${role} role`)
       }
 
-      // Create or update provider record (manual upsert because userId is not unique)
-      const existingProvider = await secureDb.db
-        .select({ id: schema.providers.id })
-        .from(schema.providers)
-        .where(eq(schema.providers.userId, userId))
-        .limit(1)
-
-      const providerId = (await import('crypto')).randomUUID()
-      
-      console.log(`Creating provider record with userId: ${userId}`)
-
-      if (existingProvider && existingProvider.length > 0) {
-        console.log(`Updating existing provider record for userId: ${userId}`)
-        await secureDb.db
-          .update(schema.providers)
-          .set({
-            businessName: companyName,
-            contactPerson: `${firstName} ${lastName}`,
-            contactEmail: email,
-            contactPhone: phone || 'Not provided',
-            address: address || 'Not provided',
-            updatedAt: new Date(),
-          })
+      // Create or update provider/agent record based on role
+      if (role === 'provider') {
+        const existingProvider = await secureDb.db
+          .select({ id: schema.providers.id })
+          .from(schema.providers)
           .where(eq(schema.providers.userId, userId))
-        console.log(`SUCCESS: Provider record updated for userId: ${userId}`)
-      } else {
-        console.log(`Creating new provider record with providerId: ${providerId}, userId: ${userId}`)
-        await secureDb.db
-          .insert(schema.providers)
-          .values({
-            id: providerId,
-            userId: userId,
-            businessName: companyName,
-            contactPerson: `${firstName} ${lastName}`,
-            contactEmail: email,
-            contactPhone: phone || 'Not provided',
-            address: address || 'Not provided',
-            registrationStatus: 'pending',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-        console.log(`SUCCESS: Provider record created with userId: ${userId}`)
-      }
+          .limit(1)
 
-      // Upload up to 2 documents securely
-      const docs = (form.getAll('documents') as unknown as File[]) || []
-      const urls: string[] = []
-      const uploadWarnings: string[] = []
-      
-      for (const d of docs.slice(0, 2)) {
-        try {
-          const { uploadDocumentSecurely } = await import('@/lib/cloudinary')
-          const result = await uploadDocumentSecurely(d, {
-            folder: 'varsity-nest/provider-documents',
-            purpose: 'accreditation',
-            userId: userId
-          })
-          
-          if (result.success && result.result?.secure_url) {
-            urls.push(result.result.secure_url)
-            if (result.warnings) {
-              uploadWarnings.push(...result.warnings)
-            }
-          } else {
-            console.error('Document upload failed:', result.error)
-            // Continue with other documents even if one fails
-          }
-        } catch (error) {
-          console.error('Document upload error:', error)
-          // Continue with other documents even if one fails
+        const providerId = (await import('crypto')).randomUUID()
+        
+        console.log(`Creating provider record with userId: ${userId}`)
+
+        if (existingProvider && existingProvider.length > 0) {
+          console.log(`Updating existing provider record for userId: ${userId}`)
+          await secureDb.db
+            .update(schema.providers)
+            .set({
+              businessName: companyName,
+              contactPerson: `${firstName} ${lastName}`,
+              contactEmail: email,
+              contactPhone: phone || 'Not provided',
+              address: address || 'Not provided',
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.providers.userId, userId))
+          console.log(`SUCCESS: Provider record updated for userId: ${userId}`)
+        } else {
+          console.log(`Creating new provider record with providerId: ${providerId}, userId: ${userId}`)
+          await secureDb.db
+            .insert(schema.providers)
+            .values({
+              id: providerId,
+              userId: userId,
+              businessName: companyName,
+              contactPerson: `${firstName} ${lastName}`,
+              contactEmail: email,
+              contactPhone: phone || 'Not provided',
+              address: address || 'Not provided',
+              registrationStatus: 'pending',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+          console.log(`SUCCESS: Provider record created with userId: ${userId}`)
         }
-      }
 
-      if (urls.length > 0) {
-        await secureDb.db
-          .update(schema.providers)
-          .set({ documents: urls, updatedAt: new Date() })
-          .where(eq(schema.providers.userId, userId))
-      }
+        // Upload up to 2 documents securely for providers
+        const docs = (form.getAll('documents') as unknown as File[]) || []
+        const urls: string[] = []
+        const uploadWarnings: string[] = []
+        
+        for (const d of docs.slice(0, 2)) {
+          try {
+            const { uploadDocumentSecurely } = await import('@/lib/cloudinary')
+            const result = await uploadDocumentSecurely(d, {
+              folder: 'varsity-nest/provider-documents',
+              purpose: 'accreditation',
+              userId: userId
+            })
+            
+            if (result.success && result.result?.secure_url) {
+              urls.push(result.result.secure_url)
+              if (result.warnings) {
+                uploadWarnings.push(...result.warnings)
+              }
+            } else {
+              console.error('Document upload failed:', result.error)
+            }
+          } catch (error) {
+            console.error('Document upload error:', error)
+          }
+        }
 
-      return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
+        if (urls.length > 0) {
+          await secureDb.db
+            .update(schema.providers)
+            .set({ documents: urls, updatedAt: new Date() })
+            .where(eq(schema.providers.userId, userId))
+        }
+
+        return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
+      } else if (role === 'agent') {
+        const existingAgent = await secureDb.db
+          .select({ id: schema.agents.id })
+          .from(schema.agents)
+          .where(eq(schema.agents.userId, userId))
+          .limit(1)
+
+        const agentId = (await import('crypto')).randomUUID()
+        
+        console.log(`Creating agent record with userId: ${userId}`)
+
+        if (existingAgent && existingAgent.length > 0) {
+          console.log(`Updating existing agent record for userId: ${userId}`)
+          await secureDb.db
+            .update(schema.agents)
+            .set({
+              businessName: companyName,
+              contactPerson: `${firstName} ${lastName}`,
+              contactEmail: email,
+              contactPhone: phone || 'Not provided',
+              address: address || 'Not provided',
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.agents.userId, userId))
+          console.log(`SUCCESS: Agent record updated for userId: ${userId}`)
+        } else {
+          console.log(`Creating new agent record with agentId: ${agentId}, userId: ${userId}`)
+          await secureDb.db
+            .insert(schema.agents)
+            .values({
+              id: agentId,
+              userId: userId,
+              businessName: companyName,
+              contactPerson: `${firstName} ${lastName}`,
+              contactEmail: email,
+              contactPhone: phone || 'Not provided',
+              address: address || 'Not provided',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+          console.log(`SUCCESS: Agent record created with userId: ${userId}`)
+        }
+
+        return NextResponse.json({ success: true, agentId }, { status: 201 })
+      } else {
+        return NextResponse.json({ 
+          error: 'Invalid role',
+          details: 'Role must be either "provider" or "agent"'
+        }, { status: 400 })
+      }
     }
 
     // Unsupported content type to avoid server-side StackAuth sign-up
