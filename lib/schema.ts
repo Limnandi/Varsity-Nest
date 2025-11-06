@@ -7,7 +7,7 @@ export const users = pgTable("users", {
   password: varchar("password", { length: 255 }).notNull(),
   firstName: varchar("first_name", { length: 100 }).notNull(),
   lastName: varchar("last_name", { length: 100 }).notNull(),
-  role: varchar("role", { length: 20 }).notNull().$type<"admin" | "provider" | "student">(),
+  role: varchar("role", { length: 20 }).notNull().$type<"admin" | "provider" | "student" | "agent">(),
   phone: varchar("phone", { length: 20 }),
   studentNumber: varchar("student_number", { length: 50 }),
   institution: varchar("institution", { length: 100 }),
@@ -63,6 +63,25 @@ export const providers = pgTable("providers", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
+// Agents table - similar to providers table
+export const agents = pgTable("agents", {
+  id: varchar("id", { length: 255 }).primaryKey().notNull(),
+  userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
+  businessName: varchar("business_name", { length: 200 }).notNull(),
+  businessRegistration: varchar("business_registration", { length: 100 }),
+  contactPerson: varchar("contact_person", { length: 100 }).notNull(),
+  contactEmail: varchar("contact_email", { length: 255 }).notNull(),
+  contactPhone: varchar("contact_phone", { length: 20 }).notNull(),
+  address: text("address").notNull(),
+  websiteUrl: varchar("website_url", { length: 500 }),
+  description: text("description"),
+  isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  settings: jsonb("settings").default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
 // Accommodations table - matches actual database schema
 export const accommodations = pgTable("accommodations", {
   id: varchar("id", { length: 255 }).primaryKey().notNull(),
@@ -74,6 +93,7 @@ export const accommodations = pgTable("accommodations", {
   amenities: jsonb("amenities").default([]),
   accreditationStatus: varchar("accreditation_status", { length: 30 }).notNull().$type<"accredited" | "provisionally_accredited" | "non_accredited">(),
   providerId: varchar("provider_id", { length: 255 }).references(() => providers.id, { onDelete: "cascade" }),
+  agentId: varchar("agent_id", { length: 255 }).references(() => agents.id, { onDelete: "set null" }),
   contactEmail: varchar("contact_email", { length: 255 }),
   contactPhone: varchar("contact_phone", { length: 20 }),
   websiteUrl: varchar("website_url", { length: 500 }),
@@ -237,10 +257,12 @@ export const webhookEvents = pgTable("webhook_events", {
 export const paymentTransactions = pgTable("payment_transactions", {
   id: varchar("id", { length: 255 }).primaryKey().notNull(),
   providerId: varchar("provider_id", { length: 255 }).references(() => providers.id, { onDelete: "set null" }),
+  agentId: varchar("agent_id", { length: 255 }).references(() => agents.id, { onDelete: "set null" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("ZAR"),
   mPaymentId: varchar("m_payment_id", { length: 100 }).notNull().unique(),
   pfPaymentId: varchar("pf_payment_id", { length: 100 }),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }).unique(),
   status: varchar("status", { length: 20 }).notNull().default("pending").$type<"pending" | "completed" | "failed" | "cancelled">(),
   paymentDate: timestamp("payment_date", { withTimezone: true }),
   gatewayResponse: jsonb("gateway_response"),
