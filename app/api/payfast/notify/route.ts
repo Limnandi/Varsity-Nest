@@ -235,6 +235,10 @@ async function processSuccessfulPayment(
   try {
     // Start transaction for atomicity
     await secureDb.db.transaction(async (tx: any) => {
+      // Extract payment_token and subscription_token from webhook data if available
+      const paymentToken = webhookData?.token || webhookData?.payment_token
+      const subscriptionToken = webhookData?.subscription_token || webhookData?.token // For recurring payments, token is subscription token
+      
       // Update payment transaction
       await tx
         .update(schema.paymentTransactions)
@@ -242,6 +246,8 @@ async function processSuccessfulPayment(
           pfPaymentId: transactionId,
           status: 'completed',
           paymentDate: paymentDate,
+          paymentToken: paymentToken || undefined,
+          subscriptionToken: subscriptionToken || undefined,
           gatewayResponse: webhookData
         })
         .where(eq(schema.paymentTransactions.id, transactionDbId))
@@ -253,7 +259,8 @@ async function processSuccessfulPayment(
           .set({
             subscriptionStatus: 'active',
             lastPaymentDate: paymentDate,
-            nextPaymentDate: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+            nextPaymentDate: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+            subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
           })
           .where(eq(schema.providers.id, entityId))
 
@@ -273,8 +280,13 @@ async function processSuccessfulPayment(
           }
         }
       } else if (entityType === 'agent') {
-        // For agents, we can add subscription status updates here if needed in the future
-        // Currently agents use the same payment flow as providers
+        // Store subscription token for agents
+        await tx
+          .update(schema.agents)
+          .set({
+            subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
+          })
+          .where(eq(schema.agents.id, entityId))
       }
     })
 
