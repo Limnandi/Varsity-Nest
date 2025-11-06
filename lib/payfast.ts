@@ -87,14 +87,17 @@ export function createPayFastPayment(
     idempotencyKey?: string
   },
 ): PayFastData & { signature: string } {
+  // Determine entity type and set appropriate return URLs
+  const entityType = customData?.providerId ? 'provider' : 'agent'
+  
   const data: PayFastData = {
     // Required merchant credentials
     merchant_id: env.PAYFAST_MERCHANT_ID,
     merchant_key: env.PAYFAST_MERCHANT_KEY,
     
-    // URLs
-    return_url: `${env.APP_URL}/provider/billing/success`,
-    cancel_url: `${env.APP_URL}/provider/billing/cancel`,
+    // URLs - Dynamic based on entity type (provider or agent)
+    return_url: `${env.APP_URL}/${entityType}/billing/success`,
+    cancel_url: `${env.APP_URL}/${entityType}/billing/cancel`,
     notify_url: `${env.APP_URL}/api/payfast/notify`,
     
     // Customer information
