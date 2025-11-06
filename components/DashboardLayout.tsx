@@ -99,11 +99,11 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-b from-[#02042b] to-[#040945]">
+    <div className="flex h-screen bg-gradient-to-b from-[#02042b] to-[#040945] overflow-x-hidden w-full max-w-full">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 w-64 bg-black/20 backdrop-blur-xl text-white border-r border-white/10 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shadow-2xl",
+          "fixed inset-y-0 left-0 z-30 w-64 bg-black/20 backdrop-blur-xl text-white border-r border-white/10 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shadow-2xl overflow-hidden",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -136,14 +136,14 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between md:justify-end h-16 px-6 bg-black/20 backdrop-blur-xl border-b border-white/10">
+      <div className="flex-1 flex flex-col overflow-hidden w-full max-w-full">
+        <header className="flex items-center justify-between md:justify-end h-16 px-6 bg-black/20 backdrop-blur-xl border-b border-white/10 w-full max-w-full">
           <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-4">{/* User profile, notifications etc. can go here */}</div>
         </header>
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto w-full max-w-full">
           {children}
         </main>
       </div>

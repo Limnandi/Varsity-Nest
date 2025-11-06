@@ -61,18 +61,20 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className="overflow-x-hidden w-full max-w-full">
+      <body className={`${inter.className} overflow-x-hidden w-full max-w-full`}>
         <ConsoleSecurityWarning />
         <ErrorBoundary component="root_layout">
           <StackProvider app={getStackServerApp() as any}>
             <ReactQueryProvider>
               <TooltipProvider>
-                <Layout>
-                  {children}
-                  <SpeedInsights />
-                  <Analytics />
-                </Layout>
+                <div className="overflow-x-hidden w-full max-w-full">
+                  <Layout>
+                    {children}
+                    <SpeedInsights />
+                    <Analytics />
+                  </Layout>
+                </div>
               </TooltipProvider>
             </ReactQueryProvider>
           </StackProvider>

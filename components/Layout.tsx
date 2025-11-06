@@ -118,9 +118,9 @@ export default function Layout({ children }: LayoutProps) {
   // For public pages, render full layout with navbar and footer
   if (isPublicPage) {
     return (
-      <div className="min-h-screen flex flex-col relative">
+      <div className="min-h-screen flex flex-col relative overflow-x-hidden w-full max-w-full">
         {/* Dark Professional Background */}
-        <div className="fixed inset-0 z-0">
+        <div className="fixed inset-0 z-0 overflow-hidden">
           {/* Primary dark gradient */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#040945] to-[#02042b]" />
           
@@ -141,9 +141,9 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col min-h-screen">
+        <div className="relative z-10 flex flex-col min-h-screen overflow-x-hidden w-full max-w-full">
           <Navbar />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 overflow-x-hidden w-full max-w-full">{children}</main>
           <Footer />
         </div>
 

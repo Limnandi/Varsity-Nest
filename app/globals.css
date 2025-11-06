@@ -90,10 +90,18 @@
   }
   html {
     background-color: transparent;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+    position: relative;
   }
   body {
     background-color: transparent;
     color: hsl(var(--foreground));
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+    position: relative;
   }
 }
 

@@ -4,8 +4,8 @@ import { Mail, Phone, MapPin, Facebook, Twitter, Instagram } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-[#040945] to-[#02042b] text-white border-t border-white/10">
-      <div className="max-w-7xl mx-auto px-6 py-16">
+    <footer className="bg-gradient-to-b from-[#040945] to-[#02042b] text-white border-t border-white/10 overflow-x-hidden w-full max-w-full">
+      <div className="max-w-7xl mx-auto px-6 py-16 w-full overflow-x-hidden">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Logo and Company Info */}
           <div className="md:col-span-2">
