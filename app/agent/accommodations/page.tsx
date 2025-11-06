@@ -9,6 +9,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Building } from "lucide-react"
 import { formatZar } from "@/lib/utils"
+import SubscriptionModal from "@/components/SubscriptionModal"
 
 interface AgentAccommodation {
   id: string
@@ -46,10 +47,16 @@ interface AgentAccommodation {
 }
 
 export default function AgentAccommodations() {
-  const [_user, setUser] = useState<SessionUser | null>(null)
+  const [user, setUser] = useState<SessionUser | null>(null)
   const [userAccommodations, setUserAccommodations] = useState<AgentAccommodation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [publishingId, setPublishingId] = useState<string | number | null>(null)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [subscriptionData, setSubscriptionData] = useState<{
+    accommodationCount: number
+    amount: number
+    entityId: string
+  } | null>(null)
 
   useEffect(() => {
     async function loadUser() {
@@ -163,6 +170,43 @@ export default function AgentAccommodations() {
 
   const handlePublishToggle = async (id: string | number, currentStatus: boolean) => {
     const newStatus = !currentStatus
+    
+    // If unpublishing, no subscription check needed
+    if (!newStatus) {
+      setPublishingId(id)
+      try {
+        const res = await fetch(`/api/accommodations/${id}/publish`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ is_published: newStatus })
+        })
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || 'Publish toggle failed')
+        }
+        const updated = await res.json()
+        
+        const finalStatus = updated.is_published === true || updated.is_published === false 
+          ? updated.is_published 
+          : newStatus
+        
+        setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { 
+          ...a, 
+          is_published: finalStatus,
+          listing_status: updated.listing_status,
+          published_at: updated.published_at,
+          unpublished_at: updated.unpublished_at
+        } : a)))
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'Failed to update publication status')
+      } finally {
+        setPublishingId(null)
+      }
+      return
+    }
+    
+    // If publishing, check subscription first
     setPublishingId(id)
     
     try {
@@ -172,10 +216,35 @@ export default function AgentAccommodations() {
         credentials: 'include',
         body: JSON.stringify({ is_published: newStatus })
       })
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        
+        // Check if subscription is required
+        if (res.status === 402 && errorData.error === 'SUBSCRIPTION_REQUIRED') {
+          // Fetch subscription details
+          const subscriptionRes = await fetch('/api/subscription/check', {
+            credentials: 'include'
+          })
+          
+          if (subscriptionRes.ok) {
+            const subscriptionInfo = await subscriptionRes.json()
+            setSubscriptionData({
+              accommodationCount: errorData.accommodationCount || subscriptionInfo.accommodationsCount + 1,
+              amount: subscriptionInfo.subscriptionAmount,
+              entityId: subscriptionInfo.entityId
+            })
+            setShowSubscriptionModal(true)
+          } else {
+            alert('Subscription required to publish properties. Please visit the billing page to subscribe.')
+          }
+          setPublishingId(null)
+          return
+        }
+        
         throw new Error(errorData.error || 'Publish toggle failed')
       }
+      
       const updated = await res.json()
       
       const finalStatus = updated.is_published === true || updated.is_published === false 
@@ -196,9 +265,38 @@ export default function AgentAccommodations() {
     }
   }
 
+  const handleSubscriptionSuccess = async () => {
+    // Refresh accommodations after successful subscription
+    try {
+      const accommodationsResponse = await fetch(`/api/agent/accommodations?limit=200`, {
+        credentials: 'include'
+      })
+      
+      if (accommodationsResponse.ok) {
+        const data = await accommodationsResponse.json()
+        setUserAccommodations(data.accommodations || [])
+      }
+    } catch (error) {
+      console.error('Error refreshing accommodations:', error)
+    }
+  }
+
   return (
     <AuthGuard requiredRole="agent">
       <DashboardLayout userRole="agent">
+        {showSubscriptionModal && subscriptionData && user && (
+          <SubscriptionModal
+            isOpen={showSubscriptionModal}
+            onClose={() => setShowSubscriptionModal(false)}
+            accommodationCount={subscriptionData.accommodationCount}
+            amount={subscriptionData.amount}
+            userEmail={user.email || ''}
+            userName={`${user.firstName} ${user.lastName}`.trim() || 'User'}
+            entityId={subscriptionData.entityId}
+            entityType="agent"
+            onPaymentSuccess={handleSubscriptionSuccess}
+          />
+        )}
         <div className="space-y-8 p-6 text-white">
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
