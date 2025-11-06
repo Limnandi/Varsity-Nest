@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-//import { OAuthButton, useStackApp } from "@stackframe/stack" //Temporal disable
+import { useStackApp } from "@stackframe/stack"
+//import { OAuthButton } from "@stackframe/stack" //Temporal disable - SSO disabled
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
