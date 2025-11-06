@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
+import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,13 +34,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch provider details
+    // Fetch provider details including subscription token
     const providerResult = await query`
       SELECT 
         p.id,
         p.business_name,
         p.contact_person,
         p.contact_email,
+        p.subscription_token,
+        p.subscription_status,
+        p.last_payment_date,
+        p.next_payment_date,
         u.email,
         p.created_at
       FROM providers p
@@ -59,11 +64,23 @@ export async function GET(request: NextRequest) {
     
     // Calculate billing info
     const subscriptionStartDate = new Date(providerData.created_at)
-    const nextPaymentDate = new Date()
-    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
+    const nextPaymentDate = providerData.next_payment_date 
+      ? new Date(providerData.next_payment_date)
+      : new Date()
     
-    // Default monthly fee (can be customized based on plan)
-    const monthlyFee = 499.00
+    // Calculate monthly fee based on active accommodations count
+    const accommodationsResult = await query`
+      SELECT COUNT(id) as count
+      FROM accommodations
+      WHERE provider_id = ${providerData.id} AND is_active = true
+    `
+    const accommodationsCount = Number(accommodationsResult.rows[0]?.count || 0)
+    
+    // Calculate monthly fee using pricing function
+    const monthlyFee = calculateProviderSubscriptionPrice({
+      accommodationsCount: accommodationsCount || 1, // Default to 1 if no accommodations
+      wantsFeatured: false
+    })
 
     // Fetch payment history from payment_transactions table
     const paymentsResult = await query`
@@ -108,10 +125,11 @@ export async function GET(request: NextRequest) {
       email: providerData.email,
       businessName: providerData.business_name,
       contactPerson: providerData.contact_person,
+      subscriptionToken: providerData.subscription_token || null,
       billingInfo: {
         monthlyFee,
-        nextPaymentDate: nextPaymentDate.toISOString(),
-        subscriptionStatus,
+        nextPaymentDate: providerData.next_payment_date ? new Date(providerData.next_payment_date).toISOString() : nextPaymentDate.toISOString(),
+        subscriptionStatus: providerData.subscription_status || subscriptionStatus,
         subscriptionStartDate: subscriptionStartDate.toISOString()
       }
     }

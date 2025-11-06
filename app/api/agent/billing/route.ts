@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
+import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
         a.business_name,
         a.contact_person,
         a.contact_email,
+        a.subscription_token,
         u.email,
         a.created_at
       FROM agents a
@@ -58,7 +60,19 @@ export async function GET(request: NextRequest) {
     const nextPaymentDate = new Date()
     nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
     
-    const monthlyFee = 499.00
+    // Calculate monthly fee based on active accommodations count
+    const accommodationsResult = await query`
+      SELECT COUNT(id) as count
+      FROM accommodations
+      WHERE agent_id = ${agentData.id} AND is_active = true
+    `
+    const accommodationsCount = Number(accommodationsResult.rows[0]?.count || 0)
+    
+    // Calculate monthly fee using pricing function
+    const monthlyFee = calculateProviderSubscriptionPrice({
+      accommodationsCount: accommodationsCount || 1, // Default to 1 if no accommodations
+      wantsFeatured: false
+    })
 
     const paymentsResult = await query`
       SELECT 
@@ -100,6 +114,7 @@ export async function GET(request: NextRequest) {
       email: agentData.email,
       businessName: agentData.business_name,
       contactPerson: agentData.contact_person,
+      subscriptionToken: agentData.subscription_token || null,
       billingInfo: {
         monthlyFee,
         nextPaymentDate: nextPaymentDate.toISOString(),
