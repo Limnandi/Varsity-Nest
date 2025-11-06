@@ -1,0 +1,401 @@
+"use client"
+
+import { useState } from "react"
+import { useStackApp } from "@stackframe/stack"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { UserCheck, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
+
+export default function AgentRegistrationPage() {
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [password, setPassword] = useState("")
+  const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
+  const [isPending, setIsPending] = useState(false)
+  const [emailCheckMessage, setEmailCheckMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+  const app = useStackApp()
+  const router = useRouter()
+
+  const checkEmailAvailability = async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailCheckMessage(null)
+      return
+    }
+
+    setIsCheckingEmail(true)
+    try {
+      const response = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`)
+      const data = await response.json()
+
+      if (data.available) {
+        setEmailCheckMessage({ type: 'success', message: '✓ Email is available' })
+      } else {
+        setEmailCheckMessage({ 
+          type: 'error', 
+          message: data.reason || 'Email already registered' 
+        })
+      }
+    } catch (error) {
+      console.error('Email check failed:', error)
+      setEmailCheckMessage(null)
+    } finally {
+      setIsCheckingEmail(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsPending(true)
+    setState({})
+
+    try {
+      const form = new FormData(e.currentTarget)
+      const email = String(form.get('email') || '')
+      const password = String(form.get('password') || '')
+      const confirmPassword = String(form.get('confirmPassword') || '')
+      const firstName = String(form.get('firstName') || '')
+      const lastName = String(form.get('lastName') || '')
+      const phone = String(form.get('phone') || '')
+      const institution = String(form.get('institution') || '')
+
+      if (password !== confirmPassword) {
+        throw new Error('Passwords do not match')
+      }
+
+      if (emailCheckMessage?.type === 'error') {
+        throw new Error('This email is already registered. Please use a different email or log in.')
+      }
+
+      const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      const signupResult = await app.signUpWithCredential({ 
+        email, 
+        password,
+        verificationCallbackUrl: `${callbackBase}/auth/check-email`,
+        noRedirect: true,
+      })
+      
+      if ((signupResult as any).status === "error") {
+        const errorMessage = (signupResult as any).error?.message || 'Registration failed'
+        throw new Error(errorMessage)
+      }
+      
+      let stackUserId: string | null = null
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const currentUser = await app.getUser()
+        if (currentUser?.id) {
+          stackUserId = currentUser.id
+          try {
+            const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+            if (fullName) {
+              await currentUser.update({ displayName: fullName })
+            }
+          } catch (updateError) {
+            console.warn('Failed to update Stack Auth display name:', updateError)
+          }
+          
+          await fetch('/api/auth/resend-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+          })
+        }
+      } catch (error) {
+        console.warn('Error getting StackAuth user:', error)
+      }
+
+      if (!stackUserId) {
+        throw new Error('Failed to get user ID from StackAuth. Please try again.')
+      }
+
+      const payload = new FormData()
+      payload.set('userId', stackUserId)
+      payload.set('email', email)
+      payload.set('firstName', firstName)
+      payload.set('lastName', lastName)
+      payload.set('phone', phone)
+      payload.set('institution', institution)
+      payload.set('role', 'agent')
+
+      const resp = await fetch('/api/auth/register', {
+        method: 'POST',
+        body: payload,
+      })
+      
+      if (!resp.ok) {
+        let errorMessage = 'Registration failed'
+        try {
+          const j = await resp.json()
+          console.error('Registration error response:', j)
+          errorMessage = j.details ? `${j.error}: ${JSON.stringify(j.details)}` : (j.error || 'Registration failed')
+        } catch (jsonError) {
+          try {
+            const textResponse = await resp.text()
+            console.error('Registration error (non-JSON):', textResponse)
+            errorMessage = textResponse || `Registration failed with status ${resp.status}`
+          } catch (textError) {
+            console.error('Failed to read error response:', textError)
+            errorMessage = `Registration failed with status ${resp.status}`
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      router.push('/auth/check-email')
+    } catch (error: any) {
+      let errorMessage = error.message || 'Registration failed. Please try again.'
+      
+      if (errorMessage.includes('already exists') || errorMessage.includes('already registered')) {
+        errorMessage = 'This email is already registered. Please log in or use a different email.'
+      }
+      
+      setState({ 
+        error: errorMessage
+      })
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-2xl w-full">
+        <Link 
+          href="/" 
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+        >
+          <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
+        </Link>
+
+        <div className="text-center mb-10">
+          <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/50 bg-blue-500/10 rounded-full flex items-center justify-center shadow-[0_0_20px_theme(colors.blue.500/40%)]">
+            <UserCheck className="w-12 h-12 text-blue-400" />
+          </div>
+          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+            Agent Registration
+          </h1>
+          <p className="text-neutral-300 text-base mt-1">Register as an accommodation agent</p>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          {state?.error && (
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <span className="text-red-300 text-sm leading-relaxed">{state.error}</span>
+            </div>
+          )}
+
+          {state?.success && (
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <span className="text-green-300 text-sm leading-relaxed">{state.message}</span>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-semibold text-neutral-200 mb-2.5">First Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                  <input
+                    id="firstName"
+                    type="text"
+                    name="firstName"
+                    required
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="John"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-semibold text-neutral-200 mb-2.5">Last Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                  <input
+                    id="lastName"
+                    type="text"
+                    name="lastName"
+                    required
+                    disabled={isPending}
+                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  required
+                  onBlur={(e) => checkEmailAvailability(e.target.value)}
+                  onChange={() => setEmailCheckMessage(null)}
+                  disabled={isPending}
+                  className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="agent@varsitynest.space"
+                />
+              </div>
+              {isCheckingEmail && (
+                <p className="text-sm text-neutral-400 mt-2">Checking email availability...</p>
+              )}
+              {emailCheckMessage && !isCheckingEmail && (
+                <p className={`text-sm mt-2 ${emailCheckMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                  {emailCheckMessage.message}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label htmlFor="phone" className="block text-sm font-semibold text-neutral-200 mb-2.5">Phone Number</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  name="phone"
+                  disabled={isPending}
+                  className="w-full px-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="+27 82 123 4567"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="institution" className="block text-sm font-semibold text-neutral-200 mb-2.5">Business/Company Name</label>
+                <input
+                  id="institution"
+                  type="text"
+                  name="institution"
+                  required
+                  disabled={isPending}
+                  className="w-full px-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Your Company Name"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    disabled={isPending}
+                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Min. 8 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isPending}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {password && (
+                  <div className="mt-2.5">
+                    <PasswordStrengthIndicator password={password} show={password.length > 0} />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-neutral-200 mb-2.5">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    required
+                    disabled={isPending}
+                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Confirm password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={isPending}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 pb-4">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+                By clicking Create Agent Account, you agree to our{" "}
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Terms
+                </Link>
+                ,{" "}
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Privacy Policy
+                </Link>
+                {" "}and{" "}
+                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                  Cookies Policy
+                </Link>
+                .
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isPending}
+              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <span className="relative z-10 flex items-center justify-center">
+                {isPending ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Agent Account"
+                )}
+              </span>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+
+            <div className="pt-4 border-t border-white/10">
+              <p className="text-center text-sm text-neutral-400">
+                Already have an account?{" "}
+                <Link
+                  href="/auth/login"
+                  className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </form>
+      </div>
+    </div>
+  )
+}
+
