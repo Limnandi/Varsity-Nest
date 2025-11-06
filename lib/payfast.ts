@@ -77,12 +77,14 @@ export function createPayFastPayment(
   itemName: string,
   customData?: { 
     providerId?: string
+    agentId?: string
     subscriptionType?: string
     paymentId?: string
     billingDate?: string
     recurringAmount?: number
     cycles?: number
     wantsFeatured?: boolean
+    idempotencyKey?: string
   },
 ): PayFastData & { signature: string } {
   const data: PayFastData = {
@@ -106,10 +108,11 @@ export function createPayFastPayment(
     item_description: `Varsity Nest - ${itemName}`,
     
     // Custom data for tracking
-    custom_str1: customData?.providerId,
+    custom_str1: customData?.providerId || customData?.agentId,
     custom_str2: customData?.subscriptionType,
     custom_str3: customData?.paymentId,
     custom_str4: customData?.wantsFeatured ? "featured_true" : undefined,
+    custom_str5: customData?.idempotencyKey,
     
     // Currency and locale
     currency: "ZAR",

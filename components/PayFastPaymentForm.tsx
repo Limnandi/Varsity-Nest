@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Shield, CreditCard, AlertCircle } from "lucide-react"
+import { generateIdempotencyKey } from "@/lib/utils/idempotency"
 
 interface PayFastPaymentFormProps {
   amount: number
@@ -28,17 +29,31 @@ export default function PayFastPaymentForm({
 }: PayFastPaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const idempotencyKeyRef = useRef<string | null>(null)
 
   const handlePayment = async () => {
     setIsProcessing(true)
     setError(null)
 
     try {
+      // Generate idempotency key if not already generated for this payment attempt
+      if (!idempotencyKeyRef.current) {
+        const userId = customData?.providerId || 'unknown'
+        idempotencyKeyRef.current = generateIdempotencyKey(userId)
+      }
+
       // Request server to create signed PayFast payload (secrets stay server-side)
       const resp = await fetch("/api/payfast/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, userEmail, userName, itemName, customData })
+        body: JSON.stringify({ 
+          amount, 
+          userEmail, 
+          userName, 
+          itemName, 
+          idempotencyKey: idempotencyKeyRef.current,
+          customData 
+        })
       })
 
       if (!resp.ok) {
@@ -46,7 +61,14 @@ export default function PayFastPaymentForm({
         throw new Error(j.error || "Failed to initiate payment")
       }
 
-      const { paymentData } = await resp.json()
+      const responseData = await resp.json()
+      const { paymentData, idempotent } = responseData
+
+      // If idempotent response, use existing payment data
+      if (idempotent && paymentData) {
+        // Reuse existing idempotency key for subsequent attempts
+        console.log('Idempotent payment request - using existing transaction')
+      }
 
       // Create form and submit to PayFast
       const form = document.createElement('form')
@@ -76,6 +98,8 @@ export default function PayFastPaymentForm({
       const errorMessage = err instanceof Error ? err.message : 'Payment initialization failed'
       setError(errorMessage)
       onError?.(errorMessage)
+      // Reset idempotency key on error so user can retry
+      idempotencyKeyRef.current = null
     } finally {
       setIsProcessing(false)
     }

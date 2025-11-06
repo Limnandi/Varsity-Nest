@@ -65,40 +65,84 @@ export async function POST(request: NextRequest) {
     })
 
     // Extract and validate payment details
-    const providerId = data.custom_str1
+    const entityId = data.custom_str1 // Can be providerId or agentId
     const amount = Number.parseFloat(data.amount_gross)
     const transactionId = data.pf_payment_id
     const merchantPaymentId = data.m_payment_id
+    const idempotencyKey = data.custom_str5
     const status = data.payment_status
     const paymentDate = new Date()
 
     // Validate required fields
-    if (!providerId || !amount || !transactionId || !merchantPaymentId) {
-      captureMessage('Missing required payment fields in webhook', { level: 'error', component: 'payfast-webhook', providerId, amount, transactionId, merchantPaymentId })
+    if (!entityId || !amount || !transactionId || !merchantPaymentId) {
+      captureMessage('Missing required payment fields in webhook', { level: 'error', component: 'payfast-webhook', entityId, amount, transactionId, merchantPaymentId })
       return NextResponse.json({ error: "Missing required payment fields" }, { status: 400 })
     }
 
-    // Fetch the pending transaction with enhanced validation
-    const [pending] = await secureDb.db
-      .select({ 
-        id: schema.paymentTransactions.id,
-        amount: schema.paymentTransactions.amount, 
-        providerId: schema.paymentTransactions.providerId,
-        status: schema.paymentTransactions.status
-      })
-      .from(schema.paymentTransactions)
-      .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
-      .limit(1)
+    // Check for existing transaction by idempotency key first (idempotency check)
+    let pending: any = null
+    if (idempotencyKey) {
+      const existingByKey = await secureDb.db
+        .select({ 
+          id: schema.paymentTransactions.id,
+          amount: schema.paymentTransactions.amount, 
+          providerId: schema.paymentTransactions.providerId,
+          agentId: schema.paymentTransactions.agentId,
+          status: schema.paymentTransactions.status,
+          mPaymentId: schema.paymentTransactions.mPaymentId
+        })
+        .from(schema.paymentTransactions)
+        .where(eq(schema.paymentTransactions.idempotencyKey, idempotencyKey))
+        .limit(1)
+
+      if (existingByKey.length > 0) {
+        pending = existingByKey[0]
+        captureMessage('Idempotent webhook request - transaction already processed', { 
+          level: 'info', 
+          component: 'payfast-webhook', 
+          idempotencyKey, 
+          existingTransactionId: pending.id,
+          status: pending.status,
+          pfPaymentId: transactionId
+        })
+        
+        // If transaction is already completed, return OK without processing
+        if (pending.status === 'completed' || pending.status === 'failed' || pending.status === 'cancelled') {
+          return new Response("OK", { status: 200, headers: { "Content-Type": "text/plain" } })
+        }
+      }
+    }
+
+    // If not found by idempotency key, try to find by merchant payment ID
+    if (!pending) {
+      const existingByMerchantId = await secureDb.db
+        .select({ 
+          id: schema.paymentTransactions.id,
+          amount: schema.paymentTransactions.amount, 
+          providerId: schema.paymentTransactions.providerId,
+          agentId: schema.paymentTransactions.agentId,
+          status: schema.paymentTransactions.status,
+          mPaymentId: schema.paymentTransactions.mPaymentId
+        })
+        .from(schema.paymentTransactions)
+        .where(eq(schema.paymentTransactions.mPaymentId, merchantPaymentId))
+        .limit(1)
+
+      if (existingByMerchantId.length > 0) {
+        pending = existingByMerchantId[0]
+      }
+    }
 
     if (!pending) {
-      captureMessage('No pending transaction found for webhook', { level: 'error', component: 'payfast-webhook', merchantPaymentId, pfPaymentId: transactionId })
+      captureMessage('No pending transaction found for webhook', { level: 'error', component: 'payfast-webhook', merchantPaymentId, pfPaymentId: transactionId, idempotencyKey })
       return NextResponse.json({ error: "Transaction not found" }, { status: 400 })
     }
 
-    // Enhanced security validation
-    if (pending.providerId && String(pending.providerId) !== String(providerId)) {
-      captureMessage('Provider ID mismatch in webhook', { level: 'error', component: 'payfast-webhook', expected: pending.providerId, received: providerId, merchantPaymentId, pfPaymentId: transactionId })
-      return new Response("PROVIDER_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
+    // Enhanced security validation - check provider or agent ID
+    const pendingEntityId = pending.providerId || pending.agentId
+    if (pendingEntityId && String(pendingEntityId) !== String(entityId)) {
+      captureMessage('Entity ID mismatch in webhook', { level: 'error', component: 'payfast-webhook', expected: pendingEntityId, received: entityId, merchantPaymentId, pfPaymentId: transactionId })
+      return new Response("ENTITY_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
     }
 
     // Validate amount with tolerance
@@ -107,30 +151,32 @@ export async function POST(request: NextRequest) {
       return new Response("AMOUNT_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
     }
 
-    // Check for duplicate payments
-    const duplicateCheck = await PaymentReconciliationService.detectDuplicatePayments(providerId, amount)
-    if (duplicateCheck.isDuplicate) {
-      captureMessage('Duplicate payment detected', { level: 'warning', component: 'payfast-webhook', providerId, amount, merchantPaymentId, duplicateTransactions: duplicateCheck.duplicateTransactions.map(t => t.id) })
-      // Log but don't block - let the reconciliation service handle it
+    // Check for duplicate payments (only for providers, agents use idempotency key)
+    if (pending.providerId) {
+      const duplicateCheck = await PaymentReconciliationService.detectDuplicatePayments(pending.providerId, amount)
+      if (duplicateCheck.isDuplicate) {
+        captureMessage('Duplicate payment detected', { level: 'warning', component: 'payfast-webhook', providerId: pending.providerId, amount, merchantPaymentId, duplicateTransactions: duplicateCheck.duplicateTransactions.map(t => t.id) })
+        // Log but don't block - let the reconciliation service handle it
+      }
     }
 
     // Process payment based on status with comprehensive audit logging
     try {
       switch (status) {
         case "COMPLETE":
-          await processSuccessfulPayment(pending.id, providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
+          await processSuccessfulPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data, pending.providerId ? 'provider' : 'agent')
           break
           
         case "PENDING":
-          await processPendingPayment(pending.id, providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
+          await processPendingPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data)
           break
           
         case "FAILED":
-          await processFailedPayment(pending.id, providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
+          await processFailedPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data)
           break
           
         case "CANCELLED":
-          await processCancelledPayment(pending.id, providerId, amount, transactionId, merchantPaymentId, paymentDate, data)
+          await processCancelledPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data)
           break
           
         default:
@@ -143,24 +189,24 @@ export async function POST(request: NextRequest) {
         oldStatus: pending.status,
         newStatus: status.toLowerCase(),
         amount,
-        providerId,
+        providerId: pending.providerId || undefined,
         reason: `Webhook processed: ${status}`,
-        metadata: { webhookData: sanitizedData }
+        metadata: { webhookData: sanitizedData, agentId: pending.agentId || undefined }
       })
 
       // Return success to PayFast in plain text as per recommendations
       return new Response("OK", { status: 200, headers: { "Content-Type": "text/plain" } })
     } catch (processingError) {
-      captureException(processingError instanceof Error ? processingError : new Error(String(processingError)), { component: 'payfast-webhook', status, pfPaymentId: transactionId, merchantPaymentId, providerId })
+      captureException(processingError instanceof Error ? processingError : new Error(String(processingError)), { component: 'payfast-webhook', status, pfPaymentId: transactionId, merchantPaymentId, entityId })
       
       // Log processing error
       await PaymentAuditService.logAuditEvent(pending.id, 'failed', {
         oldStatus: pending.status,
         newStatus: 'failed',
         amount,
-        providerId,
+        providerId: pending.providerId || undefined,
         reason: `Webhook processing error: ${processingError instanceof Error ? processingError.message : 'Unknown error'}`,
-        metadata: { webhookData: sanitizedData, error: processingError }
+        metadata: { webhookData: sanitizedData, error: processingError, agentId: pending.agentId || undefined }
       })
       
       // Return 500 to trigger PayFast retry mechanism
@@ -178,12 +224,13 @@ export async function POST(request: NextRequest) {
 
 async function processSuccessfulPayment(
   transactionDbId: string,
-  providerId: string, 
+  entityId: string, 
   amount: number, 
   transactionId: string,
   _merchantPaymentId: string, 
   paymentDate: Date,
-  webhookData: any
+  webhookData: any,
+  entityType: 'provider' | 'agent' = 'provider'
 ) {
   try {
     // Start transaction for atomicity
@@ -199,30 +246,35 @@ async function processSuccessfulPayment(
         })
         .where(eq(schema.paymentTransactions.id, transactionDbId))
 
-      // Update provider subscription status
-      await tx
-        .update(schema.providers)
-        .set({
-          subscriptionStatus: 'active',
-          lastPaymentDate: paymentDate,
-          nextPaymentDate: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-        })
-        .where(eq(schema.providers.id, providerId))
+      // Update provider or agent subscription status
+      if (entityType === 'provider') {
+        await tx
+          .update(schema.providers)
+          .set({
+            subscriptionStatus: 'active',
+            lastPaymentDate: paymentDate,
+            nextPaymentDate: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+          })
+          .where(eq(schema.providers.id, entityId))
 
-      // Handle featured status if requested
-      if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
-        const [featuredResult] = await tx
-          .select({ count: count(schema.providers.id) })
-          .from(schema.providers)
-          .where(eq(schema.providers.isFeatured, true))
-        
-        const featuredCount = Number(featuredResult?.count || 0)
-        if (featuredCount < 5) {
-          await tx
-            .update(schema.providers)
-            .set({ isFeatured: true })
-            .where(eq(schema.providers.id, providerId))
+        // Handle featured status if requested (only for providers)
+        if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
+          const [featuredResult] = await tx
+            .select({ count: count(schema.providers.id) })
+            .from(schema.providers)
+            .where(eq(schema.providers.isFeatured, true))
+          
+          const featuredCount = Number(featuredResult?.count || 0)
+          if (featuredCount < 5) {
+            await tx
+              .update(schema.providers)
+              .set({ isFeatured: true })
+              .where(eq(schema.providers.id, entityId))
+          }
         }
+      } else if (entityType === 'agent') {
+        // For agents, we can add subscription status updates here if needed in the future
+        // Currently agents use the same payment flow as providers
       }
     })
 
@@ -231,21 +283,22 @@ async function processSuccessfulPayment(
       oldStatus: 'pending',
       newStatus: 'completed',
       amount,
-      providerId,
+      providerId: entityType === 'provider' ? entityId : undefined,
       reason: 'Payment completed successfully via PayFast',
       metadata: { 
         pfPaymentId: transactionId,
         paymentDate: paymentDate.toISOString(),
-        featured: webhookData?.custom_str4 === "featured_true"
+        featured: webhookData?.custom_str4 === "featured_true",
+        agentId: entityType === 'agent' ? entityId : undefined
       }
     })
 
     // Perform reconciliation
     await PaymentReconciliationService.reconcilePayment(transactionDbId, webhookData)
 
-    console.log(`Payment successful for provider ${providerId}: ${transactionId}`)
+    console.log(`Payment successful for ${entityType} ${entityId}: ${transactionId}`)
   } catch (error) {
-    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-processing', transactionId, providerId, amount, action: 'processSuccessfulPayment' })
+    captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-processing', transactionId, entityId, entityType, amount, action: 'processSuccessfulPayment' })
     throw error
   }
 }
