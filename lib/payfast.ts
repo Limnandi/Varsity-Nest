@@ -28,7 +28,8 @@ interface PayFastData {
   
   // Additional PayFast fields
   m_payment_id?: string
-  subscription_type?: string
+  subscription_type?: string // Payfast expects "1" for subscription, "2" for ad-hoc
+  frequency?: string // 1=Daily, 2=Weekly, 3=Monthly, 4=Quarterly, 5=Biannual, 6=Annual
   billing_date?: string
   recurring_amount?: string
   cycles?: string
@@ -44,29 +45,89 @@ interface PayFastData {
   signature?: string
 }
 
-export function generatePayFastSignature(data: PayFastData, passphrase?: string): string {
-  // Create parameter string with sorted keys (PayFast requirement)
-  let paramString = ""
-  const sortedKeys = Object.keys(data).sort()
+// Payfast form submission field order (CRITICAL)
+// Order must match "the order in which they appear in the attributes description" in Payfast docs
+// Source: Payfast documentation - Step 2: Create security signature
+// https://developers.payfast.co.za/docs#step_2_signature
+// TESTING: Using only basic fields from Payfast example to isolate the issue
+const PAYFAST_FORM_FIELD_ORDER = [
+  // Merchant Details (must be first - as per Payfast docs)
+  "merchant_id",
+  "merchant_key",
+  "return_url",
+  "cancel_url",
+  "notify_url",
+  // Buyer Details (as per Payfast docs order)
+  "name_first",
+  "name_last",
+  "email_address",
+  // Transaction Details (as per Payfast example: m_payment_id comes BEFORE amount and item_name)
+  "m_payment_id",
+  "amount",
+  "item_name",
+  // Subscription fields (required for recurring payments - add after item_name)
+  // Order based on Payfast documentation for recurring billing
+  "subscription_type",
+  "recurring_amount",
+  "frequency",
+  "cycles",
+  "billing_date",
+]
 
-  for (const key of sortedKeys) {
+function urlEncodePayfast(value: string): string {
+  // Payfast requires uppercase URL encoding and + for spaces
+  return encodeURIComponent(value)
+    .replace(/%20/g, '+')  // Replace %20 with +
+    .replace(/%([0-9A-F]{2})/g, (_match, hex) => `%${hex.toUpperCase()}`)  // Uppercase hex codes
+}
+
+export function generatePayFastSignature(data: PayFastData, passphrase?: string): string {
+  // Custom/Insite Integration signature generation (for form submissions)
+  // NOTE: This is NOT the API signature format (which uses alphabetical ordering)
+  // NOTE: merchant_key IS included in signature for form submissions
+  // NOTE: Parameters must be in the exact order specified (especially for subscriptions)
+  // NOTE: URL encoding must be uppercase and spaces must be +
+  // NOTE: passphrase IS URL-encoded and appended at the end
+  
+  // Build data object (exclude signature only - merchant_key IS included)
+  const dataForSignature: Record<string, string> = {}
+  for (const key in data) {
     const value = data[key as keyof PayFastData]
     // Only include non-empty values and exclude signature field
+    // merchant_key IS included in signature calculation for form submissions
     if (value !== undefined && value !== "" && key !== "signature") {
-      paramString += `${key}=${encodeURIComponent(value)}&`
+      dataForSignature[key] = String(value).trim()
     }
   }
+  
+  // Build parameter string in Payfast's required order
+  // CRITICAL: Only include fields in the exact order from Payfast's attributes description
+  // Do NOT use alphabetical ordering - this is NOT the API signature format
+  let paramString = ""
+  for (const key of PAYFAST_FORM_FIELD_ORDER) {
+    if (dataForSignature[key]) {
+      const encodedValue = urlEncodePayfast(dataForSignature[key])
+      paramString += `${key}=${encodedValue}&`
+    }
+  }
+  
+  // Remove any fields not in the documented order list
+  // Payfast requires exact order from attributes description - no alphabetical fallback
 
   // Remove trailing &
   paramString = paramString.slice(0, -1)
 
-  // Add passphrase if provided (PayFast security requirement)
+  // ALWAYS append passphrase at the end (URL-encoded with + for spaces)
   if (passphrase) {
-    paramString += `&passphrase=${encodeURIComponent(passphrase)}`
+    // Passphrase IS URL-encoded according to Payfast's custom/insite integration example
+    const encodedPassphrase = urlEncodePayfast(passphrase.trim())
+    paramString += `&passphrase=${encodedPassphrase}`
   }
 
   // Generate MD5 hash (PayFast standard)
-  return crypto.createHash("md5").update(paramString).digest("hex")
+  const signature = crypto.createHash("md5").update(paramString).digest("hex")
+  
+  return signature
 }
 
 //Design pattern: Adapter
@@ -125,10 +186,19 @@ export function createPayFastPayment(
     payment_method: "all",
     
     // Subscription details if applicable
-    subscription_type: customData?.subscriptionType === "recurring" ? "subscription" : undefined,
+    // Payfast expects subscription_type as integer: 1 = Subscription, 2 = Ad Hoc
+    // For monthly subscriptions (ongoing until cancelled), set subscription_type to "1"
+    subscription_type: (customData?.subscriptionType === "recurring" || customData?.subscriptionType === "monthly") ? "1" : undefined,
+    // Frequency: 1=Daily, 2=Weekly, 3=Monthly, 4=Quarterly, 5=Biannual, 6=Annual
+    // Required when subscription_type is "1"
+    // frequency=3 means Monthly billing (not "3 months")
+    frequency: (customData?.subscriptionType === "monthly" || customData?.subscriptionType === "recurring") ? "3" : undefined,
     billing_date: customData?.billingDate,
     recurring_amount: customData?.recurringAmount?.toFixed(2),
-    cycles: customData?.cycles?.toString(),
+    // cycles: "0" means ongoing until cancelled (unlimited)
+    // Required for subscriptions - "0" = no limit, continues until cancelled
+    cycles: customData?.cycles ? customData.cycles.toString() : 
+            (customData?.subscriptionType === "monthly" || customData?.subscriptionType === "recurring") ? "0" : undefined,
     
     // Unique payment ID for tracking
     m_payment_id: customData?.paymentId || `vn_${Date.now()}`,
@@ -143,7 +213,26 @@ export function createPayFastPayment(
 
   const signature = generatePayFastSignature(data, env.PAYFAST_PASSPHRASE)
 
-  return { ...data, signature }
+  // CRITICAL: Only return fields that are in PAYFAST_FORM_FIELD_ORDER or are required for the form
+  // This ensures the form submission matches the signature calculation exactly
+  const fieldsToInclude = [
+    ...PAYFAST_FORM_FIELD_ORDER,
+    'signature' // Always include signature
+  ]
+  
+  const finalData: PayFastData & { signature: string } = {
+    signature
+  } as PayFastData & { signature: string }
+  
+  // Only include fields that are in the order list (for signature) or signature itself
+  for (const key of fieldsToInclude) {
+    const value = data[key as keyof PayFastData]
+    if (value !== undefined && value !== '') {
+      finalData[key as keyof PayFastData] = value as any
+      }
+    }
+
+    return finalData
 }
 
 export function verifyPayFastSignature(data: any, signature: string): boolean {
@@ -216,3 +305,4 @@ export function validatePayFastResponse(data: any): {
     errors
   }
 }
+
