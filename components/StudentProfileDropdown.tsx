@@ -13,6 +13,7 @@ interface StudentProfileDropdownProps {
 
 export default function StudentProfileDropdown({ onClose }: StudentProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const user = useUser() as any
@@ -44,6 +45,31 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
       </div>
     )
   }
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const updatePosition = () => {
+        if (buttonRef.current) {
+          const rect = buttonRef.current.getBoundingClientRect()
+          setDropdownPosition({
+            top: rect.bottom + 8,
+            right: window.innerWidth - rect.right
+          })
+        }
+      }
+      
+      updatePosition()
+      window.addEventListener('resize', updatePosition)
+      window.addEventListener('scroll', updatePosition, true)
+      
+      return () => {
+        window.removeEventListener('resize', updatePosition)
+        window.removeEventListener('scroll', updatePosition, true)
+      }
+    }
+    return undefined
+  }, [isOpen])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -122,13 +148,18 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
           {/* Dropdown Arrow */}
           <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
+      </div>
 
-        {/* Dropdown Menu */}
-        {isOpen && (
-          <div
-            ref={dropdownRef}
-            className="absolute right-0 top-full mt-2 w-80 text-white rounded-2xl shadow-2xl shadow-blue-500/25 border border-white/20 animate-in slide-in-from-top-2 duration-300 z-50 bg-black/40 supports-[backdrop-filter]:bg-black/30 backdrop-blur-[20px] backdrop-saturate-200"
-          >
+      {/* Dropdown Menu - Rendered outside navbar with fixed positioning */}
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className="fixed z-[100] w-80 text-white rounded-2xl shadow-2xl shadow-blue-500/25 border border-white/10 animate-in slide-in-from-top-2 duration-300 bg-black/20 backdrop-blur-xl"
+          style={{
+            top: `${dropdownPosition.top}px`,
+            right: `${dropdownPosition.right}px`,
+          }}
+        >
           {/* Header */}
           <div className="p-4 border-b border-white/10">
             <div className="flex items-center space-x-3">
@@ -191,8 +222,7 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
             </button>
           </div>
         </div>
-        )}
-      </div>
+      )}
     </>
   )
 }
