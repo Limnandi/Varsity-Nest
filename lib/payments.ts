@@ -39,11 +39,20 @@ export interface ProviderPricingInput {
 }
 
 export function calculateProviderSubscriptionPrice(input: ProviderPricingInput): number {
-  const base = input.basePrice ?? 450
-  const extra = input.extraSitePrice ?? 50
-  const featured = input.featuredPrice ?? 50
+  // First accommodation: R199.90
+  // Each additional accommodation: R89.90
+  const firstAccommodationPrice = 199.90
+  const additionalAccommodationPrice = 89.90
+  const featured = input.featuredPrice ?? 0
 
-  const additionalSites = Math.max(0, (input.accommodationsCount || 0) - 1)
-  const total = base + (additionalSites * extra) + (input.wantsFeatured ? featured : 0)
+  const accommodationsCount = input.accommodationsCount || 0
+  
+  if (accommodationsCount === 0) {
+    return firstAccommodationPrice
+  }
+  
+  // First accommodation is R199.90, each additional is R89.90
+  const additionalCount = Math.max(0, accommodationsCount - 1)
+  const total = firstAccommodationPrice + (additionalCount * additionalAccommodationPrice) + (input.wantsFeatured ? featured : 0)
   return Number(total.toFixed(2))
 }

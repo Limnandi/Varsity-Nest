@@ -6,6 +6,21 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  webpack: (config, { isServer }) => {
+    // Suppress webpack warnings from Sentry/OpenTelemetry dependencies
+    // These are harmless warnings about dynamic requires that don't affect functionality
+    config.ignoreWarnings = [
+      {
+        module: /node_modules\/@opentelemetry\/instrumentation/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+      {
+        module: /node_modules\/@sentry/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ]
+    return config
+  },
   images: {
     remotePatterns: [
       {

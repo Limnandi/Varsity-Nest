@@ -4,7 +4,13 @@ import { captureException, captureMessage } from '@/lib/logging/config'
 import { env } from "@/lib/env"
 
 export class PaymentSecurityService {
+  /**
+   * Official PayFast IP address ranges for webhook validation
+   * Source: https://developers.payfast.co.za/documentation/#ports-and-ip-addresses
+   * These ranges must be whitelisted in PayFast merchant portal for recurring billing API
+   */
   private static readonly PAYFAST_IP_RANGES = [
+    '197.97.102.0/24', // Primary PayFast IP range
     '41.74.179.0/24',
     '41.74.180.0/24', 
     '41.74.181.0/24',
@@ -86,17 +92,21 @@ export class PaymentSecurityService {
 
   /**
    * Validate PayFast webhook signature with enhanced security
+   * Generic version that works with any PayFast webhook type (ITN, RRN, PFN)
    */
-  static verifyPayFastSignature(data: PayFastWebhook, signature: string): boolean {
+  static verifyPayFastSignature(data: PayFastWebhook | Record<string, any>, signature: string): boolean {
     try {
+      // Convert to Record<string, any> for safe indexing
+      const webhookData: Record<string, any> = data as Record<string, any>
+      
       // Create parameter string with sorted keys (PayFast requirement)
       let paramString = ""
-      const sortedKeys = Object.keys(data).sort()
+      const sortedKeys = Object.keys(webhookData).sort()
 
       for (const key of sortedKeys) {
-        const value = data[key as keyof PayFastWebhook]
+        const value = webhookData[key]
         // Only include non-empty values and exclude signature field
-        if (value !== undefined && value !== "" && key !== "signature") {
+        if (value !== undefined && value !== "" && value !== null && key !== "signature") {
           paramString += `${key}=${encodeURIComponent(String(value))}&`
         }
       }

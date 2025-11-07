@@ -4,7 +4,7 @@ export interface User {
   password: string
   firstName: string
   lastName: string
-  role: "admin" | "provider" | "student"
+  role: "admin" | "provider" | "student" | "agent"
   phone?: string
   studentNumber?: string
   institution?: string
@@ -24,7 +24,7 @@ export interface User {
 
 export interface SessionPayload {
   userId: string
-  role: "admin" | "provider" | "student"
+  role: "admin" | "provider" | "student" | "agent"
   expiresAt: Date
   [key: string]: any
 }
@@ -39,6 +39,7 @@ export interface Accommodation {
   amenities: string[]
   accreditation_status: "accredited" | "provisionally_accredited" | "non_accredited"
   provider_id: string
+  agent_id?: string
   created_at: Date
   updated_at: Date
   is_active: boolean
@@ -54,6 +55,23 @@ export interface Accommodation {
 }
 
 export interface Provider {
+  id: string
+  user_id: string
+  business_name: string
+  business_registration?: string
+  contact_person: string
+  contact_email: string
+  contact_phone: string
+  address: string
+  website_url?: string
+  description?: string
+  is_verified: boolean
+  is_active: boolean
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Agent {
   id: string
   user_id: string
   business_name: string

@@ -57,6 +57,22 @@ export default function RegisterPage() {
             </div>
             <ArrowRight className="w-6 h-6 text-purple-400 group-hover:text-purple-300 group-hover:translate-x-1 transition-all duration-300" />
           </Link>
+
+          <Link
+            href="/auth/register/agent"
+            className="group relative flex items-center justify-between w-full p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.01] hover:shadow-green-500/20"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 border border-green-500/50 bg-green-500/10 rounded-full flex items-center justify-center group-hover:bg-green-500/20 transition-all duration-300 shadow-[0_0_15px_theme(colors.green.500/30%)]">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-green-600 rounded-full"></div>
+              </div>
+              <div className="text-left">
+                <h2 className="text-lg font-semibold text-white group-hover:text-green-300 transition-colors">I&apos;m an Agent</h2>
+                <p className="text-sm text-neutral-400 group-hover:text-neutral-300 transition-colors">Managing accommodations</p>
+              </div>
+            </div>
+            <ArrowRight className="w-6 h-6 text-green-400 group-hover:text-green-300 group-hover:translate-x-1 transition-all duration-300" />
+          </Link>
         </div>
 
         {/* Login Link */}

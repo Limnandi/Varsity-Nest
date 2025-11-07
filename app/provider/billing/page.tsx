@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { 
@@ -12,9 +13,12 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Pause,
+  Play,
+  X,
+  Info
 } from "lucide-react"
-import Link from "next/link"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 
@@ -40,18 +44,64 @@ interface ProviderData {
   email: string
   businessName: string
   contactPerson: string
+  subscriptionToken: string | null
   billingInfo: BillingInfo
 }
 
+interface SubscriptionDetails {
+  token: string
+  status: 'active' | 'paused' | 'cancelled'
+  cycles: number
+  frequency: number
+  amount: number
+  item_name: string
+  billing_date: string
+  next_run_date: string
+  is_active: boolean
+  is_paused: boolean
+  is_cancelled: boolean
+}
+
 export default function ProviderBilling() {
+  const router = useRouter()
   const [provider, setProvider] = useState<ProviderData | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null)
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false)
+  const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false)
 
-  const fetchProviderData = async () => {
+  const fetchSubscriptionDetails = useCallback(async (token: string) => {
+    try {
+      setIsLoadingSubscription(true)
+      setSubscriptionError(null)
+      const response = await fetch(`/api/subscriptions/${token}`, {
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to fetch subscription details (${response.status})`)
+      }
+
+      const data = await response.json()
+      if (data.success && data.subscription) {
+        setSubscriptionDetails(data.subscription)
+      }
+    } catch (err) {
+      console.error('Subscription details fetch error:', err)
+      setSubscriptionError(err instanceof Error ? err.message : 'Failed to load subscription details')
+    } finally {
+      setIsLoadingSubscription(false)
+    }
+  }, [])
+
+  const fetchProviderData = useCallback(async () => {
     try {
       setError(null)
       const response = await fetch('/api/provider/billing', {
@@ -66,6 +116,11 @@ export default function ProviderBilling() {
       const data = await response.json()
       setProvider(data.provider)
       setInvoices(data.invoices || [])
+      
+      // Fetch subscription details if token exists
+      if (data.provider.subscriptionToken) {
+        fetchSubscriptionDetails(data.provider.subscriptionToken)
+      }
     } catch (err) {
       console.error('Billing data fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load billing data')
@@ -73,15 +128,102 @@ export default function ProviderBilling() {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }
+  }, [fetchSubscriptionDetails])
 
   useEffect(() => {
     fetchProviderData()
-  }, [])
+  }, [fetchProviderData])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
     fetchProviderData()
+  }
+
+  const handlePauseSubscription = async () => {
+    if (!provider?.subscriptionToken) return
+
+    try {
+      setIsManagingSubscription(true)
+      setSubscriptionError(null)
+      const response = await fetch(`/api/subscriptions/${provider.subscriptionToken}/pause`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cycles: 0 }) // 0 = indefinite pause
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to pause subscription')
+      }
+
+      // Refresh subscription details
+      await fetchSubscriptionDetails(provider.subscriptionToken)
+      await fetchProviderData() // Refresh billing data
+    } catch (err) {
+      console.error('Pause subscription error:', err)
+      setSubscriptionError(err instanceof Error ? err.message : 'Failed to pause subscription')
+    } finally {
+      setIsManagingSubscription(false)
+    }
+  }
+
+  const handleUnpauseSubscription = async () => {
+    if (!provider?.subscriptionToken) return
+
+    try {
+      setIsManagingSubscription(true)
+      setSubscriptionError(null)
+      const response = await fetch(`/api/subscriptions/${provider.subscriptionToken}/unpause`, {
+        method: 'PUT',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to unpause subscription')
+      }
+
+      // Refresh subscription details
+      await fetchSubscriptionDetails(provider.subscriptionToken)
+      await fetchProviderData() // Refresh billing data
+    } catch (err) {
+      console.error('Unpause subscription error:', err)
+      setSubscriptionError(err instanceof Error ? err.message : 'Failed to unpause subscription')
+    } finally {
+      setIsManagingSubscription(false)
+    }
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!provider?.subscriptionToken) return
+
+    if (!confirm('Are you sure you want to cancel your subscription? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setIsManagingSubscription(true)
+      setSubscriptionError(null)
+      const response = await fetch(`/api/subscriptions/${provider.subscriptionToken}/cancel`, {
+        method: 'PUT',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to cancel subscription')
+      }
+
+      // Refresh billing data
+      await fetchProviderData()
+      setSubscriptionDetails(null)
+    } catch (err) {
+      console.error('Cancel subscription error:', err)
+      setSubscriptionError(err instanceof Error ? err.message : 'Failed to cancel subscription')
+    } finally {
+      setIsManagingSubscription(false)
+    }
   }
 
   const exportInvoice = (invoice: Invoice) => {
@@ -225,7 +367,10 @@ export default function ProviderBilling() {
     return null
   }
 
-  const pendingAmount = invoices.reduce((sum, inv) => inv.status === 'pending' ? sum + inv.amount : sum, 0)
+  // Pending amount should be the monthly fee (based on accommodations) if subscription is not active
+  // NOT the sum of all payment attempts
+  const hasActiveSubscription = provider.billingInfo.subscriptionStatus === 'active'
+  const pendingAmount = hasActiveSubscription ? 0 : provider.billingInfo.monthlyFee
 
   return (
     <AuthGuard requiredRole="provider">
@@ -264,21 +409,38 @@ export default function ProviderBilling() {
                 </span>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-neutral-300">Monthly Subscription</p>
+                <p className="text-sm text-neutral-300">Subscription Amount</p>
                 <p className="text-4xl font-bold">
                   R{provider.billingInfo.monthlyFee.toFixed(2)}
-                  <span className="text-lg font-medium text-neutral-400">/mo</span>
+                  <span className="text-lg font-medium text-neutral-400">/30 days</span>
                 </p>
                 <div className="flex items-center gap-2 text-sm text-neutral-400">
                   <Calendar className="w-4 h-4" />
-                  <span>Renews: {new Date(provider.billingInfo.nextPaymentDate).toLocaleDateString()}</span>
+                  <span>Next payment: {new Date(provider.billingInfo.nextPaymentDate).toLocaleDateString()}</span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-xs text-neutral-400">
+                    Amount calculated based on your active accommodations
+                  </p>
                 </div>
               </div>
-              <Link href="/provider/billing/payment">
-                <button className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40">
-                  Make Payment
-                </button>
-              </Link>
+              <button 
+                onClick={() => {
+                  setIsNavigatingToPayment(true)
+                  router.push("/provider/billing/payment")
+                }}
+                disabled={isNavigatingToPayment}
+                className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isNavigatingToPayment ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Make Payment"
+                )}
+              </button>
             </div>
 
             {/* Pending Payments */}
@@ -296,24 +458,113 @@ export default function ProviderBilling() {
             </div>
           </div>
 
-          {/* Payment Method */}
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
-            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Payment Method
-            </h2>
-            <div className="flex items-center space-x-4">
-              <div className="p-4 border border-purple-500/50 bg-purple-500/10 rounded-xl">
-                <CreditCard className="w-8 h-8 text-purple-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-lg">PayFast Secure Gateway</p>
-                <p className="text-sm text-neutral-400">All major credit cards, debit cards, and EFT supported</p>
-              </div>
+          {/* Subscription Management */}
+          {provider.subscriptionToken && (
+            <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Subscription Management
+              </h2>
+              
+              {subscriptionError && (
+                <div className="mb-6 p-4 border border-red-500/50 bg-red-500/10 rounded-xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-300">Error</p>
+                    <p className="text-sm text-red-200">{subscriptionError}</p>
+                  </div>
+                </div>
+              )}
+
+              {isLoadingSubscription ? (
+                <div className="py-8 text-center">
+                  <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
+                  <p className="text-neutral-400">Loading subscription details...</p>
+                </div>
+              ) : subscriptionDetails ? (
+                <div className="space-y-6">
+                  {/* Subscription Status */}
+                  <div className="p-6 border border-white/10 bg-black/30 rounded-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <Info className="w-5 h-5 text-blue-400" />
+                        <h3 className="text-lg font-semibold">Subscription Details</h3>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                        subscriptionDetails.status === 'active' 
+                          ? 'border-green-500/50 bg-green-500/10 text-green-300'
+                          : subscriptionDetails.status === 'paused'
+                          ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-300'
+                          : 'border-red-500/50 bg-red-500/10 text-red-300'
+                      }`}>
+                        {subscriptionDetails.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-neutral-400 mb-1">Amount</p>
+                        <p className="font-semibold">R{(subscriptionDetails.amount / 100).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-400 mb-1">Frequency</p>
+                        <p className="font-semibold">
+                          {subscriptionDetails.frequency === 3 ? 'Monthly' :
+                           subscriptionDetails.frequency === 4 ? 'Quarterly' :
+                           subscriptionDetails.frequency === 6 ? 'Annual' : 'Custom'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-400 mb-1">Next Billing Date</p>
+                        <p className="font-semibold">{new Date(subscriptionDetails.next_run_date).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-400 mb-1">Remaining Cycles</p>
+                        <p className="font-semibold">{subscriptionDetails.cycles === 0 ? 'Unlimited' : subscriptionDetails.cycles}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subscription Actions */}
+                  <div className="flex flex-wrap gap-3">
+                    {subscriptionDetails.status === 'active' && (
+                      <button
+                        onClick={handlePauseSubscription}
+                        disabled={isManagingSubscription}
+                        className="flex items-center gap-2 px-6 py-3 border border-yellow-500/50 bg-yellow-500/10 backdrop-blur-xl rounded-xl text-yellow-300 hover:bg-yellow-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Pause className="w-4 h-4" />
+                        {isManagingSubscription ? 'Pausing...' : 'Pause Subscription'}
+                      </button>
+                    )}
+                    {subscriptionDetails.status === 'paused' && (
+                      <button
+                        onClick={handleUnpauseSubscription}
+                        disabled={isManagingSubscription}
+                        className="flex items-center gap-2 px-6 py-3 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl text-green-300 hover:bg-green-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Play className="w-4 h-4" />
+                        {isManagingSubscription ? 'Resuming...' : 'Resume Subscription'}
+                      </button>
+                    )}
+                    {subscriptionDetails.status !== 'cancelled' && (
+                      <button
+                        onClick={handleCancelSubscription}
+                        disabled={isManagingSubscription}
+                        className="flex items-center gap-2 px-6 py-3 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl text-red-300 hover:bg-red-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <X className="w-4 h-4" />
+                        {isManagingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <p className="text-neutral-400">No active subscription found</p>
+                  <p className="text-sm text-neutral-500 mt-2">Subscription details will appear here once you have an active recurring subscription</p>
+                </div>
+              )}
             </div>
-            <button className="mt-6 w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-3 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">
-              Manage Payment Methods
-            </button>
-          </div>
+          )}
 
           {/* Billing History */}
           <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">

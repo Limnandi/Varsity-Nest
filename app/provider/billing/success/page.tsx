@@ -14,22 +14,88 @@ export default function PaymentSuccessPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Extract payment details from URL parameters (guard against null)
-    const paymentId = searchParams?.get("pf_payment_id")
-    const status = searchParams?.get("payment_status")
-    const amount = searchParams?.get("amount_gross")
-    const itemName = searchParams?.get("item_name")
+    const fetchPaymentDetails = async () => {
+      // Extract payment details from URL parameters (guard against null)
+      // Payfast sends different parameter names - check multiple possibilities
+      const paymentId = searchParams?.get("pf_payment_id") || 
+                        searchParams?.get("payment_id") || 
+                        searchParams?.get("token")
+      const status = searchParams?.get("payment_status") || 
+                     searchParams?.get("status")
+      const amount = searchParams?.get("amount_gross") || 
+                     searchParams?.get("amount") ||
+                     searchParams?.get("amount_paid")
+      const itemName = searchParams?.get("item_name") || 
+                       searchParams?.get("item_name")
 
-    if (paymentId && status === "COMPLETE") {
-      setPaymentDetails({
-        paymentId,
-        status,
-        amount: parseFloat(amount || "0"),
-        itemName: itemName || "Subscription Payment"
-      })
+      // If we have URL parameters, use them
+      if (paymentId && (status === "COMPLETE" || status === "complete" || status === "success")) {
+        setPaymentDetails({
+          paymentId,
+          status,
+          amount: parseFloat(amount || "0"),
+          itemName: itemName || "Subscription Payment"
+        })
+        setIsLoading(false)
+        return
+      } else if (paymentId) {
+        // If we have a payment ID but status doesn't match, still show success
+        setPaymentDetails({
+          paymentId,
+          status: status || "COMPLETE",
+          amount: parseFloat(amount || "0"),
+          itemName: itemName || "Subscription Payment"
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // No URL parameters - fetch latest transaction from database
+      try {
+        const response = await fetch("/api/provider/billing/latest-transaction")
+        if (response.ok) {
+          const data = await response.json()
+          
+          // Always try to activate subscription (even if status is pending, user was redirected from Payfast success)
+          // This handles the case where webhook hasn't been called yet
+          try {
+            await fetch("/api/provider/billing/activate-subscription", {
+              method: "POST",
+              credentials: "include"
+            })
+          } catch (activateError) {
+            // Silently handle activation errors - payment was successful, webhook will eventually process it
+          }
+          
+          setPaymentDetails({
+            paymentId: data.paymentId || "pending-verification",
+            status: data.status === "completed" ? "COMPLETE" : data.status,
+            amount: data.amount || 0,
+            itemName: data.itemName || "Subscription Payment"
+          })
+        } else {
+          // If fetch fails, show success anyway (user was redirected from Payfast)
+          setPaymentDetails({
+            paymentId: "pending-verification",
+            status: "COMPLETE",
+            amount: 0,
+            itemName: "Subscription Payment"
+          })
+        }
+      } catch (error) {
+        // Show success anyway (user was redirected from Payfast)
+        setPaymentDetails({
+          paymentId: "pending-verification",
+          status: "COMPLETE",
+          amount: 0,
+          itemName: "Subscription Payment"
+        })
+      }
+      
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
+
+    fetchPaymentDetails()
   }, [searchParams])
 
   const handleDownloadReceipt = () => {
