@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { 
@@ -18,7 +19,6 @@ import {
   X,
   Info
 } from "lucide-react"
-import Link from "next/link"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 
@@ -63,6 +63,7 @@ interface SubscriptionDetails {
 }
 
 export default function ProviderBilling() {
+  const router = useRouter()
   const [provider, setProvider] = useState<ProviderData | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -73,6 +74,7 @@ export default function ProviderBilling() {
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
+  const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false)
 
   const fetchSubscriptionDetails = useCallback(async (token: string) => {
     try {
@@ -365,7 +367,10 @@ export default function ProviderBilling() {
     return null
   }
 
-  const pendingAmount = invoices.reduce((sum, inv) => inv.status === 'pending' ? sum + inv.amount : sum, 0)
+  // Pending amount should be the monthly fee (based on accommodations) if subscription is not active
+  // NOT the sum of all payment attempts
+  const hasActiveSubscription = provider.billingInfo.subscriptionStatus === 'active'
+  const pendingAmount = hasActiveSubscription ? 0 : provider.billingInfo.monthlyFee
 
   return (
     <AuthGuard requiredRole="provider">
@@ -419,11 +424,23 @@ export default function ProviderBilling() {
                   </p>
                 </div>
               </div>
-              <Link href="/provider/billing/payment">
-                <button className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40">
-                  Make Payment
-                </button>
-              </Link>
+              <button 
+                onClick={() => {
+                  setIsNavigatingToPayment(true)
+                  router.push("/provider/billing/payment")
+                }}
+                disabled={isNavigatingToPayment}
+                className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isNavigatingToPayment ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Make Payment"
+                )}
+              </button>
             </div>
 
             {/* Pending Payments */}
@@ -548,25 +565,6 @@ export default function ProviderBilling() {
               )}
             </div>
           )}
-
-          {/* Payment Method */}
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
-            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Payment Method
-            </h2>
-            <div className="flex items-center space-x-4">
-              <div className="p-4 border border-purple-500/50 bg-purple-500/10 rounded-xl">
-                <CreditCard className="w-8 h-8 text-purple-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-lg">PayFast Secure Gateway</p>
-                <p className="text-sm text-neutral-400">All major credit cards, debit cards, and EFT supported</p>
-              </div>
-            </div>
-            <button className="mt-6 w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-3 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">
-              Manage Payment Methods
-            </button>
-          </div>
 
           {/* Billing History */}
           <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
