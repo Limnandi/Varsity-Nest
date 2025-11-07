@@ -83,6 +83,8 @@ export async function GET(request: NextRequest) {
     })
 
     // Fetch payment history from payment_transactions table
+    // Only show completed payments and the most recent pending payment (if any)
+    // Filter out failed/cancelled attempts to avoid confusion
     const paymentsResult = await query`
       SELECT 
         pt.id, 
@@ -93,18 +95,24 @@ export async function GET(request: NextRequest) {
         pt.pf_payment_id
       FROM payment_transactions pt
       WHERE pt.provider_id = ${providerData.id}
+        AND (pt.status = 'completed' OR pt.status = 'pending')
       ORDER BY pt.created_at DESC
       LIMIT 50
     `
 
     // Transform payments to invoices
-    const invoices = paymentsResult.rows.map((payment: any) => ({
+    // Only include completed payments and the most recent pending payment
+    const completedPayments = paymentsResult.rows.filter((p: any) => p.status === 'completed')
+    const pendingPayments = paymentsResult.rows.filter((p: any) => p.status === 'pending')
+    const mostRecentPending = pendingPayments.length > 0 ? [pendingPayments[0]] : []
+    
+    const allRelevantPayments = [...completedPayments, ...mostRecentPending]
+    
+    const invoices = allRelevantPayments.map((payment: any) => ({
       id: payment.pf_payment_id || payment.m_payment_id || payment.id,
       date: payment.created_at,
       amount: Number(payment.amount),
-      status: payment.status === 'completed' ? 'paid' : 
-              payment.status === 'failed' ? 'failed' :
-              payment.status === 'cancelled' ? 'refunded' : 'pending',
+      status: payment.status === 'completed' ? 'paid' : 'pending',
       description: `Varsity Nest Monthly Subscription - ${new Date(payment.created_at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })}`,
       paymentMethod: 'PayFast' // Default to PayFast since that's the payment gateway
     }))
