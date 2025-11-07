@@ -10,16 +10,27 @@ import * as schema from "@/lib/schema"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("\n" + "=".repeat(80))
+    console.log("[PAYFAST ITN] ===== WEBHOOK RECEIVED =====")
+    console.log("[PAYFAST ITN] Timestamp:", new Date().toISOString())
+    console.log("[PAYFAST ITN] URL:", request.url)
+    console.log("=".repeat(80))
+    
     // Enhanced IP validation using PayFast's official IP ranges
     const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
                     request.headers.get("x-real-ip") || 
                     (request as any).ip || ""
     
+    console.log("[PAYFAST ITN] Client IP:", clientIP)
+    
     if (!PaymentSecurityService.validatePayFastIP(clientIP)) {
+      console.error("[PAYFAST ITN] ERROR: Unauthorized IP address:", clientIP)
       captureMessage('PayFast webhook from unauthorized IP', { level: 'error', component: 'payfast-webhook', clientIP })
       return new Response("FORBIDDEN", { status: 403, headers: { "Content-Type": "text/plain" } })
     }
 
+    console.log("[PAYFAST ITN] IP validation passed")
+    
     const formData = await request.formData()
     const rawData: any = {}
     const fieldOrder: string[] = []
@@ -30,9 +41,13 @@ export async function POST(request: NextRequest) {
       fieldOrder.push(key)
     })
 
+    console.log("[PAYFAST ITN] Raw data received:", Object.keys(rawData).sort())
+    console.log("[PAYFAST ITN] Field order:", fieldOrder)
+
     // Validate webhook data structure with Zod schema
     const validationResult = PayFastWebhookSchema.safeParse(rawData)
     if (!validationResult.success) {
+      console.error("[PAYFAST ITN] ERROR: Invalid webhook data structure:", validationResult.error.issues)
       captureMessage('Invalid PayFast webhook data structure', { level: 'error', component: 'payfast-webhook', errors: validationResult.error.issues, pfPaymentId: rawData.pf_payment_id })
       return NextResponse.json({ 
         error: "Invalid webhook data structure", 
@@ -42,25 +57,70 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data
 
+    // Build ITN payload string for testing (alphabetical order for ITN)
+    const { env } = await import('@/lib/env')
+    const itnPayloadData: Record<string, string> = {}
+    for (const key in data) {
+      const value = data[key as keyof typeof data]
+      if (value !== undefined && value !== "" && key !== "signature") {
+        itnPayloadData[key] = String(value)
+      }
+    }
+    
+    // Sort alphabetically for ITN signature (different from form submission)
+    const sortedKeys = Object.keys(itnPayloadData).sort()
+    let itnPayloadString = ""
+    for (const key of sortedKeys) {
+      const encodedValue = encodeURIComponent(itnPayloadData[key])
+      itnPayloadString += `${key}=${encodedValue}&`
+    }
+    itnPayloadString = itnPayloadString.slice(0, -1) // Remove trailing &
+    
+    // Add passphrase for ITN signature
+    if (env.PAYFAST_PASSPHRASE) {
+      itnPayloadString += `&passphrase=${encodeURIComponent(env.PAYFAST_PASSPHRASE)}`
+    }
+    
+    console.log("\n" + "=".repeat(80))
+    console.log("[PAYFAST ITN] ===== COPY THIS FOR ITN TESTER =====")
+    console.log("=".repeat(80))
+    console.log(itnPayloadString)
+    console.log("=".repeat(80))
+    console.log("[PAYFAST ITN] ===== END OF ITN PAYLOAD STRING =====")
+    console.log("[PAYFAST ITN] Payload length:", itnPayloadString.length)
+    console.log("[PAYFAST ITN] NOTE: ITN uses alphabetical ordering (different from form submission)")
+    console.log("[PAYFAST ITN] NOTE: passphrase IS included in ITN payload string")
+    console.log("=".repeat(80) + "\n")
+
     // Enhanced signature verification with timing-safe comparison
-    if (!PaymentSecurityService.verifyPayFastSignature(data, data.signature)) {
+    const signatureValid = PaymentSecurityService.verifyPayFastSignature(data, data.signature)
+    console.log("[PAYFAST ITN] Signature verification:", signatureValid ? "PASSED" : "FAILED")
+    console.log("[PAYFAST ITN] Received signature:", data.signature)
+    
+    if (!signatureValid) {
+      console.error("[PAYFAST ITN] ERROR: Invalid signature!")
       captureMessage('Invalid PayFast webhook signature', { level: 'error', component: 'payfast-webhook', pfPaymentId: data.pf_payment_id, clientIP })
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
     // Validate merchant ID
-    const { env } = await import('@/lib/env')
     if (data.merchant_id !== env.PAYFAST_MERCHANT_ID) {
+      console.error("[PAYFAST ITN] ERROR: Merchant ID mismatch!")
+      console.error("[PAYFAST ITN] Expected:", env.PAYFAST_MERCHANT_ID)
+      console.error("[PAYFAST ITN] Received:", data.merchant_id)
       captureMessage('Merchant ID mismatch in PayFast webhook', { level: 'error', component: 'payfast-webhook', merchantId: data.merchant_id, pfPaymentId: data.pf_payment_id })
       return new Response("MERCHANT_MISMATCH", { status: 400, headers: { "Content-Type": "text/plain" } })
     }
 
+    console.log("[PAYFAST ITN] Merchant ID validation passed")
+    
     // Log webhook receipt with sanitized data
     const sanitizedData = PaymentSecurityService.sanitizePaymentData(data)
-    console.log("PayFast webhook received", {
+    console.log("[PAYFAST ITN] Webhook data:", {
       pfPaymentId: data.pf_payment_id,
       paymentStatus: data.payment_status,
       amount: data.amount_gross,
+      mPaymentId: data.m_payment_id,
       clientIP
     })
 
@@ -161,27 +221,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Process payment based on status with comprehensive audit logging
+    console.log(`[PAYFAST ITN] Processing payment with status: ${status}`)
     try {
       switch (status) {
         case "COMPLETE":
+          console.log(`[PAYFAST ITN] Processing COMPLETE payment for ${pending.providerId ? 'provider' : 'agent'} ${pending.providerId || pending.agentId}`)
           await processSuccessfulPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data, pending.providerId ? 'provider' : 'agent')
+          console.log(`[PAYFAST ITN] ✓ Payment processed successfully - subscription activated`)
           break
           
         case "PENDING":
+          console.log(`[PAYFAST ITN] Processing PENDING payment`)
           await processPendingPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data)
           break
           
         case "FAILED":
+          console.log(`[PAYFAST ITN] Processing FAILED payment`)
           await processFailedPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data)
           break
           
         case "CANCELLED":
+          console.log(`[PAYFAST ITN] Processing CANCELLED payment`)
           await processCancelledPayment(pending.id, pending.providerId || pending.agentId, amount, transactionId, merchantPaymentId, paymentDate, data)
           break
           
         default:
+          console.warn(`[PAYFAST ITN] WARNING: Unknown payment status: ${status}`)
           captureMessage('Unknown payment status in webhook', { level: 'warning', component: 'payfast-webhook', status, pfPaymentId: transactionId, merchantPaymentId })
-           console.warn("Unknown payment status:", status, "for payment:", transactionId)
       }
 
       // Log successful webhook processing
@@ -194,9 +260,14 @@ export async function POST(request: NextRequest) {
         metadata: { webhookData: sanitizedData, agentId: pending.agentId || undefined }
       })
 
+      console.log(`[PAYFAST ITN] ✓ Webhook processing completed successfully`)
+      console.log("=".repeat(80) + "\n")
+
       // Return success to PayFast in plain text as per recommendations
       return new Response("OK", { status: 200, headers: { "Content-Type": "text/plain" } })
     } catch (processingError) {
+      console.error(`[PAYFAST ITN] ERROR: Failed to process payment:`, processingError)
+      console.error(`[PAYFAST ITN] Error stack:`, processingError instanceof Error ? processingError.stack : 'No stack')
       captureException(processingError instanceof Error ? processingError : new Error(String(processingError)), { component: 'payfast-webhook', status, pfPaymentId: transactionId, merchantPaymentId, entityId })
       
       // Log processing error
@@ -209,13 +280,20 @@ export async function POST(request: NextRequest) {
         metadata: { webhookData: sanitizedData, error: processingError, agentId: pending.agentId || undefined }
       })
       
+      console.log("=".repeat(80) + "\n")
+      
       // Return 500 to trigger PayFast retry mechanism
       return new Response("ERROR", { status: 500, headers: { "Content-Type": "text/plain" } })
     }
 
   } catch (error) {
+    console.error("\n" + "=".repeat(80))
+    console.error("[PAYFAST ITN] CRITICAL ERROR:", error)
+    console.error("[PAYFAST ITN] Error message:", error instanceof Error ? error.message : String(error))
+    console.error("[PAYFAST ITN] Error stack:", error instanceof Error ? error.stack : 'No stack')
+    console.error("=".repeat(80) + "\n")
+    
     captureException(error instanceof Error ? error : new Error(String(error)))
-    console.error("PayFast notification error:", error)
     
     // Return 500 to trigger PayFast retry mechanism
     return new Response("ERROR", { status: 500, headers: { "Content-Type": "text/plain" } })
@@ -233,62 +311,83 @@ async function processSuccessfulPayment(
   entityType: 'provider' | 'agent' = 'provider'
 ) {
   try {
-    // Start transaction for atomicity
-    await secureDb.db.transaction(async (tx: any) => {
-      // Extract payment_token and subscription_token from webhook data if available
-      const paymentToken = webhookData?.token || webhookData?.payment_token
-      const subscriptionToken = webhookData?.subscription_token || webhookData?.token // For recurring payments, token is subscription token
+    console.log(`[PAYFAST NOTIFY] Processing successful payment for ${entityType} ${entityId}, transaction: ${transactionId}`)
+    
+    // Extract payment_token and subscription_token from webhook data if available
+    const paymentToken = webhookData?.token || webhookData?.payment_token
+    const subscriptionToken = webhookData?.subscription_token || webhookData?.token // For recurring payments, token is subscription token
+    
+    // Update payment transaction (neon-http doesn't support transactions, so we do sequential operations)
+    console.log(`[PAYFAST NOTIFY] Updating payment transaction ${transactionDbId} to completed`)
+    await secureDb.db
+      .update(schema.paymentTransactions)
+      .set({
+        pfPaymentId: transactionId,
+        status: 'completed',
+        paymentDate: paymentDate,
+        paymentToken: paymentToken || undefined,
+        subscriptionToken: subscriptionToken || undefined,
+        gatewayResponse: webhookData
+      })
+      .where(eq(schema.paymentTransactions.id, transactionDbId))
+
+    // Update provider or agent subscription status
+    if (entityType === 'provider') {
+      console.log(`[PAYFAST NOTIFY] Activating subscription for provider ${entityId}`)
+      const nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
       
-      // Update payment transaction
-      await tx
-        .update(schema.paymentTransactions)
+      // Update provider subscription status - verify it actually updated
+      const [updatedProvider] = await secureDb.db
+        .update(schema.providers)
         .set({
-          pfPaymentId: transactionId,
-          status: 'completed',
-          paymentDate: paymentDate,
-          paymentToken: paymentToken || undefined,
-          subscriptionToken: subscriptionToken || undefined,
-          gatewayResponse: webhookData
+          subscriptionStatus: 'active',
+          lastPaymentDate: paymentDate,
+          nextPaymentDate: nextPaymentDate,
+          subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
         })
-        .where(eq(schema.paymentTransactions.id, transactionDbId))
+        .where(eq(schema.providers.id, entityId))
+        .returning({ 
+          id: schema.providers.id,
+          subscriptionStatus: schema.providers.subscriptionStatus,
+          nextPaymentDate: schema.providers.nextPaymentDate,
+          lastPaymentDate: schema.providers.lastPaymentDate
+        })
 
-      // Update provider or agent subscription status
-      if (entityType === 'provider') {
-        await tx
-          .update(schema.providers)
-          .set({
-            subscriptionStatus: 'active',
-            lastPaymentDate: paymentDate,
-            nextPaymentDate: new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000),
-            subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
-          })
-          .where(eq(schema.providers.id, entityId))
-
-        // Handle featured status if requested (only for providers)
-        if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
-          const [featuredResult] = await tx
-            .select({ count: count(schema.providers.id) })
-            .from(schema.providers)
-            .where(eq(schema.providers.isFeatured, true))
-          
-          const featuredCount = Number(featuredResult?.count || 0)
-          if (featuredCount < 5) {
-            await tx
-              .update(schema.providers)
-              .set({ isFeatured: true })
-              .where(eq(schema.providers.id, entityId))
-          }
-        }
-      } else if (entityType === 'agent') {
-        // Store subscription token for agents
-        await tx
-          .update(schema.agents)
-          .set({
-            subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
-          })
-          .where(eq(schema.agents.id, entityId))
+      if (!updatedProvider) {
+        console.error(`[PAYFAST NOTIFY] CRITICAL: Failed to update provider ${entityId} - provider not found!`)
+        throw new Error(`Provider ${entityId} not found - cannot activate subscription`)
       }
-    })
+
+      console.log(`[PAYFAST NOTIFY] Provider ${entityId} subscription activated successfully:`, {
+        subscriptionStatus: updatedProvider.subscriptionStatus,
+        nextPaymentDate: updatedProvider.nextPaymentDate?.toISOString(),
+        lastPaymentDate: updatedProvider.lastPaymentDate?.toISOString()
+      })
+
+      // Handle featured status if requested (only for providers)
+      if (webhookData?.custom_str4 === "featured_true" || webhookData?.custom_str2 === "featured") {
+        const [featuredResult] = await secureDb.db
+          .select({ count: count(schema.providers.id) })
+          .from(schema.providers)
+          .where(eq(schema.providers.isFeatured, true))
+        
+        const featuredCount = Number(featuredResult?.count || 0)
+        if (featuredCount < 5) {
+          await secureDb.db
+            .update(schema.providers)
+            .set({ isFeatured: true })
+            .where(eq(schema.providers.id, entityId))
+        }
+      }
+    } else if (entityType === 'agent') {
+      // Store subscription token for agents
+      await secureDb.db
+        .update(schema.agents)
+        .set({
+          subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
+        })
+        .where(eq(schema.agents.id, entityId))
+    }
 
     // Log successful payment
     await PaymentAuditService.logAuditEvent(transactionDbId, 'completed', {
