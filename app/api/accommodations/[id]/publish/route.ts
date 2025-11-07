@@ -85,32 +85,63 @@ export async function PATCH(
 
     // Check subscription status before allowing publish
     if (publishStatus === true) {
-      // Check for active subscription via recent payment
-      const paymentCheck = entityType === 'provider'
-        ? await query`
-            SELECT 
-              pt.id,
-              pt.status,
-              pt.created_at
-            FROM payment_transactions pt
-            WHERE pt.provider_id = ${entityId}
-              AND pt.status = 'completed'
-            ORDER BY pt.created_at DESC
-            LIMIT 1
-          `
-        : await query`
-            SELECT 
-              pt.id,
-              pt.status,
-              pt.created_at
-            FROM payment_transactions pt
-            WHERE pt.agent_id = ${entityId}
-              AND pt.status = 'completed'
-            ORDER BY pt.created_at DESC
-            LIMIT 1
-          `
-
-      const hasActiveSubscription = paymentCheck.rows.length > 0
+      // Check for active subscription - must have completed payment AND active status AND not expired
+      let hasActiveSubscription = false
+      
+      if (entityType === 'provider') {
+        // Check subscription status directly from providers table
+        // The webhook sets subscription_status = 'active' and next_payment_date when payment succeeds
+        const subscriptionCheck = await query`
+          SELECT 
+            p.subscription_status,
+            p.next_payment_date,
+            p.last_payment_date
+          FROM providers p
+          WHERE p.id = ${entityId}
+          LIMIT 1
+        `
+        
+        if (subscriptionCheck.rows.length > 0) {
+          const row = subscriptionCheck.rows[0]
+          const subscriptionStatus = row.subscription_status
+          const nextPaymentDate = row.next_payment_date ? new Date(row.next_payment_date) : null
+          const lastPaymentDate = row.last_payment_date ? new Date(row.last_payment_date) : null
+          
+          // Subscription is active if:
+          // 1. subscription_status = 'active'
+          // 2. next_payment_date is in the future (not expired)
+          // 3. last_payment_date exists (payment was made)
+          const isNotExpired = !nextPaymentDate || nextPaymentDate > new Date()
+          const hasPayment = !!lastPaymentDate
+          
+          hasActiveSubscription = subscriptionStatus === 'active' && 
+                                  isNotExpired && 
+                                  hasPayment
+          
+          console.log(`[PUBLISH] Subscription check for provider ${entityId}:`, {
+            subscriptionStatus,
+            nextPaymentDate: nextPaymentDate?.toISOString(),
+            lastPaymentDate: lastPaymentDate?.toISOString(),
+            isNotExpired,
+            hasPayment,
+            hasActiveSubscription
+          })
+        }
+      } else {
+        // For agents, check for completed payment
+        const paymentCheck = await query`
+          SELECT 
+            pt.id,
+            pt.status,
+            pt.created_at
+          FROM payment_transactions pt
+          WHERE pt.agent_id = ${entityId}
+            AND pt.status = 'completed'
+          ORDER BY pt.created_at DESC
+          LIMIT 1
+        `
+        hasActiveSubscription = paymentCheck.rows.length > 0
+      }
 
       if (!hasActiveSubscription) {
         // Count only PUBLISHED accommodations (excluding the one being published)

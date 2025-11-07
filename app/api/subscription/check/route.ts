@@ -76,35 +76,54 @@ export async function GET(request: NextRequest) {
       accommodationsCount = Number(publishedCountResult.rows[0]?.count || 0)
     }
 
-    // Check for recent payment to determine active subscription
-    const paymentResult = entityType === 'provider'
-      ? await query`
-          SELECT 
-            pt.id,
-            pt.amount,
-            pt.status,
-            pt.created_at
-          FROM payment_transactions pt
-          WHERE pt.provider_id = ${entityId}
-            AND pt.status = 'completed'
-          ORDER BY pt.created_at DESC
-          LIMIT 1
-        `
-      : await query`
-          SELECT 
-            pt.id,
-            pt.amount,
-            pt.status,
-            pt.created_at
-          FROM payment_transactions pt
-          WHERE pt.agent_id = ${entityId}
-            AND pt.status = 'completed'
-          ORDER BY pt.created_at DESC
-          LIMIT 1
-        `
-
-    const hasActiveSubscription = paymentResult.rows.length > 0 && 
-      paymentResult.rows[0].status === 'completed'
+    // Check for active subscription - must have completed payment AND active status AND not expired
+    let hasActiveSubscription = false
+    
+    if (entityType === 'provider') {
+      const subscriptionCheck = await query`
+        SELECT 
+          p.subscription_status,
+          p.next_payment_date,
+          pt.id,
+          pt.amount,
+          pt.status,
+          pt.created_at
+        FROM providers p
+        LEFT JOIN payment_transactions pt ON pt.provider_id = p.id
+          AND pt.status = 'completed'
+        WHERE p.id = ${entityId}
+        ORDER BY pt.created_at DESC
+        LIMIT 1
+      `
+      
+      if (subscriptionCheck.rows.length > 0) {
+        const row = subscriptionCheck.rows[0]
+        const subscriptionStatus = row.subscription_status
+        const nextPaymentDate = row.next_payment_date ? new Date(row.next_payment_date) : null
+        const hasCompletedPayment = row.status === 'completed'
+        const isNotExpired = !nextPaymentDate || nextPaymentDate > new Date()
+        
+        hasActiveSubscription = hasCompletedPayment && 
+                                subscriptionStatus === 'active' && 
+                                isNotExpired
+      }
+    } else {
+      // For agents, check for completed payment
+      const paymentResult = await query`
+        SELECT 
+          pt.id,
+          pt.amount,
+          pt.status,
+          pt.created_at
+        FROM payment_transactions pt
+        WHERE pt.agent_id = ${entityId}
+          AND pt.status = 'completed'
+        ORDER BY pt.created_at DESC
+        LIMIT 1
+      `
+      hasActiveSubscription = paymentResult.rows.length > 0 && 
+        paymentResult.rows[0].status === 'completed'
+    }
 
     // Calculate subscription price
     const subscriptionAmount = calculateProviderSubscriptionPrice({
