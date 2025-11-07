@@ -192,45 +192,43 @@ export async function POST(request: Request) {
       serverCustomData
     )
 
-    // Record pending transaction with comprehensive validation
+    // Record pending transaction (neon-http doesn't support transactions, so we do sequential operations)
     try {
-      await secureDb.db.transaction(async (tx: any) => {
-        // Insert payment transaction with idempotency key
-        const [transaction] = await tx
-          .insert(schema.paymentTransactions)
-          .values({
-            providerId: providerId || null,
-            agentId: agentId || null,
-            amount: finalAmount.toString(),
-            currency: 'ZAR',
-            mPaymentId: paymentData.m_payment_id,
-            idempotencyKey: idempotencyKey,
-            status: 'pending',
-            gatewayResponse: { 
-              initiated_at: new Date().toISOString(),
-              user_agent: request.headers.get('user-agent'),
-              ip_address: request.headers.get('x-forwarded-for') || 'unknown',
-              paymentData: paymentData
-            }
-          })
-          .returning({ id: schema.paymentTransactions.id })
-
-        // Log payment initiation
-        await PaymentAuditService.logAuditEvent(transaction.id, 'created', {
-          amount: finalAmount,
-          providerId: providerId || undefined,
-          reason: 'Payment initiated via PayFast',
-          metadata: { 
-            itemName,
-            customData: serverCustomData,
-            paymentId,
-            agentId: agentId || undefined
+      // Insert payment transaction with idempotency key
+      const [transaction] = await secureDb.db
+        .insert(schema.paymentTransactions)
+        .values({
+          providerId: providerId || null,
+          agentId: agentId || null,
+          amount: finalAmount.toString(),
+          currency: 'ZAR',
+          mPaymentId: paymentData.m_payment_id,
+          idempotencyKey: idempotencyKey,
+          status: 'pending',
+          gatewayResponse: { 
+            initiated_at: new Date().toISOString(),
+            user_agent: request.headers.get('user-agent'),
+            ip_address: request.headers.get('x-forwarded-for') || 'unknown',
+            paymentData: paymentData
           }
         })
+        .returning({ id: schema.paymentTransactions.id })
+
+      // Log payment initiation
+      await PaymentAuditService.logAuditEvent(transaction.id, 'created', {
+        amount: finalAmount,
+        providerId: providerId || undefined,
+        reason: 'Payment initiated via PayFast',
+        metadata: { 
+          itemName,
+          customData: serverCustomData,
+          paymentId,
+          agentId: agentId || undefined
+        }
       })
     } catch (dbError) {
       captureException(dbError instanceof Error ? dbError : new Error(String(dbError)), { component: 'payment-initiation', providerId: providerId || undefined, agentId: agentId || undefined, amount: finalAmount, paymentId })
-      return NextResponse.json({ error: "Unable to create transaction" }, { status: 500 })
+      return NextResponse.json({ error: "Unable to create transaction", details: dbError instanceof Error ? dbError.message : String(dbError) }, { status: 500 })
     }
 
     // Log successful payment initiation
@@ -243,9 +241,11 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     captureException(error instanceof Error ? error : new Error(String(error)), { component: 'payment-initiation', userId: 'unknown', providerId: 'unknown' })
-     console.error("PayFast initiate error:", error)
-     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-   }
- }
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
+  }
+}
 
 
