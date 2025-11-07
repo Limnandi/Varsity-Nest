@@ -9,7 +9,7 @@ export interface SessionUser {
   email: string
   firstName: string
   lastName: string
-  role: 'admin' | 'provider' | 'student'
+  role: 'admin' | 'provider' | 'student' | 'agent'
   phone?: string
   studentNumber?: string
   institution?: string

@@ -36,7 +36,7 @@ export const UserSchema = z.object({
   password: z.string().min(8).max(255),
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
-  role: z.enum(['admin', 'provider', 'student']),
+  role: z.enum(['admin', 'provider', 'student', 'agent']),
   phone: z.string().max(20).optional(),
   studentNumber: z.string().max(50).optional(),
   institution: z.string().max(100).optional(),

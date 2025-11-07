@@ -6,7 +6,7 @@ import LoadingSpinner from './LoadingSpinner'
 
 interface AuthGuardProps {
   children: React.ReactNode
-  requiredRole?: 'admin' | 'provider' | 'student'
+  requiredRole?: 'admin' | 'provider' | 'student' | 'agent'
   fallback?: React.ReactNode
 }
 
@@ -16,7 +16,7 @@ interface UserSession {
   firstName: string
   lastName: string
   name: string
-  role: 'admin' | 'provider' | 'student'
+  role: 'admin' | 'provider' | 'student' | 'agent'
   phone?: string
   studentNumber?: string
   institution?: string

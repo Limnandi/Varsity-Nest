@@ -1,0 +1,536 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import DashboardLayout from "@/components/DashboardLayout"
+import AuthGuard from "@/components/AuthGuard"
+import type { SessionUser } from "@/lib/stackauth"
+import { Edit, Eye, Trash2, MapPin, Users, Star, Globe, EyeOff, Loader2, UserCheck } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
+import { Building } from "lucide-react"
+import { formatZar } from "@/lib/utils"
+import SubscriptionModal from "@/components/SubscriptionModal"
+
+interface AgentAccommodation {
+  id: string
+  name: string
+  description?: string
+  address: string
+  city?: string
+  province?: string
+  postal_code?: string
+  accommodation_type?: string
+  total_rooms: number
+  available_rooms: number
+  price: number
+  amenities: string[]
+  images: string[]
+  is_active: boolean
+  featured: boolean
+  rating: number
+  review_count: number
+  is_open: boolean
+  created_at: string | Date
+  updated_at: string | Date
+  accreditation_status: string
+  is_published: boolean
+  listing_status?: string
+  has_single_rooms: boolean
+  has_sharing_rooms: boolean
+  single_room_price?: number
+  sharing_room_price?: number
+  published_at?: string | Date
+  unpublished_at?: string | Date
+  provider_id?: string
+  agent_id?: string
+  managed_by_provider_name?: string
+}
+
+export default function AgentAccommodations() {
+  const [user, setUser] = useState<SessionUser | null>(null)
+  const [userAccommodations, setUserAccommodations] = useState<AgentAccommodation[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [publishingId, setPublishingId] = useState<string | number | null>(null)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [subscriptionData, setSubscriptionData] = useState<{
+    accommodationCount: number
+    amount: number
+    entityId: string
+  } | null>(null)
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await fetch('/api/auth/session')
+        
+        if (response.ok) {
+          const userSession = await response.json()
+          const currentUser = {
+            id: userSession.userId,
+            email: userSession.email,
+            firstName: userSession.firstName,
+            lastName: userSession.lastName,
+            role: userSession.role,
+            phone: userSession.phone,
+            studentNumber: userSession.studentNumber,
+            institution: userSession.institution,
+            isActive: userSession.isActive,
+            emailVerified: userSession.emailVerified,
+            createdAt: new Date(userSession.createdAt),
+            updatedAt: new Date(userSession.updatedAt),
+            university: userSession.university,
+            yearOfStudy: userSession.yearOfStudy,
+            course: userSession.course,
+            emergencyContactName: userSession.emergencyContactName,
+            emergencyContactPhone: userSession.emergencyContactPhone,
+          }
+          
+          setUser(currentUser)
+          
+          const accommodationsResponse = await fetch(`/api/agent/accommodations?limit=200`, {
+            credentials: 'include'
+          })
+          
+          if (accommodationsResponse.ok) {
+            const data = await accommodationsResponse.json()
+            setUserAccommodations(data.accommodations || [])
+          } else {
+            console.error('Failed to fetch accommodations:', accommodationsResponse.statusText)
+            setUserAccommodations([])
+          }
+        } else {
+          window.location.href = '/auth/login'
+          return
+        }
+      } catch (error) {
+        console.error('Error loading user:', error)
+        window.location.href = '/auth/login'
+        return
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadUser()
+  }, [])
+
+  const handleDelete = async (id: string | number) => {
+    if (!confirm("Are you sure you want to delete this accommodation? This action cannot be undone.")) return
+    try {
+      const res = await fetch(`/api/accommodations/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Delete failed')
+      }
+      setUserAccommodations((prev) => prev.filter((acc) => acc.id !== id))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete accommodation')
+    }
+  }
+
+  const handleToggleFeatured = async (id: string | number, next: boolean) => {
+    try {
+      const res = await fetch(`/api/accommodations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ featured: next })
+      })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Update failed')
+      }
+      const updated = await res.json()
+      setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { ...a, featured: updated.featured !== undefined ? updated.featured : next } : a)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update featured flag')
+    }
+  }
+
+  const handleUpdateRooms = async (id: string | number, available: number, total: number) => {
+    try {
+      const res = await fetch(`/api/accommodations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ available_rooms: available, total_rooms: total })
+      })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Update failed')
+      }
+      const updated = await res.json()
+      setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { ...a, available_rooms: updated.available_rooms !== undefined ? updated.available_rooms : available, total_rooms: updated.total_rooms !== undefined ? updated.total_rooms : total } : a)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update rooms')
+    }
+  }
+
+  const handlePublishToggle = async (id: string | number, currentStatus: boolean) => {
+    const newStatus = !currentStatus
+    
+    // If unpublishing, no subscription check needed
+    if (!newStatus) {
+      setPublishingId(id)
+      try {
+        const res = await fetch(`/api/accommodations/${id}/publish`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ is_published: newStatus })
+        })
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || 'Publish toggle failed')
+        }
+        const updated = await res.json()
+        
+        const finalStatus = updated.is_published === true || updated.is_published === false 
+          ? updated.is_published 
+          : newStatus
+        
+        setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { 
+          ...a, 
+          is_published: finalStatus,
+          listing_status: updated.listing_status,
+          published_at: updated.published_at,
+          unpublished_at: updated.unpublished_at
+        } : a)))
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'Failed to update publication status')
+      } finally {
+        setPublishingId(null)
+      }
+      return
+    }
+    
+    // If publishing, check subscription first
+    setPublishingId(id)
+    
+    try {
+      const res = await fetch(`/api/accommodations/${id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ is_published: newStatus })
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        
+        // Check if subscription is required
+        if (res.status === 402 && errorData.error === 'SUBSCRIPTION_REQUIRED') {
+          // Fetch subscription details
+          const subscriptionRes = await fetch('/api/subscription/check', {
+            credentials: 'include'
+          })
+          
+          if (subscriptionRes.ok) {
+            const subscriptionInfo = await subscriptionRes.json()
+            setSubscriptionData({
+              accommodationCount: errorData.accommodationCount || subscriptionInfo.accommodationsCount + 1,
+              amount: subscriptionInfo.subscriptionAmount,
+              entityId: subscriptionInfo.entityId
+            })
+            setShowSubscriptionModal(true)
+          } else {
+            alert('Subscription required to publish properties. Please visit the billing page to subscribe.')
+          }
+          setPublishingId(null)
+          return
+        }
+        
+        throw new Error(errorData.error || 'Publish toggle failed')
+      }
+      
+      const updated = await res.json()
+      
+      const finalStatus = updated.is_published === true || updated.is_published === false 
+        ? updated.is_published 
+        : newStatus
+      
+      setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { 
+        ...a, 
+        is_published: finalStatus,
+        listing_status: updated.listing_status,
+        published_at: updated.published_at,
+        unpublished_at: updated.unpublished_at
+      } : a)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update publication status')
+    } finally {
+      setPublishingId(null)
+    }
+  }
+
+  const handleSubscriptionSuccess = async () => {
+    // Refresh accommodations after successful subscription
+    try {
+      const accommodationsResponse = await fetch(`/api/agent/accommodations?limit=200`, {
+        credentials: 'include'
+      })
+      
+      if (accommodationsResponse.ok) {
+        const data = await accommodationsResponse.json()
+        setUserAccommodations(data.accommodations || [])
+      }
+    } catch (error) {
+      console.error('Error refreshing accommodations:', error)
+    }
+  }
+
+  return (
+    <AuthGuard requiredRole="agent">
+      <DashboardLayout userRole="agent">
+        {showSubscriptionModal && subscriptionData && user && (
+          <SubscriptionModal
+            isOpen={showSubscriptionModal}
+            onClose={() => setShowSubscriptionModal(false)}
+            accommodationCount={subscriptionData.accommodationCount}
+            amount={subscriptionData.amount}
+            userEmail={user.email || ''}
+            userName={`${user.firstName} ${user.lastName}`.trim() || 'User'}
+            entityId={subscriptionData.entityId}
+            entityType="agent"
+            onPaymentSuccess={handleSubscriptionSuccess}
+          />
+        )}
+        <div className="space-y-8 p-6 text-white">
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/20">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                  My Accommodations
+                </h1>
+                <p className="text-neutral-300 text-lg">Manage your property listings</p>
+              </div>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl shadow-xl overflow-hidden animate-pulse">
+                  <div className="relative h-36 bg-gray-700/30"></div>
+                  <div className="p-4 space-y-3">
+                    <div className="h-5 bg-gray-700/30 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-700/30 rounded w-full"></div>
+                    <div className="h-3 bg-gray-700/30 rounded w-2/3"></div>
+                    <div className="flex gap-2">
+                      <div className="h-4 bg-gray-700/30 rounded w-20"></div>
+                      <div className="h-4 bg-gray-700/30 rounded w-20"></div>
+                    </div>
+                    <div className="h-4 bg-gray-700/30 rounded w-24"></div>
+                    <div className="h-6 bg-gray-700/30 rounded w-1/2"></div>
+                    <div className="h-8 bg-gray-700/30 rounded"></div>
+                    <div className="h-8 bg-gray-700/30 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : userAccommodations.length === 0 ? (
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-12 text-center shadow-2xl shadow-blue-500/10">
+              <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/30 bg-blue-500/10 rounded-full flex items-center justify-center">
+                <Building className="w-10 h-10 text-blue-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">No accommodations yet</h3>
+              <p className="text-neutral-300 mb-8 text-lg">Start by adding your first property listing</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {userAccommodations.map((accommodation) => (
+                <div key={accommodation.id} className={`relative border border-white/10 rounded-xl shadow-xl overflow-hidden hover:shadow-blue-500/20 transition-all duration-300 ${
+                  accommodation.is_active ? 'bg-black/20' : 'bg-black/10 grayscale opacity-70'
+                }`}>
+                  <div className="relative h-36">
+                    <Image 
+                      src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} 
+                      alt="Property" 
+                      fill
+                      className="object-cover" 
+                    />
+                    <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                          accommodation.is_open ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                        }`}
+                      >
+                        {accommodation.is_open ? "Available" : "Full"}
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                          accommodation.is_published ? "bg-blue-500 text-white" : "bg-gray-500 text-white"
+                        }`}
+                      >
+                        {accommodation.is_published ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {!accommodation.is_active && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
+                      <div className="text-center text-white bg-red-500/20 border border-red-500/40 rounded-xl p-4 max-w-sm">
+                        <p className="text-sm font-semibold">this property has been suspended by platform team. Please see the email we sent for more details. You can reply to it for any queries or email us at query@varsitynest.space.</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-4 text-white relative">
+                    <h3 className="text-lg font-semibold mb-2 text-white line-clamp-1">{accommodation.name}</h3>
+
+                    {accommodation.managed_by_provider_name && (
+                      <div className="flex items-center text-neutral-300 text-xs mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg px-2 py-1">
+                        <UserCheck className="w-3.5 h-3.5 mr-2 text-blue-400" />
+                        <span>Managed by {accommodation.managed_by_provider_name}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center text-neutral-300 text-xs mb-2">
+                      <MapPin className="w-3.5 h-3.5 mr-2 text-blue-400" />
+                      <span>{accommodation.address}</span>
+                    </div>
+
+                    <div className="flex items-center text-neutral-300 text-xs mb-2">
+                      <Users className="w-3.5 h-3.5 mr-2 text-green-400" />
+                      <span>
+                        {accommodation.available_rooms ?? 0}/{accommodation.total_rooms ?? 0} rooms available
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {accommodation.has_single_rooms && (
+                        <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] rounded-full border border-indigo-500/30">
+                          Single: {formatZar(Number(accommodation.single_room_price) || 0)}/month
+                        </span>
+                      )}
+                      {accommodation.has_sharing_rooms && (
+                        <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] rounded-full border border-purple-500/30">
+                          Sharing: {formatZar(Number(accommodation.sharing_room_price) || 0)}/month
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center text-xs mb-3">
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                        accommodation.accreditation_status === 'accredited' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                        accommodation.accreditation_status === 'provisionally_accredited' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                        'bg-red-500/20 text-red-300 border border-red-500/30'
+                      }`}>
+                        {accommodation.accreditation_status === 'accredited' ? 'Accredited' :
+                         accommodation.accreditation_status === 'provisionally_accredited' ? 'Provisionally Accredited' :
+                         'Non-Accredited'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center mb-3">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className={`w-3.5 h-3.5 ${i < (accommodation.rating ?? 0) ? "text-yellow-400 fill-current" : "text-neutral-600"}`} />
+                        ))}
+                      </div>
+                      <span className="ml-2 text-xs text-neutral-400">({accommodation.review_count ?? 0} reviews)</span>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-2xl font-bold text-green-400">{formatZar(Number(accommodation.price) || 0)}</span>
+                      <span className="text-neutral-400 text-sm">/month</span>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm text-neutral-300">
+                          <input 
+                            type="checkbox" 
+                            checked={Boolean(accommodation.featured)} 
+                            onChange={(e) => handleToggleFeatured(accommodation.id, e.target.checked)}
+                            className="w-4 h-4 text-blue-600 bg-black/20 border-white/20 rounded focus:ring-blue-500"
+                          />
+                          <span>Featured</span>
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-neutral-300">Rooms:</span>
+                        <input 
+                          type="number" 
+                          className="w-20 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                          defaultValue={accommodation.available_rooms ?? 0} 
+                          onBlur={(e) => handleUpdateRooms(accommodation.id, Number(e.target.value) || 0, Number(accommodation.total_rooms) || 0)} 
+                        />
+                        <span className="text-neutral-400">/</span>
+                        <input 
+                          type="number" 
+                          className="w-20 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                          defaultValue={accommodation.total_rooms ?? 0} 
+                          onBlur={(e) => handleUpdateRooms(accommodation.id, Number(accommodation.available_rooms) || 0, Number(e.target.value) || 0)} 
+                        />
+                        <span className="text-sm text-neutral-400">available</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePublishToggle(accommodation.id, accommodation.is_published)}
+                        disabled={publishingId === accommodation.id}
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-300 text-center flex items-center justify-center space-x-2 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                          accommodation.is_published
+                            ? 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 shadow-lg shadow-orange-500/20 disabled:hover:from-orange-600 disabled:hover:to-red-600'
+                            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/20 disabled:hover:from-green-600 disabled:hover:to-emerald-600'
+                        }`}
+                      >
+                        {publishingId === accommodation.id ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>{accommodation.is_published ? 'Unpublishing...' : 'Publishing...'}</span>
+                          </>
+                        ) : accommodation.is_published ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>Unpublish</span>
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="w-3.5 h-3.5" />
+                            <span>Publish</span>
+                          </>
+                        )}
+                      </button>
+
+                      <div className="flex space-x-2">
+                        {accommodation.is_published && (
+                          <Link
+                            href={`/listing/${accommodation.id}`}
+                            className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg hover:bg-white/20 transition-all duration-300 text-center flex items-center justify-center space-x-2 border border-white/20 text-sm"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View</span>
+                          </Link>
+                        )}
+                        <Link
+                          href={`/agent/accommodations/edit/${accommodation.id}`}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/20 text-sm"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(accommodation.id)}
+                          className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white px-3 py-2 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg shadow-red-500/20 text-sm"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DashboardLayout>
+    </AuthGuard>
+  )
+}
+

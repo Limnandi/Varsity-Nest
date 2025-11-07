@@ -23,6 +23,7 @@ export const PayFastWebhookSchema = z.object({
   custom_str2: z.string().optional(), // subscriptionType
   custom_str3: z.string().optional(), // paymentId
   custom_str4: z.string().optional(), // wantsFeatured
+  custom_str5: z.string().optional(), // idempotencyKey
   
   // Additional PayFast fields
   signature: z.string().min(1),
@@ -38,6 +39,7 @@ export const PayFastWebhookSchema = z.object({
 export const PaymentInitiationSchema = z.object({
   amount: z.number().positive().max(100000, "Amount too high"),
   itemName: z.string().min(1, "Item name required").max(100, "Item name is too long"),
+  idempotencyKey: z.string().min(10, "Idempotency key required").max(255, "Idempotency key too long"),
   customData: z.object({
     providerId: z.string().uuid().optional(),
     subscriptionType: z.enum(['monthly', 'yearly', 'one-time']).optional(),
