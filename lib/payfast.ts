@@ -50,7 +50,7 @@ interface PayFastData {
 // Source: Payfast documentation - Step 2: Create security signature
 // https://developers.payfast.co.za/docs#step_2_signature
 // TESTING: Using only basic fields from Payfast example to isolate the issue
-const PAYFAST_FORM_FIELD_ORDER = [
+export const PAYFAST_FORM_FIELD_ORDER = [
   // Merchant Details (must be first - as per Payfast docs)
   "merchant_id",
   "merchant_key",
