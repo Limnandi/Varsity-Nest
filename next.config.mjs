@@ -80,14 +80,11 @@ const nextConfig = {
             value: 'strict-origin-when-cross-origin'
           },
           {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
-          },
-          {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), payment=()'
           }
           // CSP and HSTS are set centrally in middleware/security-config with report-only toggle
+          // X-XSS-Protection removed as it's deprecated and not needed in modern browsers
         ]
       }
     ]

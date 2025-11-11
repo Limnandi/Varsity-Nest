@@ -117,7 +117,7 @@ export class SecurityMiddleware {
     response.headers.set('X-Content-Type-Options', headers.xContentTypeOptions)
     response.headers.set('Referrer-Policy', headers.referrerPolicy)
     response.headers.set('Permissions-Policy', headers.permissionsPolicy)
-    response.headers.set('X-XSS-Protection', '1; mode=block')
+    // X-XSS-Protection removed - deprecated and not needed in modern browsers (Chrome, Edge, Safari all have built-in XSS protection)
     response.headers.set('X-DNS-Prefetch-Control', 'off')
     response.headers.set('X-Download-Options', 'noopen')
     response.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
