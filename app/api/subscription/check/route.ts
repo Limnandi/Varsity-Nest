@@ -22,12 +22,18 @@ export async function GET(request: NextRequest) {
     let entityId: string
     let subscriptionStatus: string
     let accommodationsCount: number = 0
+    let isEligibleForTrial: boolean = false
+    let hasUsedTrial: boolean = false
+    let trialStartDate: Date | null = null
+    let trialEndDate: Date | null = null
 
     if (entityType === 'provider') {
       const providerResult = await query`
         SELECT 
           p.id,
-          p.subscription_status
+          p.subscription_status,
+          p.trial_start_date,
+          p.trial_end_date
         FROM providers p
         WHERE p.user_id = ${user.id}
         LIMIT 1
@@ -39,6 +45,12 @@ export async function GET(request: NextRequest) {
       
       entityId = providerResult.rows[0].id
       subscriptionStatus = providerResult.rows[0].subscription_status || 'inactive'
+      
+      // Check trial eligibility
+      trialStartDate = providerResult.rows[0].trial_start_date ? new Date(providerResult.rows[0].trial_start_date) : null
+      trialEndDate = providerResult.rows[0].trial_end_date ? new Date(providerResult.rows[0].trial_end_date) : null
+      hasUsedTrial = !!trialStartDate
+      isEligibleForTrial = !hasUsedTrial && subscriptionStatus !== 'trial' && subscriptionStatus !== 'active'
       
       // Count only PUBLISHED accommodations (not all active ones)
       const publishedCountResult = await query`
@@ -83,6 +95,8 @@ export async function GET(request: NextRequest) {
       const subscriptionCheck = await query`
         SELECT 
           p.subscription_status,
+          p.trial_start_date,
+          p.trial_end_date,
           p.next_payment_date,
           pt.id,
           pt.amount,
@@ -99,13 +113,19 @@ export async function GET(request: NextRequest) {
       if (subscriptionCheck.rows.length > 0) {
         const row = subscriptionCheck.rows[0]
         const subscriptionStatus = row.subscription_status
+        const trialEndDate = row.trial_end_date ? new Date(row.trial_end_date) : null
         const nextPaymentDate = row.next_payment_date ? new Date(row.next_payment_date) : null
         const hasCompletedPayment = row.status === 'completed'
         const isNotExpired = !nextPaymentDate || nextPaymentDate > new Date()
+        const isInTrial = subscriptionStatus === 'trial' && trialEndDate && trialEndDate > new Date()
         
-        hasActiveSubscription = hasCompletedPayment && 
+        // Subscription is active if:
+        // 1. In trial period (trial status and trial hasn't ended), OR
+        // 2. Active status with completed payment and not expired
+        hasActiveSubscription = isInTrial || 
+                                (hasCompletedPayment && 
                                 subscriptionStatus === 'active' && 
-                                isNotExpired
+                                isNotExpired)
       }
     } else {
       // For agents, check for completed payment
@@ -137,7 +157,15 @@ export async function GET(request: NextRequest) {
       accommodationsCount,
       subscriptionAmount,
       entityId,
-      entityType
+      entityType,
+      // Trial information (only for providers)
+      ...(entityType === 'provider' ? {
+        isEligibleForTrial,
+        hasUsedTrial,
+        trialStartDate: trialStartDate ? trialStartDate.toISOString() : null,
+        trialEndDate: trialEndDate ? trialEndDate.toISOString() : null,
+        isInTrial: subscriptionStatus === 'trial' && trialEndDate && trialEndDate > new Date()
+      } : {})
     })
   } catch (error) {
     console.error('Error checking subscription:', error)
