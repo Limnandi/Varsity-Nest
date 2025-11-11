@@ -7,8 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:scripts": "tsc --project tsconfig.scripts.json",
-    "setup-db": "pnpm run build:scripts && node dist/scripts/setup-db.js",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "vitest run --coverage",
