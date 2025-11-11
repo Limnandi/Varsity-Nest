@@ -94,6 +94,8 @@ export async function PATCH(
         const subscriptionCheck = await query`
           SELECT 
             p.subscription_status,
+            p.trial_start_date,
+            p.trial_end_date,
             p.next_payment_date,
             p.last_payment_date
           FROM providers p
@@ -104,22 +106,28 @@ export async function PATCH(
         if (subscriptionCheck.rows.length > 0) {
           const row = subscriptionCheck.rows[0]
           const subscriptionStatus = row.subscription_status
+          const trialEndDate = row.trial_end_date ? new Date(row.trial_end_date) : null
           const nextPaymentDate = row.next_payment_date ? new Date(row.next_payment_date) : null
           const lastPaymentDate = row.last_payment_date ? new Date(row.last_payment_date) : null
           
+          // Check if in trial period
+          const isInTrial = subscriptionStatus === 'trial' && trialEndDate && trialEndDate > new Date()
+          
           // Subscription is active if:
-          // 1. subscription_status = 'active'
-          // 2. next_payment_date is in the future (not expired)
-          // 3. last_payment_date exists (payment was made)
+          // 1. In trial period (trial status and trial hasn't ended), OR
+          // 2. subscription_status = 'active' with next_payment_date in the future and payment was made
           const isNotExpired = !nextPaymentDate || nextPaymentDate > new Date()
           const hasPayment = !!lastPaymentDate
           
-          hasActiveSubscription = subscriptionStatus === 'active' && 
+          hasActiveSubscription = isInTrial || 
+                                  (subscriptionStatus === 'active' && 
                                   isNotExpired && 
-                                  hasPayment
+                                  hasPayment)
           
           console.log(`[PUBLISH] Subscription check for provider ${entityId}:`, {
             subscriptionStatus,
+            isInTrial,
+            trialEndDate: trialEndDate?.toISOString(),
             nextPaymentDate: nextPaymentDate?.toISOString(),
             lastPaymentDate: lastPaymentDate?.toISOString(),
             isNotExpired,
