@@ -25,7 +25,7 @@ export default async function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-            {featuredAccommodations.map((acc) => (
+            {featuredAccommodations.map((acc, index) => (
               <AccommodationCard
                 key={acc.id}
                 id={acc.id}
@@ -42,6 +42,7 @@ export default async function Home() {
                 featured={acc.featured ?? false}
                 availableRooms={acc.available_rooms ?? 0}
                 totalRooms={acc.total_rooms ?? 0}
+                priority={index < 6}
               />
             ))}
           </div>

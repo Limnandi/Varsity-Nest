@@ -70,82 +70,82 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] pt-20 pb-20">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] pt-20 pb-20 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
         {/* Header Section */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 mb-8 text-white shadow-2xl shadow-blue-500/20">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 mb-8 text-white shadow-2xl shadow-blue-500/20 overflow-hidden">
           <div className="flex flex-col lg:flex-row gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getAccreditationColor(listing.accreditation_status || 'accredited')}`}>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
+                <span className={`px-2 sm:px-3 py-1 text-xs font-medium rounded-full border whitespace-nowrap ${getAccreditationColor(listing.accreditation_status || 'accredited')}`}>
                   {listing.accreditation_status?.replace('-', ' ').toUpperCase() || 'ACCREDITED'}
                 </span>
                 {isVerified && (
-                  <span className="px-3 py-1 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300 flex items-center gap-1">
-                    <Shield className="w-3 h-3" />
+                  <span className="px-2 sm:px-3 py-1 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300 flex items-center gap-1 whitespace-nowrap">
+                    <Shield className="w-3 h-3 flex-shrink-0" />
                     VERIFIED
                   </span>
                 )}
                 {isFeatured && (
-                  <span className="px-3 py-1 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/10 text-purple-300 flex items-center gap-1">
-                    <Star className="w-3 h-3" />
+                  <span className="px-2 sm:px-3 py-1 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/10 text-purple-300 flex items-center gap-1 whitespace-nowrap">
+                    <Star className="w-3 h-3 flex-shrink-0" />
                     FEATURED
                   </span>
                 )}
                 {isOpen && (
-                  <span className="px-3 py-1 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
+                  <span className="px-2 sm:px-3 py-1 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300 flex items-center gap-1 whitespace-nowrap">
+                    <CheckCircle className="w-3 h-3 flex-shrink-0" />
                     AVAILABLE
                   </span>
                 )}
               </div>
               
-              <h1 className="text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight break-words">
                 {listing.name}
               </h1>
               
-              <div className="flex items-center text-neutral-300 mb-4">
-                <MapPin className="h-5 w-5 mr-2 text-blue-400" />
-                <span className="text-lg">{listing.address}</span>
+              <div className="flex items-start text-neutral-300 mb-4">
+                <MapPin className="h-5 w-5 mr-2 text-blue-400 flex-shrink-0 mt-0.5" />
+                <span className="text-base sm:text-lg break-words">{listing.address}</span>
               </div>
               
-              <p className="text-xl text-neutral-300 leading-relaxed mb-6">
+              <p className="text-base sm:text-lg md:text-xl text-neutral-300 leading-relaxed mb-6 break-words">
                 {listing.description}
               </p>
             </div>
             
             {/* Price Card */}
-            <div className="lg:w-80">
-              <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-green-500/20">
+            <div className="lg:w-80 w-full">
+              <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-green-500/20 overflow-hidden">
                 <div className="text-center mb-6">
                   <div className="flex items-center justify-center mb-2">
-                    <DollarSign className="w-6 h-6 text-green-400 mr-2" />
-                    <span className="text-4xl font-bold text-white">R{listing.price}</span>
+                    <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-400 mr-2 flex-shrink-0" />
+                    <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-white break-words">R{listing.price}</span>
                   </div>
-                  <p className="text-neutral-300">per month</p>
+                  <p className="text-neutral-300 text-sm sm:text-base">per month</p>
                 </div>
                 
                 <div className="space-y-4">
                   <a
-                    href={`mailto:${listing.provider_email}?subject=Inquiry about ${listing.name}`}
-                    className="group relative w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
+                    href={`mailto:${listing.provider_email}?subject=Inquiry about ${encodeURIComponent(listing.name)}`}
+                    className="group relative w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-semibold text-base sm:text-lg hover:from-green-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center break-words"
                   >
-                    <Mail className="w-5 h-5 mr-2" />
-                    Contact Provider
+                    <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
+                    <span className="break-words">Contact Provider</span>
                   </a>
                   
                   <a
                     href={`tel:${listing.provider_phone || ''}`}
-                    className="group relative w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-3 px-6 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center"
+                    className="group relative w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-3 px-4 sm:px-6 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center break-words"
                   >
-                    <Phone className="w-4 h-4 mr-2" />
-                    Call Provider
+                    <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="break-words">Call Provider</span>
                   </a>
                 </div>
                 
                 <div className="mt-6 pt-4 border-t border-white/10">
-                  <p className="text-sm text-neutral-400 text-center">
-                    Provider: <span className="text-white font-medium">{listing.provider_name}</span>
+                  <p className="text-xs sm:text-sm text-neutral-400 text-center break-words">
+                    Provider: <span className="text-white font-medium break-words">{listing.provider_name}</span>
                   </p>
                 </div>
               </div>
@@ -154,8 +154,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Image Gallery */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 mb-8 text-white shadow-2xl shadow-blue-500/10">
-          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-2xl shadow-blue-500/10 overflow-hidden">
+          <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
             Photo Gallery
           </h2>
           <ImageCarousel images={listing.images || []} />
@@ -165,10 +165,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                  {/* Main Content */}
                  <div className="lg:col-span-2 space-y-6 lg:space-y-8">
             {/* Amenities Section */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-purple-500/10">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                <Home className="w-6 h-6 text-purple-400" />
-                Amenities & Features
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-purple-500/10 overflow-hidden">
+              <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent flex items-center gap-3 break-words">
+                <Home className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400 flex-shrink-0" />
+                <span className="break-words">Amenities & Features</span>
               </h2>
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {amenities.map((amenity: string, index: number) => {
@@ -176,24 +176,24 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                     switch (amenity.toLowerCase()) {
                       case 'wifi':
                       case 'wi-fi':
-                        return <Wifi className="h-5 w-5 text-blue-400" />
+                        return <Wifi className="h-5 w-5 text-blue-400 flex-shrink-0" />
                       case 'parking':
-                        return <Car className="h-5 w-5 text-green-400" />
+                        return <Car className="h-5 w-5 text-green-400 flex-shrink-0" />
                       case 'ensuite':
                       case 'bathroom':
-                        return <Bath className="h-5 w-5 text-purple-400" />
+                        return <Bath className="h-5 w-5 text-purple-400 flex-shrink-0" />
                       case 'bed':
                       case 'bedroom':
-                        return <Bed className="h-5 w-5 text-orange-400" />
+                        return <Bed className="h-5 w-5 text-orange-400 flex-shrink-0" />
                       default:
-                        return <CheckCircle className="h-5 w-5 text-green-400" />
+                        return <CheckCircle className="h-5 w-5 text-green-400 flex-shrink-0" />
                     }
                   }
                   
                   return (
-                    <div key={index} className="flex items-center p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300">
+                    <div key={index} className="flex items-center p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 min-w-0">
                       {getAmenityIcon(amenity)}
-                      <span className="ml-3 text-neutral-300 capitalize">{amenity}</span>
+                      <span className="ml-3 text-neutral-300 capitalize break-words">{amenity}</span>
                     </div>
                   )
                 })}
@@ -201,41 +201,41 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Property Details */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-orange-500/10">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent flex items-center gap-3">
-                <Building className="w-6 h-6 text-orange-400" />
-                Property Details
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-orange-500/10 overflow-hidden">
+              <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent flex items-center gap-3 break-words">
+                <Building className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 flex-shrink-0" />
+                <span className="break-words">Property Details</span>
               </h2>
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                  <Bed className="h-6 w-6 text-blue-400 mr-4" />
-                  <div>
-                    <p className="text-sm text-neutral-400">Available Rooms</p>
-                    <p className="text-xl font-semibold text-white">{listing.available_rooms || 0}</p>
+                <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                  <Bed className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400 mr-4 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-neutral-400 break-words">Available Rooms</p>
+                    <p className="text-lg sm:text-xl font-semibold text-white break-words">{listing.available_rooms || 0}</p>
                   </div>
                 </div>
-                <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                  <Users className="h-6 w-6 text-green-400 mr-4" />
-                  <div>
-                    <p className="text-sm text-neutral-400">Total Rooms</p>
-                    <p className="text-xl font-semibold text-white">{listing.total_rooms || 0}</p>
+                <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6 text-green-400 mr-4 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-neutral-400 break-words">Total Rooms</p>
+                    <p className="text-lg sm:text-xl font-semibold text-white break-words">{listing.total_rooms || 0}</p>
                   </div>
                 </div>
                 {listing.area && (
-                  <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                    <MapPin className="h-6 w-6 text-purple-400 mr-4" />
-                    <div>
-                      <p className="text-sm text-neutral-400">Area</p>
-                      <p className="text-xl font-semibold text-white">{listing.area}</p>
+                  <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                    <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400 mr-4 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-neutral-400 break-words">Area</p>
+                      <p className="text-lg sm:text-xl font-semibold text-white break-words">{listing.area}</p>
                     </div>
                   </div>
                 )}
                 {listing.distance && (
-                  <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                    <Clock className="h-6 w-6 text-orange-400 mr-4" />
-                    <div>
-                      <p className="text-sm text-neutral-400">Distance to Campus</p>
-                      <p className="text-xl font-semibold text-white">{listing.distance} km</p>
+                  <div className="flex items-center p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                    <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-400 mr-4 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-neutral-400 break-words">Distance to Campus</p>
+                      <p className="text-lg sm:text-xl font-semibold text-white break-words">{listing.distance} km</p>
                     </div>
                   </div>
                 )}
@@ -248,10 +248,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Reviews Section */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-purple-500/10">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent flex items-center gap-3">
-                <MessageSquare className="w-6 h-6 text-purple-400" />
-                Reviews & Ratings
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-purple-500/10 overflow-hidden">
+              <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent flex items-center gap-3 break-words">
+                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400 flex-shrink-0" />
+                <span className="break-words">Reviews & Ratings</span>
               </h2>
               
               <ReviewsSection 
@@ -266,46 +266,46 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             {/* Contact Information */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10">
-              <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-blue-500/10 overflow-hidden">
+              <h3 className="text-lg sm:text-xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
                 Contact Information
               </h3>
               <div className="space-y-4">
-                <div className="flex items-center p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                  <Mail className="h-5 w-5 text-blue-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-neutral-400">Email</p>
-                    <p className="text-white font-medium">{listing.provider_email}</p>
+                <div className="flex items-start p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                  <Mail className="h-5 w-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-neutral-400 break-words">Email</p>
+                    <p className="text-white font-medium break-words break-all">{listing.provider_email}</p>
                   </div>
                 </div>
                 {listing.provider_phone && (
-                  <div className="flex items-center p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                    <Phone className="h-5 w-5 text-green-400 mr-3" />
-                    <div>
-                      <p className="text-sm text-neutral-400">Phone</p>
-                      <p className="text-white font-medium">{listing.provider_phone}</p>
+                  <div className="flex items-start p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                    <Phone className="h-5 w-5 text-green-400 mr-3 flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-neutral-400 break-words">Phone</p>
+                      <p className="text-white font-medium break-words">{listing.provider_phone}</p>
                     </div>
                   </div>
                 )}
-                <div className="flex items-center p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                  <Building className="h-5 w-5 text-purple-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-neutral-400">Provider</p>
-                    <p className="text-white font-medium">{listing.provider_name}</p>
+                <div className="flex items-start p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
+                  <Building className="h-5 w-5 text-purple-400 mr-3 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-neutral-400 break-words">Provider</p>
+                    <p className="text-white font-medium break-words">{listing.provider_name}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-green-500/10">
-              <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-green-500/10 overflow-hidden">
+              <h3 className="text-lg sm:text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent break-words">
                 Quick Actions
               </h3>
               <div className="space-y-3">
-                <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Schedule Viewing
+                <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center break-words">
+                  <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="break-words">Schedule Viewing</span>
                 </button>
                 {currentUserRole === 'student' && (
                   <WishlistButton accommodationId={id} />

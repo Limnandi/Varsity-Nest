@@ -113,32 +113,32 @@ export default function Accommodations() {
   }, [])
 
   return (
-    <div className="pt-36 pb-20 px-4 bg-gradient-to-b from-[#040945] to-[#02042b] min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="pt-36 pb-20 px-2 sm:px-4 bg-gradient-to-b from-[#040945] to-[#02042b] min-h-screen overflow-x-hidden">
+      <div className="max-w-7xl mx-auto w-full">
         {/* Intro Banner */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-white mb-6 drop-shadow-2xl tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 drop-shadow-2xl tracking-tight break-words">
             Accommodations
           </h1>
-          <p className="text-xl text-neutral-300 drop-shadow-lg mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-neutral-300 drop-shadow-lg mb-8 max-w-3xl mx-auto leading-relaxed px-4 break-words">
             Browse all published student accommodations.
           </p>
-          <div className="flex items-center justify-center space-x-8 text-sm text-neutral-300">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-neutral-300 px-4">
             <span className="flex items-center">
-              <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-              {allAccs.filter((acc) => acc.is_open).length} Available Now
+              <span className="w-3 h-3 bg-green-500 rounded-full mr-2 flex-shrink-0"></span>
+              <span className="break-words">{allAccs.filter((acc) => acc.is_open).length} Available Now</span>
             </span>
             <span className="flex items-center">
-              <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
-              {allAccs.filter((acc) => acc.is_verified).length} Verified Properties
+              <span className="w-3 h-3 bg-blue-500 rounded-full mr-2 flex-shrink-0"></span>
+              <span className="break-words">{allAccs.filter((acc) => acc.is_verified).length} Verified Properties</span>
             </span>
           </div>
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 mb-8 text-white shadow-2xl shadow-blue-500/10">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-2xl shadow-blue-500/10 overflow-hidden">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <Suspense fallback={<div className="h-12 bg-black/20 border border-white/10 rounded-lg animate-pulse"></div>}>
                 <SearchBar accommodations={allAccs} onFilter={handleFilterChange} />
               </Suspense>
@@ -153,12 +153,12 @@ export default function Accommodations() {
               <TabFilter accommodations={allAccs} onFilter={handleFilterChange} />
             </Suspense>
 
-            <div className="flex items-center space-x-2">
-              <SlidersHorizontal className="w-4 h-4 text-neutral-300" />
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <SlidersHorizontal className="w-4 h-4 text-neutral-300 flex-shrink-0" />
               <select
                 value={sortBy}
                 onChange={(e) => handleSortChange(e.target.value as typeof sortBy)}
-                className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-neutral-300 backdrop-blur-sm"
+                className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-neutral-300 backdrop-blur-sm w-full sm:w-auto min-w-0"
               >
                 <option value="price-desc" className="bg-gray-800 text-white">Price: High to Low</option>
                 <option value="price-asc" className="bg-gray-800 text-white">Price: Low to High</option>
@@ -170,8 +170,8 @@ export default function Accommodations() {
         </div>
 
         {/* Results Summary */}
-        <div className="mb-6">
-          <p className="text-white drop-shadow-lg text-lg">
+        <div className="mb-6 px-4">
+          <p className="text-white drop-shadow-lg text-base sm:text-lg break-words">
             Showing {sortedAccommodations.length} of {allAccs.length} accommodations
           </p>
         </div>
