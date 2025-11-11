@@ -9,6 +9,9 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+    /* Fallback for older Safari versions */
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 }
 
@@ -88,7 +91,10 @@
   * {
     border-color: hsl(var(--border));
   }
-  html {
+  html,
+  :host {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     background-color: transparent;
     overflow-x: hidden;
     width: 100%;
@@ -106,8 +112,8 @@
 }
 
 .blur-backdrop {
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 @keyframes scroll {
