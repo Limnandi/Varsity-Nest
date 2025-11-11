@@ -35,3 +35,9 @@ test-results/
 # playwright
 playwright-report/
 
+# compiled output
+/dist/
+
+# logs
+/logs/
+*.log
