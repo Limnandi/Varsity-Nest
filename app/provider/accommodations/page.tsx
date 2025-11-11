@@ -53,6 +53,10 @@ export default function ProviderAccommodations() {
     accommodationCount: number
     amount: number
     entityId: string
+    isEligibleForTrial?: boolean
+    hasUsedTrial?: boolean
+    isInTrial?: boolean
+    trialEndDate?: string | null
   } | null>(null)
 
   useEffect(() => {
@@ -234,7 +238,11 @@ export default function ProviderAccommodations() {
             setSubscriptionData({
               accommodationCount: errorData.accommodationCount || subscriptionInfo.accommodationsCount + 1,
               amount: subscriptionInfo.subscriptionAmount,
-              entityId: subscriptionInfo.entityId
+              entityId: subscriptionInfo.entityId,
+              isEligibleForTrial: subscriptionInfo.isEligibleForTrial || false,
+              hasUsedTrial: subscriptionInfo.hasUsedTrial || false,
+              isInTrial: subscriptionInfo.isInTrial || false,
+              trialEndDate: subscriptionInfo.trialEndDate || null
             })
             setShowSubscriptionModal(true)
           } else {
@@ -299,6 +307,10 @@ export default function ProviderAccommodations() {
             entityId={subscriptionData.entityId}
             entityType="provider"
             onPaymentSuccess={handleSubscriptionSuccess}
+            isEligibleForTrial={subscriptionData.isEligibleForTrial}
+            hasUsedTrial={subscriptionData.hasUsedTrial}
+            isInTrial={subscriptionData.isInTrial}
+            trialEndDate={subscriptionData.trialEndDate}
           />
         )}
         <div className="space-y-8 p-6 text-white">
