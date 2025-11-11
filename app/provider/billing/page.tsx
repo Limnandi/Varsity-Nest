@@ -28,6 +28,9 @@ interface BillingInfo {
   nextPaymentDate: string
   subscriptionStatus: 'active' | 'inactive' | 'suspended' | 'trial'
   subscriptionStartDate: string
+  trialStartDate?: string | null
+  trialEndDate?: string | null
+  isInTrial?: boolean
 }
 
 interface Invoice {
@@ -409,38 +412,75 @@ export default function ProviderBilling() {
                 </span>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-neutral-300">Subscription Amount</p>
-                <p className="text-4xl font-bold">
-                  R{provider.billingInfo.monthlyFee.toFixed(2)}
-                  <span className="text-lg font-medium text-neutral-400">/30 days</span>
-                </p>
-                <div className="flex items-center gap-2 text-sm text-neutral-400">
-                  <Calendar className="w-4 h-4" />
-                  <span>Next payment: {new Date(provider.billingInfo.nextPaymentDate).toLocaleDateString()}</span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <p className="text-xs text-neutral-400">
-                    Amount calculated based on your active accommodations
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  setIsNavigatingToPayment(true)
-                  router.push("/provider/billing/payment")
-                }}
-                disabled={isNavigatingToPayment}
-                className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isNavigatingToPayment ? (
+                {provider.billingInfo.isInTrial && provider.billingInfo.trialEndDate ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Processing...
+                    <p className="text-sm text-neutral-300">Trial Period</p>
+                    <div className="space-y-2">
+                      <p className="text-2xl font-bold text-green-400">
+                        FREE
+                        <span className="text-lg font-medium text-neutral-400 ml-2">14 Days</span>
+                      </p>
+                      <div className="flex items-center gap-2 text-sm text-blue-300">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          Trial ends: {new Date(provider.billingInfo.trialEndDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {(() => {
+                        const endDate = new Date(provider.billingInfo.trialEndDate!)
+                        const now = new Date()
+                        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                        return daysRemaining > 0 ? (
+                          <p className="text-xs text-neutral-400">
+                            {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
+                          </p>
+                        ) : null
+                      })()}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <p className="text-xs text-neutral-400">
+                        After trial ends, monthly subscription: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
+                      </p>
+                    </div>
                   </>
                 ) : (
-                  "Make Payment"
+                  <>
+                    <p className="text-sm text-neutral-300">Subscription Amount</p>
+                    <p className="text-4xl font-bold">
+                      R{provider.billingInfo.monthlyFee.toFixed(2)}
+                      <span className="text-lg font-medium text-neutral-400">/30 days</span>
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-neutral-400">
+                      <Calendar className="w-4 h-4" />
+                      <span>Next payment: {new Date(provider.billingInfo.nextPaymentDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <p className="text-xs text-neutral-400">
+                        Amount calculated based on your active accommodations
+                      </p>
+                    </div>
+                  </>
                 )}
-              </button>
+              </div>
+              {!provider.billingInfo.isInTrial && (
+                <button 
+                  onClick={() => {
+                    setIsNavigatingToPayment(true)
+                    router.push("/provider/billing/payment")
+                  }}
+                  disabled={isNavigatingToPayment}
+                  className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isNavigatingToPayment ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Make Payment"
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Pending Payments */}
