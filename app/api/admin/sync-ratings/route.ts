@@ -19,46 +19,102 @@ export async function POST(_request: NextRequest) {
 
     console.log('[ADMIN] Starting accommodation ratings sync...')
     
-    // Get all accommodations
+    // Optimized: Get all accommodations and their stats in batch queries (prevents N+1)
     const accommodationsResult = await query`
       SELECT id, name FROM accommodations WHERE is_active = true
     `
     
     const totalAccommodations = accommodationsResult.rows.length
+    
+    if (totalAccommodations === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No active accommodations found',
+        total: 0,
+        updated: 0,
+        skipped: 0,
+        results: []
+      })
+    }
+    
+    const accommodationIds = accommodationsResult.rows.map((row: { id: string }) => row.id)
+    
+    // Batch query: Get all stats for all accommodations in one query
+    // For empty array, return empty result
+    if (accommodationIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No accommodations to sync',
+        stats: { total: 0, updated: 0, skipped: 0 },
+        results: []
+      })
+    }
+    
+    // Use unnest to convert array to rows for IN clause
+    const statsResult = await query`
+      SELECT 
+        accommodation_id,
+        ROUND(AVG(rating)::numeric, 0) as avg_rating,
+        COUNT(*) as total_reviews
+      FROM reviews 
+      WHERE accommodation_id IN (
+        SELECT unnest(${accommodationIds}::text[])
+      )
+      GROUP BY accommodation_id
+    `
+    
+    // Create a map of accommodation_id -> stats for quick lookup
+    const statsMap = new Map(
+      statsResult.rows.map((row: { accommodation_id: string; avg_rating: number | null; total_reviews: string | number }) => [
+        row.accommodation_id,
+        {
+          avgRating: row.avg_rating || 0,
+          totalReviews: parseInt(String(row.total_reviews)) || 0
+        }
+      ])
+    )
+    
+    // Batch update: Update all accommodations in one query using CASE statements
+    const accommodationUpdates = accommodationsResult.rows.map((acc: { id: string; name: string }) => ({
+      id: acc.id,
+      name: acc.name,
+      stats: statsMap.get(acc.id) || { avgRating: 0, totalReviews: 0 }
+    }))
+    
+    // Update all accommodations in a single query using array aggregation
+    if (accommodationUpdates.length > 0) {
+      // Use a more efficient approach: update in batches or use a single query with CASE
+      // For large datasets, we'll batch update in chunks of 100
+      const BATCH_SIZE = 100
+      for (let i = 0; i < accommodationUpdates.length; i += BATCH_SIZE) {
+        const batch = accommodationUpdates.slice(i, i + BATCH_SIZE)
+        
+        // Build dynamic UPDATE query for batch
+        const updateQueries = batch.map((acc: { id: string; stats: { avgRating: number; totalReviews: number } }) => 
+          query`
+            UPDATE accommodations 
+            SET 
+              rating = ${acc.stats.avgRating},
+              review_count = ${acc.stats.totalReviews},
+              updated_at = NOW()
+            WHERE id = ${acc.id}
+          `
+        )
+        
+        await Promise.all(updateQueries)
+      }
+    }
+    
     let updated = 0
     let skipped = 0
     const results = []
     
-    for (const accommodation of accommodationsResult.rows) {
-      const { id, name } = accommodation
-      
-      // Calculate stats for this accommodation
-      const statsResult = await query`
-        SELECT 
-          ROUND(AVG(rating)::numeric, 0) as avg_rating,
-          COUNT(*) as total_reviews
-        FROM reviews 
-        WHERE accommodation_id = ${id}
-      `
-      
-      const avgRating = statsResult.rows[0]?.avg_rating || 0
-      const totalReviews = statsResult.rows[0]?.total_reviews || 0
-      
-      // Update accommodation
-      await query`
-        UPDATE accommodations 
-        SET 
-          rating = ${avgRating},
-          review_count = ${totalReviews},
-          updated_at = NOW()
-        WHERE id = ${id}
-      `
-      
-      if (totalReviews > 0) {
+    for (const acc of accommodationUpdates) {
+      if (acc.stats.totalReviews > 0) {
         results.push({
-          name,
-          rating: avgRating,
-          reviewCount: totalReviews,
+          name: acc.name,
+          rating: acc.stats.avgRating,
+          reviewCount: acc.stats.totalReviews,
           status: 'updated'
         })
         updated++

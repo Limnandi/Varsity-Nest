@@ -10,7 +10,6 @@ import { eq, count } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getSession } from "@/lib/stackauth"
 import { captureMessage, captureException } from '@/lib/logging/config'
-import { env } from "@/lib/env"
 
 export async function POST(request: Request) {
   try {
@@ -77,6 +76,7 @@ export async function POST(request: Request) {
     }
 
     // Validate PayFast configuration
+    const { env } = await import('@/lib/env')
     if (!env.PAYFAST_MERCHANT_ID || !env.PAYFAST_MERCHANT_KEY || !env.PAYFAST_PASSPHRASE) {
       captureMessage('PayFast configuration missing', { level: 'error', component: 'payment-initiation' })
       return NextResponse.json({ error: "Payment system not configured" }, { status: 500 })
@@ -94,7 +94,10 @@ export async function POST(request: Request) {
           id: schema.providers.id,
           contactEmail: schema.providers.contactEmail,
           contactPerson: schema.providers.contactPerson,
-          subscriptionStatus: schema.providers.subscriptionStatus
+          subscriptionStatus: schema.providers.subscriptionStatus,
+          trialStartDate: schema.providers.trialStartDate,
+          trialEndDate: schema.providers.trialEndDate,
+          createdAt: schema.providers.createdAt
         })
         .from(schema.providers)
         .where(eq(schema.providers.userId, session.user.id))
@@ -108,6 +111,287 @@ export async function POST(request: Request) {
       providerId = providerRow.id
       effectiveEmail = providerRow.contactEmail || session.user.email
       effectiveName = providerRow.contactPerson || session.user.name || 'Provider'
+
+      // Check if provider is eligible for trial subscription
+      const isEligibleForTrial = !providerRow.trialStartDate && 
+                                  providerRow.subscriptionStatus !== 'trial' && 
+                                  providerRow.subscriptionStatus !== 'active'
+      
+      if (isEligibleForTrial) {
+        // Activate trial subscription (14 days free)
+        const trialStartDate = new Date()
+        const trialEndDate = new Date(trialStartDate.getTime() + 14 * 24 * 60 * 60 * 1000) // 14 days from now
+        const nextPaymentDate = new Date(trialEndDate.getTime()) // First payment due after trial ends
+        const billingDate = trialEndDate.toISOString().split('T')[0] // Format: YYYY-MM-DD for PayFast
+
+        // Activate trial in database
+        await secureDb.db
+          .update(schema.providers)
+          .set({
+            subscriptionStatus: 'trial',
+            trialStartDate: trialStartDate,
+            trialEndDate: trialEndDate,
+            nextPaymentDate: nextPaymentDate
+          })
+          .where(eq(schema.providers.id, providerId!))
+
+        captureMessage('Trial subscription activated, setting up PayFast payment', { 
+          level: 'info', 
+          component: 'payment-initiation', 
+          providerId, 
+          trialStartDate: trialStartDate.toISOString(),
+          trialEndDate: trialEndDate.toISOString(),
+          billingDate
+        })
+
+        // Calculate amount for recurring subscription (will be charged after trial ends)
+        const [result] = await secureDb.db
+          .select({ count: count(schema.accommodations.id) })
+          .from(schema.accommodations)
+          .where(eq(schema.accommodations.providerId, providerId!))
+        
+        const accommodationsCount = Number(result?.count || 0)
+        const wantsFeatured = Boolean(customData?.wantsFeatured)
+        const calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+
+        // Generate secure payment ID
+        const paymentId = PaymentSecurityService.generateSecurePaymentId()
+
+        // Create server-side custom data (prevent client tampering)
+        const serverCustomDataForTrial = {
+          ...customData,
+          providerId: providerId || undefined,
+          paymentId,
+          idempotencyKey,
+          timestamp: Date.now(),
+          userId: session.user.id
+        }
+
+        // Create PayFast subscription with billing_date set to trial end date
+        // This allows users to add payment details now, but won't charge until after trial
+        const paymentData = createPayFastPayment(
+          calculatedAmount,
+          effectiveEmail,
+          effectiveName,
+          itemName,
+          {
+            ...serverCustomDataForTrial,
+            subscriptionType: "monthly",
+            billingDate: billingDate,
+            recurringAmount: calculatedAmount,
+            cycles: 0 // Ongoing subscription
+          }
+        )
+
+        // Log PayFast payload for debugging
+        console.log("\n" + "=".repeat(80))
+        console.log("[PAYFAST INITIATE] ===== PAYFAST PAYLOAD (TRIAL SETUP) =====")
+        console.log("=".repeat(80))
+        console.log("[PAYFAST INITIATE] Provider ID:", providerId)
+        console.log("[PAYFAST INITIATE] Amount:", calculatedAmount)
+        console.log("[PAYFAST INITIATE] Billing Date:", billingDate)
+        console.log("[PAYFAST INITIATE] Trial End Date:", trialEndDate.toISOString())
+        console.log("[PAYFAST INITIATE] Full Payment Data:", JSON.stringify(paymentData, null, 2))
+        console.log("=".repeat(80))
+        
+        // Build payload string in PayFast form field order for testing
+        const { PAYFAST_FORM_FIELD_ORDER } = await import('@/lib/payfast')
+        let payloadString = ""
+        for (const key of PAYFAST_FORM_FIELD_ORDER) {
+          const value = paymentData[key as keyof typeof paymentData]
+          if (value !== undefined && value !== '' && key !== 'signature') {
+            const encodedValue = encodeURIComponent(String(value))
+            payloadString += `${key}=${encodedValue}&`
+          }
+        }
+        // Add signature at the end
+        if (paymentData.signature) {
+          payloadString += `signature=${encodeURIComponent(paymentData.signature)}`
+        } else {
+          payloadString = payloadString.slice(0, -1) // Remove trailing &
+        }
+        
+        console.log("\n[PAYFAST INITIATE] ===== COPY THIS FOR SANDBOX TESTING =====")
+        console.log("=".repeat(80))
+        console.log(payloadString)
+        console.log("=".repeat(80))
+        console.log("[PAYFAST INITIATE] ===== END OF PAYLOAD STRING =====")
+        console.log("[PAYFAST INITIATE] Payload length:", payloadString.length)
+        console.log("[PAYFAST INITIATE] Signature:", paymentData.signature)
+        console.log("[PAYFAST INITIATE] NOTE: This uses PayFast form field order (not alphabetical)")
+        console.log("[PAYFAST INITIATE] NOTE: passphrase is NOT included in form submission")
+        console.log("=".repeat(80))
+        
+        // Generate sample ITN payload string for testing (alphabetical order, includes passphrase)
+        const itnPayloadData: Record<string, string> = {}
+        for (const key in paymentData) {
+          const value = paymentData[key as keyof typeof paymentData]
+          if (value !== undefined && value !== '' && key !== 'signature') {
+            itnPayloadData[key] = String(value)
+          }
+        }
+        
+        // Add sample ITN fields that PayFast will send
+        itnPayloadData.pf_payment_id = 'TEST_PAYMENT_ID_' + Date.now()
+        itnPayloadData.payment_status = 'COMPLETE'
+        itnPayloadData.item_name = paymentData.item_name || ''
+        itnPayloadData.amount_gross = paymentData.amount || ''
+        itnPayloadData.amount_fee = '0.00'
+        itnPayloadData.amount_net = paymentData.amount || ''
+        itnPayloadData.custom_str1 = paymentData.custom_str1 || ''
+        itnPayloadData.custom_str2 = paymentData.custom_str2 || ''
+        itnPayloadData.custom_str3 = paymentData.custom_str3 || ''
+        
+        // Sort alphabetically for ITN signature (different from form submission)
+        const sortedKeys = Object.keys(itnPayloadData).sort()
+        let itnPayloadString = ""
+        for (const key of sortedKeys) {
+          const encodedValue = encodeURIComponent(itnPayloadData[key])
+          itnPayloadString += `${key}=${encodedValue}&`
+        }
+        itnPayloadString = itnPayloadString.slice(0, -1) // Remove trailing &
+        
+        // Add passphrase for ITN signature
+        if (env.PAYFAST_PASSPHRASE) {
+          itnPayloadString += `&passphrase=${encodeURIComponent(env.PAYFAST_PASSPHRASE)}`
+        }
+        
+        console.log("\n[PAYFAST INITIATE] ===== SAMPLE ITN PAYLOAD (FOR TESTING) =====")
+        console.log("[PAYFAST INITIATE] NOTE: This is a SAMPLE - actual ITN will come from PayFast webhook")
+        console.log("[PAYFAST INITIATE] NOTE: ITN uses alphabetical ordering (different from form)")
+        console.log("[PAYFAST INITIATE] NOTE: passphrase IS included in ITN payload string")
+        console.log("=".repeat(80))
+        console.log(itnPayloadString)
+        console.log("=".repeat(80))
+        console.log("[PAYFAST INITIATE] ===== END OF SAMPLE ITN PAYLOAD =====")
+        console.log("[PAYFAST INITIATE] ITN Payload length:", itnPayloadString.length)
+        console.log("=".repeat(80) + "\n")
+
+        // Record pending transaction for future payment
+        const transaction = await secureDb.db
+          .insert(schema.paymentTransactions)
+          .values({
+            providerId: providerId!,
+            amount: calculatedAmount,
+            status: 'pending',
+            idempotencyKey: idempotencyKey || null,
+            mPaymentId: paymentId,
+            gatewayResponse: { paymentData, trialActivated: true },
+            createdAt: new Date()
+          })
+          .returning()
+
+        captureMessage('Trial payment setup created', {
+          level: 'info',
+          component: 'payment-initiation',
+          providerId: providerId!,
+          transactionId: transaction[0]?.id,
+          billingDate,
+          amount: calculatedAmount
+        })
+
+        // Return payment data to redirect to PayFast for payment method setup
+        return NextResponse.json({
+          paymentData,
+          transactionId: transaction[0]?.id,
+          amount: calculatedAmount,
+          trialActivated: true,
+          trialPaymentSetup: true,
+          billingDate: billingDate,
+          trialStartDate: trialStartDate.toISOString(),
+          trialEndDate: trialEndDate.toISOString(),
+          message: "Trial activated. Please add your payment details. You won't be charged until after your 14-day trial ends."
+        })
+      }
+
+      // Check if provider is in trial period and trying to pay early
+      if (providerRow.subscriptionStatus === 'trial' && providerRow.trialEndDate) {
+        const trialEnd = new Date(providerRow.trialEndDate)
+        const now = new Date()
+        
+        if (trialEnd > now) {
+          // Still in trial - set up payment for after trial ends
+          const billingDate = trialEnd.toISOString().split('T')[0] // Format: YYYY-MM-DD
+          
+          // Calculate amount for recurring subscription
+          const [result] = await secureDb.db
+            .select({ count: count(schema.accommodations.id) })
+            .from(schema.accommodations)
+            .where(eq(schema.accommodations.providerId, providerId!))
+          
+          const accommodationsCount = Number(result?.count || 0)
+          const wantsFeatured = Boolean(customData?.wantsFeatured)
+          const calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+
+          // Generate secure payment ID
+          const paymentId = PaymentSecurityService.generateSecurePaymentId()
+
+          // Create server-side custom data (prevent client tampering)
+          const serverCustomDataForTrial = {
+            ...customData,
+            providerId: providerId || undefined,
+            paymentId,
+            idempotencyKey,
+            timestamp: Date.now(),
+            userId: session.user.id
+          }
+
+          // Create PayFast subscription with billing_date set to trial end date
+          const paymentData = createPayFastPayment(
+            calculatedAmount,
+            effectiveEmail,
+            effectiveName,
+            itemName,
+            {
+              ...serverCustomDataForTrial,
+              subscriptionType: "monthly",
+              billingDate: billingDate,
+              recurringAmount: calculatedAmount,
+              cycles: 0 // Ongoing subscription
+            }
+          )
+
+          // Record pending transaction for future payment
+          const [transaction] = await secureDb.db
+            .insert(schema.paymentTransactions)
+            .values({
+              providerId: providerId!,
+              amount: calculatedAmount.toString(),
+              currency: 'ZAR',
+              mPaymentId: paymentData.m_payment_id,
+              idempotencyKey: idempotencyKey,
+              status: 'pending',
+              gatewayResponse: { 
+                initiated_at: new Date().toISOString(),
+                trial_payment_setup: true,
+                billing_date: billingDate,
+                paymentData: paymentData
+              }
+            })
+            .returning({ id: schema.paymentTransactions.id })
+
+          await PaymentAuditService.logAuditEvent(transaction.id, 'created', {
+            amount: calculatedAmount,
+            providerId: providerId!,
+            reason: 'Payment setup for post-trial subscription',
+            metadata: { 
+              itemName,
+              trialEndDate: trialEnd.toISOString(),
+              billingDate,
+              customData: serverCustomDataForTrial
+            }
+          })
+
+          return NextResponse.json({ 
+            paymentData,
+            transactionId: transaction.id,
+            amount: calculatedAmount,
+            trialPaymentSetup: true,
+            billingDate: billingDate,
+            message: "Payment will be processed automatically after your trial ends."
+          })
+        }
+      }
     } else if (session.user.role === 'agent') {
       const [agentRow] = await secureDb.db
         .select({ 
@@ -191,6 +475,89 @@ export async function POST(request: Request) {
       itemName,
       serverCustomData
     )
+
+    // Log PayFast payload for debugging
+    console.log("\n" + "=".repeat(80))
+    console.log("[PAYFAST INITIATE] ===== PAYFAST PAYLOAD =====")
+    console.log("=".repeat(80))
+    console.log("[PAYFAST INITIATE] Entity Type:", providerId ? 'provider' : 'agent')
+    console.log("[PAYFAST INITIATE] Entity ID:", providerId || agentId)
+    console.log("[PAYFAST INITIATE] Amount:", finalAmount)
+    console.log("[PAYFAST INITIATE] Full Payment Data:", JSON.stringify(paymentData, null, 2))
+    console.log("=".repeat(80))
+    
+    // Build payload string in PayFast form field order for testing
+    const { PAYFAST_FORM_FIELD_ORDER } = await import('@/lib/payfast')
+    let payloadString = ""
+    for (const key of PAYFAST_FORM_FIELD_ORDER) {
+      const value = paymentData[key as keyof typeof paymentData]
+      if (value !== undefined && value !== '' && key !== 'signature') {
+        const encodedValue = encodeURIComponent(String(value))
+        payloadString += `${key}=${encodedValue}&`
+      }
+    }
+    // Add signature at the end
+    if (paymentData.signature) {
+      payloadString += `signature=${encodeURIComponent(paymentData.signature)}`
+    } else {
+      payloadString = payloadString.slice(0, -1) // Remove trailing &
+    }
+    
+    console.log("\n[PAYFAST INITIATE] ===== COPY THIS FOR SANDBOX TESTING =====")
+    console.log("=".repeat(80))
+    console.log(payloadString)
+    console.log("=".repeat(80))
+    console.log("[PAYFAST INITIATE] ===== END OF PAYLOAD STRING =====")
+    console.log("[PAYFAST INITIATE] Payload length:", payloadString.length)
+    console.log("[PAYFAST INITIATE] Signature:", paymentData.signature)
+    console.log("[PAYFAST INITIATE] NOTE: This uses PayFast form field order (not alphabetical)")
+    console.log("[PAYFAST INITIATE] NOTE: passphrase is NOT included in form submission")
+    console.log("=".repeat(80))
+    
+    // Generate sample ITN payload string for testing (alphabetical order, includes passphrase)
+    const itnPayloadData: Record<string, string> = {}
+    for (const key in paymentData) {
+      const value = paymentData[key as keyof typeof paymentData]
+      if (value !== undefined && value !== '' && key !== 'signature') {
+        itnPayloadData[key] = String(value)
+      }
+    }
+    
+    // Add sample ITN fields that PayFast will send
+    itnPayloadData.pf_payment_id = 'TEST_PAYMENT_ID_' + Date.now()
+    itnPayloadData.payment_status = 'COMPLETE'
+    itnPayloadData.item_name = paymentData.item_name || ''
+    itnPayloadData.amount_gross = paymentData.amount || ''
+    itnPayloadData.amount_fee = '0.00'
+    itnPayloadData.amount_net = paymentData.amount || ''
+    itnPayloadData.custom_str1 = paymentData.custom_str1 || ''
+    itnPayloadData.custom_str2 = paymentData.custom_str2 || ''
+    itnPayloadData.custom_str3 = paymentData.custom_str3 || ''
+    
+    // Sort alphabetically for ITN signature (different from form submission)
+    const sortedKeys = Object.keys(itnPayloadData).sort()
+    let itnPayloadString = ""
+    for (const key of sortedKeys) {
+      const encodedValue = encodeURIComponent(itnPayloadData[key])
+      itnPayloadString += `${key}=${encodedValue}&`
+    }
+    itnPayloadString = itnPayloadString.slice(0, -1) // Remove trailing &
+    
+    // Add passphrase for ITN signature
+    if (env.PAYFAST_PASSPHRASE) {
+      itnPayloadString += `&passphrase=${encodeURIComponent(env.PAYFAST_PASSPHRASE)}`
+    }
+    
+    console.log("\n[PAYFAST INITIATE] ===== SAMPLE ITN PAYLOAD (FOR TESTING) =====")
+    console.log("[PAYFAST INITIATE] NOTE: This is a SAMPLE - actual ITN will come from PayFast webhook")
+    console.log("[PAYFAST INITIATE] NOTE: ITN uses alphabetical ordering (different from form)")
+    console.log("[PAYFAST INITIATE] NOTE: passphrase IS included in ITN payload string")
+    console.log("=".repeat(80))
+    console.log(itnPayloadString)
+    console.log("=".repeat(80))
+    console.log("[PAYFAST INITIATE] ===== END OF SAMPLE ITN PAYLOAD =====")
+    console.log("[PAYFAST INITIATE] ITN Payload length:", itnPayloadString.length)
+    console.log("=".repeat(80) + "\n")
 
     // Record pending transaction (neon-http doesn't support transactions, so we do sequential operations)
     try {

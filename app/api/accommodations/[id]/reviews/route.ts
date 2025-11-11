@@ -9,8 +9,9 @@ export async function GET(
   try {
     const { id } = await params
     
-    // Fetch reviews with student information
-    const reviewsResult = await query`
+    // Optimized: Fetch reviews with student information AND calculate stats in a single query using window functions
+    const result = await query`
+      WITH review_data AS (
       SELECT 
         r.id,
         r.rating,
@@ -23,27 +24,52 @@ export async function GET(
         u.last_name,
         u.email,
         u.profile_image_url,
-        s.university
+          s.university,
+          AVG(r.rating) OVER() as average_rating,
+          COUNT(*) OVER() as total_reviews
       FROM reviews r
       JOIN students s ON r.student_id = s.id
       JOIN users u ON s.user_id = u.id
       WHERE r.accommodation_id = ${id}
-      ORDER BY r.created_at DESC
+      )
+      SELECT 
+        id,
+        rating,
+        comment,
+        is_verified,
+        helpful_votes,
+        total_votes,
+        created_at,
+        first_name,
+        last_name,
+        email,
+        profile_image_url,
+        university,
+        average_rating,
+        total_reviews
+      FROM review_data
+      ORDER BY created_at DESC
       LIMIT 50
     `
 
-    // Calculate average rating
-    const avgRatingResult = await query`
-      SELECT 
-        AVG(rating) as average_rating,
-        COUNT(*) as total_reviews
-      FROM reviews 
-      WHERE accommodation_id = ${id}
-    `
+    const reviews = result.rows.map((row: any) => ({
+      id: row.id,
+      rating: row.rating,
+      comment: row.comment,
+      is_verified: row.is_verified,
+      helpful_votes: row.helpful_votes,
+      total_votes: row.total_votes,
+      created_at: row.created_at,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      email: row.email,
+      profile_image_url: row.profile_image_url,
+      university: row.university
+    }))
 
-    const reviews = reviewsResult.rows
-    const avgRating = avgRatingResult.rows[0]?.average_rating || 0
-    const totalReviews = avgRatingResult.rows[0]?.total_reviews || 0
+    // Get stats from first row (all rows have same values due to window function)
+    const avgRating = result.rows[0]?.average_rating || 0
+    const totalReviews = result.rows[0]?.total_reviews || 0
 
     // Ensure avgRating is a number before calling toFixed
     const numericAvgRating = typeof avgRating === 'number' ? avgRating : parseFloat(avgRating) || 0
