@@ -12,6 +12,8 @@ interface PayFastPaymentFormProps {
   customData?: { providerId?: string; agentId?: string; subscriptionType?: string; wantsFeatured?: boolean }
   onSuccess?: () => void
   onError?: (error: string) => void
+  isEligibleForTrial?: boolean
+  isInTrial?: boolean
 }
 
 export default function PayFastPaymentForm({
@@ -21,7 +23,9 @@ export default function PayFastPaymentForm({
   itemName,
   customData,
   onSuccess,
-  onError
+  onError,
+  isEligibleForTrial = false,
+  isInTrial = false
 }: PayFastPaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +62,67 @@ export default function PayFastPaymentForm({
       }
 
       const responseData = await resp.json()
-      const { paymentData, idempotent } = responseData
+      const { paymentData, idempotent, trialActivated, trialPaymentSetup } = responseData
+
+      // Handle trial activation with PayFast redirect
+      if (trialActivated && trialPaymentSetup && paymentData) {
+        console.log('Trial subscription activated, redirecting to PayFast for payment setup:', responseData)
+        // Create form and submit to PayFast to set up recurring payment
+        // User will add payment details, but won't be charged until after trial ends
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = process.env.NODE_ENV === 'production' 
+          ? 'https://www.payfast.co.za/eng/process' 
+          : 'https://sandbox.payfast.co.za/eng/process'
+
+        // Add all payment data as hidden fields
+        Object.entries(paymentData).forEach(([key, value]) => {
+          if (value != null && String(value) !== '') {
+            const input = document.createElement('input')
+            input.type = 'hidden'
+            input.name = key
+            input.value = String(value)
+            form.appendChild(input)
+          }
+        })
+
+        // Submit form to redirect to PayFast
+        document.body.appendChild(form)
+        form.submit()
+        document.body.removeChild(form)
+
+        onSuccess?.()
+        return
+      }
+
+      // Handle trial payment setup (payment scheduled for after trial ends)
+      if (trialPaymentSetup && paymentData) {
+        // Create form and submit to PayFast to set up recurring payment
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = process.env.NODE_ENV === 'production' 
+          ? 'https://www.payfast.co.za/eng/process' 
+          : 'https://sandbox.payfast.co.za/eng/process'
+
+        // Add all payment data as hidden fields
+        Object.entries(paymentData).forEach(([key, value]) => {
+          if (value != null && String(value) !== '') {
+            const input = document.createElement('input')
+            input.type = 'hidden'
+            input.name = key
+            input.value = String(value)
+            form.appendChild(input)
+          }
+        })
+
+        // Submit form
+        document.body.appendChild(form)
+        form.submit()
+        document.body.removeChild(form)
+
+        onSuccess?.()
+        return
+      }
 
       // If idempotent response, use existing payment data
       if (idempotent && paymentData) {
@@ -189,7 +253,13 @@ export default function PayFastPaymentForm({
         ) : (
           <>
             <CreditCard className="w-5 h-5" />
-            <span>Pay R {amount.toFixed(2)} with PayFast</span>
+            <span>
+              {isEligibleForTrial 
+                ? 'Activate R0 Trial Subscription' 
+                : isInTrial 
+                  ? `Set Up Payment (R ${amount.toFixed(2)} after trial)`
+                  : `Pay R ${amount.toFixed(2)} with PayFast`}
+            </span>
           </>
         )}
       </button>
