@@ -334,6 +334,18 @@ async function processSuccessfulPayment(
     // Update provider or agent subscription status
     if (entityType === 'provider') {
       console.log(`[PAYFAST NOTIFY] Activating subscription for provider ${entityId}`)
+      
+      // Check if this is a trial-to-paid transition
+      const [providerBeforeUpdate] = await secureDb.db
+        .select({
+          subscriptionStatus: schema.providers.subscriptionStatus,
+          trialEndDate: schema.providers.trialEndDate
+        })
+        .from(schema.providers)
+        .where(eq(schema.providers.id, entityId))
+        .limit(1)
+      
+      const isTrialToPaidTransition = providerBeforeUpdate?.subscriptionStatus === 'trial'
       const nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
       
       // Update provider subscription status - verify it actually updated
@@ -343,7 +355,12 @@ async function processSuccessfulPayment(
           subscriptionStatus: 'active',
           lastPaymentDate: paymentDate,
           nextPaymentDate: nextPaymentDate,
-          subscriptionToken: subscriptionToken || undefined // Store subscription token for recurring billing management
+          subscriptionToken: subscriptionToken || undefined, // Store subscription token for recurring billing management
+          // Clear trial dates when transitioning to paid
+          ...(isTrialToPaidTransition ? {
+            trialStartDate: null,
+            trialEndDate: null
+          } : {})
         })
         .where(eq(schema.providers.id, entityId))
         .returning({ 
@@ -361,7 +378,8 @@ async function processSuccessfulPayment(
       console.log(`[PAYFAST NOTIFY] Provider ${entityId} subscription activated successfully:`, {
         subscriptionStatus: updatedProvider.subscriptionStatus,
         nextPaymentDate: updatedProvider.nextPaymentDate?.toISOString(),
-        lastPaymentDate: updatedProvider.lastPaymentDate?.toISOString()
+        lastPaymentDate: updatedProvider.lastPaymentDate?.toISOString(),
+        isTrialToPaidTransition: isTrialToPaidTransition
       })
 
       // Handle featured status if requested (only for providers)
