@@ -367,8 +367,8 @@ export default function EditAccommodation() {
           accreditation_status: formData.accreditationStatus,
           has_single_rooms: formData.hasSingleRooms,
           has_sharing_rooms: formData.hasSharingRooms,
-          single_room_price: formData.singleRoomPrice ? Number(formData.singleRoomPrice) : undefined,
-          sharing_room_price: formData.sharingRoomPrice ? Number(formData.sharingRoomPrice) : undefined,
+          single_room_price: formData.hasSingleRooms ? Number(formData.singleRoomPrice) : undefined,
+          sharing_room_price: formData.hasSharingRooms ? Number(formData.sharingRoomPrice) : undefined,
           single_rooms_total: formData.hasSingleRooms ? Number(formData.singleRoomsTotal) : 0,
           single_rooms_available: formData.hasSingleRooms ? Number(formData.singleRoomsAvailable) : 0,
           sharing_rooms_total: formData.hasSharingRooms ? Number(formData.sharingRoomsTotal) : 0,
@@ -793,9 +793,11 @@ export default function EditAccommodation() {
               <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
                 <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent flex items-center gap-3">
                   <Building className="w-6 h-6 text-blue-400" />
-                  Description
+                  Description *
                 </h2>
                 <textarea
+                  required
+                  minLength={10}
                   value={formData.description}
                   onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   rows={4}

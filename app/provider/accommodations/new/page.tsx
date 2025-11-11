@@ -189,8 +189,8 @@ export default function NewAccommodation() {
           accreditation_status: formData.accreditationStatus,
           has_single_rooms: formData.hasSingleRooms,
           has_sharing_rooms: formData.hasSharingRooms,
-          single_room_price: formData.singleRoomPrice ? Number(formData.singleRoomPrice) : 0,
-          sharing_room_price: formData.sharingRoomPrice ? Number(formData.sharingRoomPrice) : 0,
+          single_room_price: formData.hasSingleRooms ? Number(formData.singleRoomPrice) : 0,
+          sharing_room_price: formData.hasSharingRooms ? Number(formData.sharingRoomPrice) : 0,
           single_rooms_total: formData.hasSingleRooms ? Number(formData.singleRoomsTotal) : 0,
           single_rooms_available: formData.hasSingleRooms ? Number(formData.singleRoomsAvailable) : 0,
           sharing_rooms_total: formData.hasSharingRooms ? Number(formData.sharingRoomsTotal) : 0,
@@ -231,19 +231,6 @@ export default function NewAccommodation() {
                 Add New Accommodation
               </h1>
               <p className="text-xl text-neutral-300">Create a new property listing for students</p>
-            </div>
-
-            {/* Pricing Info */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-green-500/20">
-              <h3 className="text-xl font-semibold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent flex items-center gap-3">
-                <DollarSign className="w-6 h-6 text-green-400" />
-                Pricing Information
-              </h3>
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                <p className="text-green-300 text-lg">
-                  <strong>Accredited Accommodations:</strong> First property R450/month, additional properties R50/month each
-                </p>
-              </div>
             </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -292,6 +279,7 @@ export default function NewAccommodation() {
                   <input
                     type="text"
                     required
+                    minLength={5}
                     value={formData.address}
                     onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
                     className="w-full pl-10 pr-4 py-3 bg-black/30 border border-white/10 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-neutral-400"
@@ -540,9 +528,11 @@ export default function NewAccommodation() {
             <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
               <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent flex items-center gap-3">
                 <Building className="w-6 h-6 text-blue-400" />
-                Description
+                Description *
               </h2>
               <textarea
+                required
+                minLength={10}
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 rows={4}
