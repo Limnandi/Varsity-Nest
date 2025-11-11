@@ -217,6 +217,10 @@ export async function insertAccommodation(payload: {
   has_sharing_rooms?: boolean
   single_room_price?: number
   sharing_room_price?: number
+  single_rooms_total?: number
+  single_rooms_available?: number
+  sharing_rooms_total?: number
+  sharing_rooms_available?: number
   listing_status?: string
   is_published?: boolean
   contact_email?: string
@@ -248,8 +252,12 @@ export async function insertAccommodation(payload: {
       isVerified: payload.is_verified ?? false,
       hasSingleRooms: payload.has_single_rooms ?? false,
       hasSharingRooms: payload.has_sharing_rooms ?? false,
-      singleRoomPrice: payload.single_room_price ?? 0,
-      sharingRoomPrice: payload.sharing_room_price ?? 0,
+      singleRoomPrice: payload.single_room_price ?? null,
+      sharingRoomPrice: payload.sharing_room_price ?? null,
+      singleRoomsTotal: payload.single_rooms_total ?? 0,
+      singleRoomsAvailable: payload.single_rooms_available ?? 0,
+      sharingRoomsTotal: payload.sharing_rooms_total ?? 0,
+      sharingRoomsAvailable: payload.sharing_rooms_available ?? 0,
       listingStatus: payload.listing_status ?? 'draft',
       isPublished: payload.is_published ?? false,
       isActive: true,

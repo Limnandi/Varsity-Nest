@@ -252,7 +252,9 @@ CREATE TABLE IF NOT EXISTS webhook_events (
 );
 
 -- Provider subscription and billing columns
-ALTER TABLE providers ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'inactive' CHECK (subscription_status IN ('inactive','active','past_due','canceled'));
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'inactive' CHECK (subscription_status IN ('inactive','trial','active','past_due','canceled'));
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS trial_end_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS next_payment_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE providers ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false;
