@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch provider details including subscription token
+    // Fetch provider details including subscription token and trial dates
     const providerResult = await query`
       SELECT 
         p.id,
@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
         p.contact_email,
         p.subscription_token,
         p.subscription_status,
+        p.trial_start_date,
+        p.trial_end_date,
         p.last_payment_date,
         p.next_payment_date,
         u.email,
@@ -67,6 +69,11 @@ export async function GET(request: NextRequest) {
     const nextPaymentDate = providerData.next_payment_date 
       ? new Date(providerData.next_payment_date)
       : new Date()
+    
+    // Check trial status
+    const trialStartDate = providerData.trial_start_date ? new Date(providerData.trial_start_date) : null
+    const trialEndDate = providerData.trial_end_date ? new Date(providerData.trial_end_date) : null
+    const isInTrial = providerData.subscription_status === 'trial' && trialEndDate && trialEndDate > new Date()
     
     // Calculate monthly fee based on active accommodations count
     const accommodationsResult = await query`
@@ -117,7 +124,7 @@ export async function GET(request: NextRequest) {
       paymentMethod: 'PayFast' // Default to PayFast since that's the payment gateway
     }))
 
-    // Determine subscription status
+    // Determine subscription status (use database status if available, otherwise calculate)
     const hasRecentPayment = invoices.some((inv: any) => {
       const paymentDate = new Date(inv.date)
       const thirtyDaysAgo = new Date()
@@ -125,8 +132,10 @@ export async function GET(request: NextRequest) {
       return inv.status === 'paid' && paymentDate > thirtyDaysAgo
     })
 
-    const subscriptionStatus = hasRecentPayment ? 'active' : 
-                               invoices.length === 0 ? 'trial' : 'inactive'
+    // Use database subscription_status if available, otherwise calculate
+    const subscriptionStatus = providerData.subscription_status || 
+                               (hasRecentPayment ? 'active' : 
+                               (invoices.length === 0 && !providerData.trial_start_date ? 'trial' : 'inactive'))
 
     const provider = {
       id: providerData.id,
@@ -137,8 +146,11 @@ export async function GET(request: NextRequest) {
       billingInfo: {
         monthlyFee,
         nextPaymentDate: providerData.next_payment_date ? new Date(providerData.next_payment_date).toISOString() : nextPaymentDate.toISOString(),
-        subscriptionStatus: providerData.subscription_status || subscriptionStatus,
-        subscriptionStartDate: subscriptionStartDate.toISOString()
+        subscriptionStatus: subscriptionStatus,
+        subscriptionStartDate: subscriptionStartDate.toISOString(),
+        trialStartDate: trialStartDate ? trialStartDate.toISOString() : null,
+        trialEndDate: trialEndDate ? trialEndDate.toISOString() : null,
+        isInTrial: isInTrial
       }
     }
 
