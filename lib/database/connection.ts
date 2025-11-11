@@ -77,14 +77,84 @@ export const createQueryBuilder = <T>(queryName: string, baseQuery: () => Promis
   };
 };
 
+// Connection pool monitoring
+let poolStats = {
+  totalConnections: 0,
+  idleConnections: 0,
+  waitingClients: 0,
+  lastChecked: new Date()
+};
+
+// Update pool statistics
+export function getPoolStats() {
+  return {
+    ...poolStats,
+    activeConnections: poolStats.totalConnections - poolStats.idleConnections,
+    poolSize: pool.totalCount,
+    idleCount: pool.idleCount,
+    waitingCount: pool.waitingCount
+  };
+}
+
+// Monitor pool health
+export async function checkPoolHealth() {
+  try {
+    const stats = {
+      totalCount: pool.totalCount,
+      idleCount: pool.idleCount,
+      waitingCount: pool.waitingCount
+    };
+
+    poolStats = {
+      totalConnections: stats.totalCount,
+      idleConnections: stats.idleCount,
+      waitingClients: stats.waitingCount,
+      lastChecked: new Date()
+    };
+
+    // Log warning if pool is getting full
+    const utilizationPercent = (stats.totalCount / 20) * 100;
+    if (utilizationPercent > 80) {
+      log.warn(`Database pool utilization high: ${utilizationPercent.toFixed(1)}% (${stats.totalCount}/20 connections)`);
+    }
+
+    // Log warning if clients are waiting
+    if (stats.waitingCount > 0) {
+      log.warn(`Database pool has ${stats.waitingCount} waiting clients - consider increasing pool size`);
+    }
+
+    return {
+      healthy: stats.totalCount < 18 && stats.waitingCount === 0,
+      ...stats,
+      utilizationPercent: utilizationPercent.toFixed(1)
+    };
+  } catch (error) {
+    log.error('Error checking pool health', error instanceof Error ? error : new Error(String(error)));
+    return { healthy: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 // Connection management
 pool.on('connect', () => {
   log.info('New database connection established');
+  checkPoolHealth().catch(() => {}); // Update stats, ignore errors
 });
 
 pool.on('error', (err) => {
   log.error('Database pool error', err);
 });
+
+// Periodic pool health monitoring (every 5 minutes)
+if (typeof process !== 'undefined') {
+  setInterval(async () => {
+    try {
+      await checkPoolHealth();
+    } catch (error) {
+      // Silently fail - don't crash the app if monitoring fails
+      log.warn('Pool health check failed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+}
 
 // Cleanup on application shutdown
 process.on('SIGINT', async () => {
