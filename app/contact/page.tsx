@@ -2,8 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Phone, Mail, Clock, Send, CheckCircle, AlertCircle } from "lucide-react"
+import ReCAPTCHA from "react-google-recaptcha"
+import { publicEnv } from "@/lib/env.client"
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -15,9 +17,17 @@ export default function Contact() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const recaptchaRef = useRef<ReCAPTCHA>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    const recaptchaToken = recaptchaRef.current?.getValue()
+    if (!recaptchaToken) {
+      setSubmitMessage({ type: 'error', text: "Please complete the reCAPTCHA verification" })
+      return
+    }
+
     setIsSubmitting(true)
     setSubmitMessage(null)
 
@@ -27,7 +37,10 @@ export default function Contact() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          recaptchaToken,
+        }),
       })
 
       const data = await response.json()
@@ -38,9 +51,11 @@ export default function Contact() {
 
       setSubmitMessage({ type: 'success', text: data.message || "Thank you for your message! We'll get back to you soon." })
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" })
+      recaptchaRef.current?.reset()
     } catch (error: any) {
       console.error("Contact form error:", error)
       setSubmitMessage({ type: 'error', text: error.message || "Failed to send message. Please try again later." })
+      recaptchaRef.current?.reset()
     } finally {
       setIsSubmitting(false)
     }
@@ -228,6 +243,14 @@ export default function Contact() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white placeholder-neutral-400 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 resize-vertical"
                   placeholder="Tell us how we can help you..."
+                />
+              </div>
+
+              {/* ReCAPTCHA */}
+              <div className="flex justify-center py-2">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={publicEnv.RECAPTCHA_SITE_KEY}
                 />
               </div>
 

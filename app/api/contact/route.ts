@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { getStackServerApp } from "@/lib/stack"
 import { ApiErrorResponseBuilder } from "@/lib/api-error-response"
 import { env } from "@/lib/env"
+import { verifyRecaptcha } from "@/lib/recaptcha"
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, phone, subject, message } = await request.json()
+    const { name, email, phone, subject, message, recaptchaToken } = await request.json()
 
     if (!name || !email || !subject || !message) {
       return await ApiErrorResponseBuilder.createValidationErrorResponse(
@@ -24,6 +25,15 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return await ApiErrorResponseBuilder.createValidationErrorResponse(
         { email: "Invalid email format" },
+        request
+      )
+    }
+
+    // Verify reCAPTCHA
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken)
+    if (!recaptchaResult.success) {
+      return await ApiErrorResponseBuilder.createValidationErrorResponse(
+        { recaptcha: recaptchaResult.message || "reCAPTCHA verification failed. Please try again." },
         request
       )
     }
