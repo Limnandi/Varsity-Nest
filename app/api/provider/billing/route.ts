@@ -115,6 +115,11 @@ export async function GET(request: NextRequest) {
     
     const allRelevantPayments = [...completedPayments, ...mostRecentPending]
     
+    // Check if provider is a first-time user (never had trial or payment)
+    const hasNeverHadTrial = !providerData.trial_start_date && !providerData.trial_end_date
+    const hasNeverHadPayment = !providerData.last_payment_date && completedPayments.length === 0
+    const isFirstTimeUser = hasNeverHadTrial && hasNeverHadPayment && providerData.subscription_status === 'inactive'
+    
     const invoices = allRelevantPayments.map((payment: any) => ({
       id: payment.pf_payment_id || payment.m_payment_id || payment.id,
       date: payment.created_at,
@@ -150,7 +155,8 @@ export async function GET(request: NextRequest) {
         subscriptionStartDate: subscriptionStartDate.toISOString(),
         trialStartDate: trialStartDate ? trialStartDate.toISOString() : null,
         trialEndDate: trialEndDate ? trialEndDate.toISOString() : null,
-        isInTrial: isInTrial
+        isInTrial: isInTrial,
+        isFirstTimeUser: isFirstTimeUser
       }
     }
 
