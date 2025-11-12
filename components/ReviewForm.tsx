@@ -40,7 +40,7 @@ export default function ReviewForm({ onSubmit, isSubmitting = false }: ReviewFor
         className="transition-colors duration-200"
       >
         <Star
-          className={`w-6 h-6 ${
+          className={`w-4 h-4 ${
             i < (hoveredRating || rating)
               ? 'text-yellow-400 fill-yellow-400'
               : 'text-gray-400 hover:text-yellow-300'
@@ -63,36 +63,49 @@ export default function ReviewForm({ onSubmit, isSubmitting = false }: ReviewFor
 
   if (!isExpanded) {
     return (
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-lg">
+      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-3 text-white shadow-lg h-full flex items-center">
         <button
           onClick={() => setIsExpanded(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-white/20 bg-black/20 backdrop-blur-xl text-white rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]"
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 border border-white/20 bg-black/20 backdrop-blur-xl text-white rounded-lg text-sm font-medium hover:bg-white/5 transition-all duration-300"
         >
           <User className="w-4 h-4" />
-          Write a Review
+          Write Review
         </button>
       </div>
     )
   }
 
   return (
-    <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-lg">
-      <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-        Write a Review
-      </h3>
+    <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 text-white shadow-lg">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          Write a Review
+        </h3>
+        <button
+          type="button"
+          onClick={() => {
+            setIsExpanded(false)
+            setRating(0)
+            setComment("")
+          }}
+          className="text-neutral-400 hover:text-white text-sm"
+        >
+          ✕
+        </button>
+      </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Rating Section */}
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-2">
-            Your Rating *
+          <label className="block text-xs font-medium text-neutral-300 mb-1.5">
+            Rating *
           </label>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               {renderStars()}
             </div>
             {rating > 0 && (
-              <span className="text-sm text-neutral-400 ml-2">
+              <span className="text-xs text-neutral-400">
                 {getRatingText(rating)}
               </span>
             )}
@@ -101,47 +114,35 @@ export default function ReviewForm({ onSubmit, isSubmitting = false }: ReviewFor
 
         {/* Comment Section */}
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-2">
-            Your Review
+          <label className="block text-xs font-medium text-neutral-300 mb-1.5">
+            Review
           </label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Share your experience with this accommodation..."
-            className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            rows={4}
+            placeholder="Share your experience..."
+            className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            rows={3}
             maxLength={1000}
           />
           <div className="text-xs text-neutral-400 mt-1">
-            {comment.length}/1000 characters
+            {comment.length}/1000
           </div>
         </div>
 
-        {/* Submit Buttons */}
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={rating === 0 || isSubmitting}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            <Send className="w-4 h-4" />
-            {isSubmitting ? 'Submitting...' : 'Submit Review'}
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setIsExpanded(false)
-              setRating(0)
-              setComment("")
-            }}
-            className="px-6 py-3 border border-white/20 bg-black/20 backdrop-blur-xl text-white rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]"
-          >
-            Cancel
-          </button>
-        </div>
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={rating === 0 || isSubmitting}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Send className="w-3.5 h-3.5" />
+          {isSubmitting ? 'Submitting...' : 'Submit Review'}
+        </button>
       </form>
     </div>
   )
 }
+
+
 

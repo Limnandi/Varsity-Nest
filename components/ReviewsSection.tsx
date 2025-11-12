@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import ReviewCard from "./ReviewCard"
 import ReviewForm from "./ReviewForm"
 import ReportModal from "./ReportModal"
-import { Star, TrendingUp, MessageSquare } from "lucide-react"
+import ReviewsModal from "./ReviewsModal"
+import { Star, MessageSquare, ChevronRight } from "lucide-react"
+import { toast } from "sonner"
 
 interface Review {
   id: string
@@ -41,12 +43,14 @@ interface ReviewsData {
 
 interface ReviewsSectionProps {
   accommodationId: string
+  accommodationName?: string
+  accommodationImage?: string
   currentUserEmail?: string
   currentUserRole?: string
   isAuthenticated?: boolean
 }
 
-export default function ReviewsSection({ accommodationId, currentUserEmail, currentUserRole, isAuthenticated }: ReviewsSectionProps) {
+export default function ReviewsSection({ accommodationId, accommodationName, accommodationImage, currentUserEmail, currentUserRole, isAuthenticated }: ReviewsSectionProps) {
   const [reviewsData, setReviewsData] = useState<ReviewsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,6 +59,7 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
   const [replies, setReplies] = useState<Record<string, Reply[]>>({})
   const [showReportModal, setShowReportModal] = useState(false)
   const [reportingItem, setReportingItem] = useState<{id: string, author: string, type: 'review' | 'reply'} | null>(null)
+  const [showReviewsModal, setShowReviewsModal] = useState(false)
 
   const loadReviews = useCallback(async () => {
     try {
@@ -119,13 +124,36 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
       })
 
       if (response.ok) {
-        await loadReviews() // Reload reviews
+        await response.json()
+        toast.success("Review submitted successfully!", {
+          description: "Your review has been added and is now visible.",
+        })
+        
+        // Reload reviews to get the updated list with the new review
+        await loadReviews()
+        
+        // Scroll to reviews section after a brief delay to ensure DOM is updated
+        setTimeout(() => {
+          const reviewsSection = document.querySelector('[role="listbox"]')
+          if (reviewsSection) {
+            reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 100)
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit review')
+        const errorMessage = errorData.error || 'Failed to submit review'
+        toast.error("Failed to submit review", {
+          description: errorMessage,
+        })
+        throw new Error(errorMessage)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Review submission failed:', error)
+      if (!error.message || !error.message.includes('Failed to submit review')) {
+        toast.error("An error occurred", {
+          description: error.message || "Please try again later.",
+        })
+      }
       throw error
     } finally {
       setIsSubmitting(false)
@@ -307,14 +335,42 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
     ))
   }
 
+  // Calculate rating distribution (must be before early returns)
+  const ratingDistribution = useMemo(() => {
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    if (reviewsData?.reviews) {
+      reviewsData.reviews.forEach(review => {
+        const rating = Math.round(review.rating) as keyof typeof distribution
+        if (rating >= 1 && rating <= 5) {
+          distribution[rating]++
+        }
+      })
+    }
+    return distribution
+  }, [reviewsData])
+
+  const getRatingPercentage = (rating: number) => {
+    if (!reviewsData || reviewsData.totalReviews === 0) return 0
+    return (ratingDistribution[rating as keyof typeof ratingDistribution] / reviewsData.totalReviews) * 100
+  }
+
+  // Check if current user has already left a review
+  const hasUserReviewed = useMemo(() => {
+    if (!reviewsData || !currentUserEmail || !isAuthenticated) return false
+    return reviewsData.reviews.some(review => review.email === currentUserEmail)
+  }, [reviewsData, currentUserEmail, isAuthenticated])
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="h-20 bg-gray-300/10 dark:bg-gray-700/10 rounded-xl"></div>
+            <div className="sm:col-span-2 h-20 bg-gray-300/10 dark:bg-gray-700/10 rounded-xl"></div>
+          </div>
+          <div className="space-y-3 mt-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+              <div key={i} className="h-24 bg-gray-200/10 dark:bg-gray-700/10 rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -324,73 +380,94 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
 
   if (!reviewsData) {
     return (
-      <div className="text-center py-8">
-        <MessageSquare className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-        <p className="text-neutral-400">Failed to load reviews</p>
+      <div className="text-center py-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+        <MessageSquare className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+        <p className="text-sm text-neutral-400">Failed to load reviews</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Rating Summary */}
-      <div className="flex items-center justify-between p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-        <div className="flex items-center gap-4">
-          <div className="text-center">
-            <div className="text-4xl font-bold text-white mb-1">
+    <div className="space-y-4">
+      {/* Rating Summary with Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Average Rating & Distribution Chart */}
+        <div className="lg:col-span-2 relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Average Rating (Left) */}
+            <div className="flex flex-col justify-center">
+              <div className="text-5xl font-bold text-white mb-3">
               {reviewsData.averageRating.toFixed(1)}
             </div>
-            <div className="flex items-center gap-1 mb-2">
-              {renderStars(Math.round(reviewsData.averageRating), 'md')}
+              <div className="flex items-center gap-1 mb-3">
+                {renderStars(Math.round(reviewsData.averageRating), 'lg')}
             </div>
-            <div className="text-sm text-neutral-400">
-              {reviewsData.totalReviews} review{reviewsData.totalReviews !== 1 ? 's' : ''}
-            </div>
+              <div className="text-base text-neutral-400">
+                {reviewsData.totalReviews.toLocaleString()} review{reviewsData.totalReviews !== 1 ? 's' : ''}
           </div>
         </div>
         
-        <div className="flex items-center gap-2 text-sm text-neutral-300">
-          <TrendingUp className="w-4 h-4" />
-          <span>Based on student feedback</span>
+            {/* Rating Distribution Chart (Right) */}
+            <div className="flex flex-col justify-center gap-2.5">
+              {[5, 4, 3, 2, 1].map((rating) => {
+                const percentage = getRatingPercentage(rating)
+                const count = ratingDistribution[rating as keyof typeof ratingDistribution]
+                return (
+                  <div key={rating} className="flex items-center gap-3">
+                    <span className="text-sm text-neutral-300 w-5 text-right font-medium">{rating}</span>
+                    <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden relative">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-700 ease-out"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-neutral-400 w-10 text-right">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
         </div>
       </div>
 
-      {/* Review Form - Only for students */}
+        {/* Review Form - Compact */}
+        <div>
       {!isAuthenticated ? (
-        <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-center">
-          <MessageSquare className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Want to leave a review?</h3>
-          <p className="text-neutral-400 mb-6">Sign in as a student to share your experience</p>
+            <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 h-full flex items-center justify-center">
           <a
             href="/auth/login"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20"
           >
-            Sign In as Student
+                <MessageSquare className="w-4 h-4" />
+                Sign In to Review
           </a>
         </div>
-      ) : currentUserRole === 'student' ? (
+          ) : currentUserRole === 'student' && !hasUserReviewed ? (
         <ReviewForm
           accommodationId={accommodationId}
           onSubmit={handleReviewSubmit}
           isSubmitting={isSubmitting}
         />
-      ) : (
-        <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-center">
-          <MessageSquare className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Students Only</h3>
-          <p className="text-neutral-400">Only verified students can leave reviews for accommodations</p>
+          ) : currentUserRole === 'student' && hasUserReviewed ? (
+            <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 h-full flex items-center justify-center">
+              <p className="text-sm text-neutral-400">You have already reviewed this accommodation</p>
+            </div>
+          ) : (
+            <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 h-full flex items-center justify-center">
+              <p className="text-sm text-neutral-400">Only verified students can leave reviews</p>
         </div>
       )}
+        </div>
+      </div>
 
-      {/* Reviews List (scrollable) */}
+      {/* Reviews List (more compact) - Show only first 2 */}
       {reviewsData.reviews.length > 0 ? (
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl overflow-hidden">
           <div
-            className="max-h-[28rem] overflow-y-auto overscroll-contain p-4 flex flex-col gap-4"
+            className="max-h-[24rem] overflow-y-auto overscroll-contain p-3 flex flex-col gap-3"
             role="listbox"
             aria-label="Accommodation reviews"
           >
-            {reviewsData.reviews.map((review) => (
+            {reviewsData.reviews.slice(0, 2).map((review) => (
               <div key={review.id} role="option" aria-selected="false">
                 <ReviewCard
                   review={review}
@@ -410,12 +487,25 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
               </div>
             ))}
           </div>
+          
+          {/* View More Link - Show if more than 2 reviews */}
+          {reviewsData.reviews.length > 2 && (
+            <div className="border-t border-white/10 p-3 bg-black/10">
+              <button
+                onClick={() => setShowReviewsModal(true)}
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <span>View More Reviews</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="text-center py-8">
-          <MessageSquare className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-          <p className="text-neutral-400">No reviews yet</p>
-          <p className="text-sm text-neutral-500 mt-2">Be the first to share your experience!</p>
+        <div className="text-center py-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+          <MessageSquare className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+          <p className="text-sm text-neutral-400">No reviews yet</p>
+          <p className="text-xs text-neutral-500 mt-1">Be the first to share your experience!</p>
         </div>
       )}
 
@@ -430,6 +520,32 @@ export default function ReviewsSection({ accommodationId, currentUserEmail, curr
           onSubmit={handleReportSubmit}
           itemType={reportingItem.type}
           itemAuthor={reportingItem.author}
+        />
+      )}
+
+      {/* Reviews Modal */}
+      {reviewsData && (
+        <ReviewsModal
+          isOpen={showReviewsModal}
+          onClose={() => setShowReviewsModal(false)}
+          accommodationName={accommodationName || "Accommodation"}
+          accommodationImage={accommodationImage || "/placeholder.jpg"}
+          reviews={reviewsData.reviews}
+          averageRating={reviewsData.averageRating}
+          totalReviews={reviewsData.totalReviews}
+          accommodationId={accommodationId}
+          currentUserEmail={currentUserEmail}
+          currentUserRole={currentUserRole}
+          isAuthenticated={isAuthenticated}
+          onVote={handleVote}
+          onReply={handleReply}
+          onReplyVote={handleReplyVote}
+          onReport={(reviewId, reviewAuthor) => handleReport(reviewId, reviewAuthor, 'review')}
+          onReplyReport={(replyId, replyAuthor) => handleReport(replyId, replyAuthor, 'reply')}
+          onDelete={handleDeleteReview}
+          userVotes={userVotes}
+          replies={replies}
+          userReplyVotes={userReplyVotes}
         />
       )}
     </div>
