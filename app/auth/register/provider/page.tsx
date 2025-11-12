@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useStackApp } from "@stackframe/stack"
+import { useState, useEffect } from "react"
+import { useStackApp, useUser } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X, Home } from "lucide-react"
@@ -20,6 +20,44 @@ export default function ProviderRegistrationPage() {
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const app = useStackApp()
   const router = useRouter()
+  const user = useUser()
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (user) {
+        try {
+          // Fetch user role from session API
+          const response = await fetch('/api/auth/session', { credentials: 'include' })
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              const userRole = result.data.role
+              // Redirect based on role
+              switch (userRole) {
+                case 'admin':
+                  router.replace('/admin/dashboard')
+                  return
+                case 'provider':
+                  router.replace('/provider/dashboard')
+                  return
+                case 'agent':
+                  router.replace('/agent/dashboard')
+                  return
+                case 'student':
+                default:
+                  router.replace('/student/dashboard')
+                  return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking session:', error)
+        }
+      }
+    }
+    checkAuthAndRedirect()
+  }, [user, router])
 
   // Check email availability with debounce
   const checkEmailAvailability = async (email: string) => {
@@ -63,6 +101,7 @@ export default function ProviderRegistrationPage() {
       const lastName = String(form.get('lastName') || '')
       const phone = String(form.get('phone') || '')
       const institution = String(form.get('institution') || '')
+      const referralCode = String(form.get('referralCode') || '').trim()
 
       if (password !== confirmPassword) {
         throw new Error('Passwords do not match')
@@ -110,11 +149,8 @@ export default function ProviderRegistrationPage() {
             console.warn('Failed to update Stack Auth display name:', updateError)
           }
           
-          await fetch('/api/auth/resend-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
-          })
+          // Note: Verification email is automatically sent by StackAuth when signUpWithCredential is called
+          // No need to manually resend it here
         }
       } catch (error) {
         console.warn('Error getting StackAuth user:', error)
@@ -132,6 +168,7 @@ export default function ProviderRegistrationPage() {
       payload.set('lastName', lastName)
       payload.set('phone', phone)
       payload.set('institution', institution)
+      if (referralCode) payload.set('referralCode', referralCode)
       for (const f of uploadedFiles) payload.append('documents', f)
 
       const resp = await fetch('/api/auth/register', {
@@ -346,6 +383,19 @@ export default function ProviderRegistrationPage() {
                   placeholder="Your Company Name"
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="referralCode" className="block text-sm font-semibold text-neutral-200 mb-2.5">Referral Code <span className="text-neutral-400 text-xs font-normal">(Optional)</span></label>
+              <input
+                id="referralCode"
+                type="text"
+                name="referralCode"
+                disabled={isPending}
+                className="w-full px-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="Enter referral code if you have one"
+                maxLength={50}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

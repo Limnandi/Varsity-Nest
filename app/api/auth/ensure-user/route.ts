@@ -178,16 +178,16 @@ export async function POST(request: NextRequest) {
           // Don't insert if it would violate unique constraint
           // The user record is already created, so we'll just skip the student record
         } else {
-          await secureDb.db
-            .insert(schema.students)
-            .values({
-              id: crypto.randomUUID(),
-              userId: stackUser.id,
-              studentNumber: studentNumber,
-              university: university as 'UFS' | 'CUT',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
+        await secureDb.db
+          .insert(schema.students)
+          .values({
+            id: crypto.randomUUID(),
+            userId: stackUser.id,
+            studentNumber: studentNumber,
+            university: university as 'UFS' | 'CUT',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
         }
       } else {
         const currentStudent = existingStudent[0]
@@ -220,16 +220,16 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date(),
               })
               .where(eq(schema.students.userId, stackUser.id))
-          } else {
+      } else {
             // Safe to update
-            await secureDb.db
-              .update(schema.students)
-              .set({
-                studentNumber: studentNumber,
-                university: university as 'UFS' | 'CUT',
-                updatedAt: new Date(),
-              })
-              .where(eq(schema.students.userId, stackUser.id))
+        await secureDb.db
+          .update(schema.students)
+          .set({
+            studentNumber: studentNumber,
+            university: university as 'UFS' | 'CUT',
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.students.userId, stackUser.id))
           }
         } else {
           // Values haven't changed, just update timestamp

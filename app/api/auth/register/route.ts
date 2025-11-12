@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
         companyName: String(form.get('institution') || ''),
         address: String(form.get('address') || 'Not provided'),
         description: String(form.get('description') || 'Provider registration pending details'),
-        website: String(form.get('website') || '')
+        website: String(form.get('website') || ''),
+        referralCode: String(form.get('referralCode') || '').trim() || undefined
       }
 
       // Validate the form data (make address and description optional for now)
@@ -172,6 +173,8 @@ export async function POST(request: NextRequest) {
         
         console.log(`Creating provider record with userId: ${userId}`)
 
+        const { referralCode } = formData
+
         if (existingProvider && existingProvider.length > 0) {
           console.log(`Updating existing provider record for userId: ${userId}`)
           await secureDb.db
@@ -182,6 +185,7 @@ export async function POST(request: NextRequest) {
               contactEmail: email,
               contactPhone: phone || 'Not provided',
               address: address || 'Not provided',
+              referralCode: referralCode,
               updatedAt: new Date(),
             })
             .where(eq(schema.providers.userId, userId))
@@ -198,6 +202,7 @@ export async function POST(request: NextRequest) {
               contactEmail: email,
               contactPhone: phone || 'Not provided',
               address: address || 'Not provided',
+              referralCode: referralCode,
               registrationStatus: 'pending',
               createdAt: new Date(),
               updatedAt: new Date(),
