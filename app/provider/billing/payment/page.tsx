@@ -260,8 +260,8 @@ export default function PaymentPage() {
                             <Clock className="w-4 h-4" />
                             <span>
                               Trial ends: {new Date(provider.billingInfo.trialEndDate).toLocaleDateString()}
-                            </span>
-                          </div>
+                    </span>
+                  </div>
                           {(() => {
                             const endDate = new Date(provider.billingInfo.trialEndDate!)
                             const now = new Date()
@@ -281,7 +281,7 @@ export default function PaymentPage() {
                         <p className="text-xs text-blue-300 font-medium">
                           Billing will start automatically after trial period ends
                         </p>
-                      </div>
+                  </div>
                     </>
                   ) : provider.billingInfo.isFirstTimeUser ? (
                     <>
@@ -295,7 +295,7 @@ export default function PaymentPage() {
                           <p className="text-xs text-neutral-400">
                             No payment required to start your trial
                           </p>
-                        </div>
+                  </div>
                       </div>
                       <div className="pt-3 border-t border-white/10">
                         <p className="text-xs text-neutral-400 mb-1">
