@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { secureDb } from "@/lib/database-secure"
 import * as schema from "@/lib/schema"
-import { eq } from "drizzle-orm"
+import { eq, and, ne } from "drizzle-orm"
 import { getStackServerApp } from "@/lib/stack"
 import { DomainValidationService } from "@/lib/domain-validation"
 
@@ -151,32 +151,95 @@ export async function POST(request: NextRequest) {
     // Create student record if role is student
     if (role === 'student') {
       const existingStudent = await secureDb.db
-        .select({ id: schema.students.id })
+        .select({ 
+          id: schema.students.id,
+          studentNumber: schema.students.studentNumber,
+          university: schema.students.university
+        })
         .from(schema.students)
         .where(eq(schema.students.userId, stackUser.id))
         .limit(1)
 
       if (existingStudent.length === 0) {
-        await secureDb.db
-          .insert(schema.students)
-          .values({
-            id: crypto.randomUUID(),
-            userId: stackUser.id,
-            studentNumber: studentNumber,
-            university: university as 'UFS' | 'CUT',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
+        // Check if student_number/university combination already exists for another student
+        const conflictingStudent = await secureDb.db
+          .select({ id: schema.students.id })
+          .from(schema.students)
+          .where(
+            and(
+              eq(schema.students.studentNumber, studentNumber),
+              eq(schema.students.university, university as 'UFS' | 'CUT')
+            )
+          )
+          .limit(1)
+
+        if (conflictingStudent.length > 0) {
+          console.warn(`Student number ${studentNumber} for ${university} already exists for another student. Skipping insert.`)
+          // Don't insert if it would violate unique constraint
+          // The user record is already created, so we'll just skip the student record
+        } else {
+          await secureDb.db
+            .insert(schema.students)
+            .values({
+              id: crypto.randomUUID(),
+              userId: stackUser.id,
+              studentNumber: studentNumber,
+              university: university as 'UFS' | 'CUT',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+        }
       } else {
-        // Update existing student record
-        await secureDb.db
-          .update(schema.students)
-          .set({
-            studentNumber: studentNumber,
-            university: university as 'UFS' | 'CUT',
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.students.userId, stackUser.id))
+        const currentStudent = existingStudent[0]
+        // Only update if values have changed
+        const valuesChanged = 
+          currentStudent.studentNumber !== studentNumber || 
+          currentStudent.university !== university
+
+        if (valuesChanged) {
+          // Check if the new student_number/university combination already exists for another student
+          const conflictingStudent = await secureDb.db
+            .select({ id: schema.students.id })
+            .from(schema.students)
+            .where(
+              and(
+                eq(schema.students.studentNumber, studentNumber),
+                eq(schema.students.university, university as 'UFS' | 'CUT'),
+                ne(schema.students.userId, stackUser.id)
+              )
+            )
+            .limit(1)
+
+          if (conflictingStudent.length > 0) {
+            console.warn(`Student number ${studentNumber} for ${university} already exists for another student. Skipping update.`)
+            // Don't update if it would violate unique constraint
+            // Just update the timestamp to indicate we tried
+            await secureDb.db
+              .update(schema.students)
+              .set({
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.students.userId, stackUser.id))
+          } else {
+            // Safe to update
+            await secureDb.db
+              .update(schema.students)
+              .set({
+                studentNumber: studentNumber,
+                university: university as 'UFS' | 'CUT',
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.students.userId, stackUser.id))
+          }
+        } else {
+          // Values haven't changed, just update timestamp
+          await secureDb.db
+            .update(schema.students)
+            .set({
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.students.userId, stackUser.id))
+        }
       }
     }
 
