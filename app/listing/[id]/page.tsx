@@ -1,6 +1,8 @@
 import ImageCarousel from "@/components/ImageCarousel"
 import ReviewsSection from "@/components/ReviewsSection"
 import RoomTypesSection from "@/components/RoomTypesSection"
+import ContactAgent from "@/components/ContactAgent"
+import ShareSection from "@/components/ShareSection"
 import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { notFound } from "next/navigation"
@@ -14,7 +16,6 @@ import {
   Star, 
   Phone, 
   Mail, 
-  Calendar,
   Shield,
   CheckCircle,
   Clock,
@@ -256,6 +257,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               
               <ReviewsSection 
                 accommodationId={id} 
+                accommodationName={listing.name}
+                accommodationImage={(listing.images && listing.images[0]) || "/placeholder.jpg"}
                 currentUserEmail={currentUserEmail}
                 currentUserRole={currentUserRole}
                 isAuthenticated={isAuthenticated}
@@ -265,53 +268,33 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Contact Information */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-blue-500/10 overflow-hidden">
-              <h3 className="text-lg sm:text-xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
-                Contact Information
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-start p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
-                  <Mail className="h-5 w-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-neutral-400 break-words">Email</p>
-                    <p className="text-white font-medium break-words break-all">{listing.provider_email}</p>
-                  </div>
-                </div>
-                {listing.provider_phone && (
-                  <div className="flex items-start p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
-                    <Phone className="h-5 w-5 text-green-400 mr-3 flex-shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm text-neutral-400 break-words">Phone</p>
-                      <p className="text-white font-medium break-words">{listing.provider_phone}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-start p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl min-w-0">
-                  <Building className="h-5 w-5 text-purple-400 mr-3 flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-neutral-400 break-words">Provider</p>
-                    <p className="text-white font-medium break-words">{listing.provider_name}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Share Section */}
+            <ShareSection
+              accommodationId={id}
+              accommodationName={listing.name}
+            />
+
+            {/* Contact Agent */}
+            <ContactAgent
+              accommodationId={id}
+              accommodationName={listing.name}
+              providerPhone={listing.providerPhone || listing.provider_phone}
+              providerEmail={listing.providerEmail || listing.provider_email}
+              currentUserRole={currentUserRole}
+              isAuthenticated={isAuthenticated}
+            />
 
             {/* Quick Actions */}
+            {currentUserRole === 'student' && (
             <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-green-500/10 overflow-hidden">
               <h3 className="text-lg sm:text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent break-words">
                 Quick Actions
               </h3>
               <div className="space-y-3">
-                <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center break-words">
-                  <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="break-words">Schedule Viewing</span>
-                </button>
-                {currentUserRole === 'student' && (
                   <WishlistButton accommodationId={id} />
-                )}
+                </div>
               </div>
-            </div>
+                )}
           </div>
         </div>
       </div>
