@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useStackApp } from "@stackframe/stack"
+import { useStackApp, useUser } from "@stackframe/stack"
 //import { OAuthButton } from "@stackframe/stack" //Temporal disable - SSO disabled
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -29,6 +29,44 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const recaptchaRef = useRef<ReCAPTCHA>(null)
   const app = useStackApp()
+  const user = useUser()
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (user) {
+        try {
+          // Fetch user role from session API
+          const response = await fetch('/api/auth/session', { credentials: 'include' })
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              const userRole = result.data.role
+              // Redirect based on role
+              switch (userRole) {
+                case 'admin':
+                  router.replace('/admin/dashboard')
+                  return
+                case 'provider':
+                  router.replace('/provider/dashboard')
+                  return
+                case 'agent':
+                  router.replace('/agent/dashboard')
+                  return
+                case 'student':
+                default:
+                  router.replace('/student/dashboard')
+                  return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking session:', error)
+        }
+      }
+    }
+    checkAuthAndRedirect()
+  }, [user, router])
 
   // Check for URL parameters (verified, error, etc.)
   useEffect(() => {

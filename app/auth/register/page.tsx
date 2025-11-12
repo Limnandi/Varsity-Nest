@@ -1,9 +1,51 @@
 "use client"
 
+import { useEffect } from "react"
+import { useUser } from "@stackframe/stack"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight, Home } from "lucide-react"
 
 export default function RegisterPage() {
+  const router = useRouter()
+  const user = useUser()
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (user) {
+        try {
+          // Fetch user role from session API
+          const response = await fetch('/api/auth/session', { credentials: 'include' })
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              const userRole = result.data.role
+              // Redirect based on role
+              switch (userRole) {
+                case 'admin':
+                  router.replace('/admin/dashboard')
+                  return
+                case 'provider':
+                  router.replace('/provider/dashboard')
+                  return
+                case 'agent':
+                  router.replace('/agent/dashboard')
+                  return
+                case 'student':
+                default:
+                  router.replace('/student/dashboard')
+                  return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking session:', error)
+        }
+      }
+    }
+    checkAuthAndRedirect()
+  }, [user, router])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
