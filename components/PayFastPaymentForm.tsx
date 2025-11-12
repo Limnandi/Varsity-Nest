@@ -187,9 +187,13 @@ export default function PayFastPaymentForm({
         <div className="text-center">
           <p className="text-sm text-neutral-300 mb-2">Total Amount</p>
           <p className="text-5xl font-bold text-green-400 mb-1">
-            R {amount.toFixed(2)}
+            R {(isEligibleForTrial || isInTrial) ? '0.00' : amount.toFixed(2)}
           </p>
-          <p className="text-xs text-neutral-400">Secure payment via PayFast</p>
+          <p className="text-xs text-neutral-400">
+            {(isEligibleForTrial || isInTrial) 
+              ? 'Free trial - No payment required' 
+              : 'Secure payment via PayFast'}
+          </p>
         </div>
       </div>
 

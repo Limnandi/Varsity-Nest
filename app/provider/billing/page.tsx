@@ -31,6 +31,7 @@ interface BillingInfo {
   trialStartDate?: string | null
   trialEndDate?: string | null
   isInTrial?: boolean
+  isFirstTimeUser?: boolean
 }
 
 interface Invoice {
@@ -399,6 +400,93 @@ export default function ProviderBilling() {
             </div>
           </div>
 
+          {/* First-Time User Trial Offer */}
+          {provider.billingInfo.isFirstTimeUser && (
+            <div className="relative border border-green-500/30 bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-green-600/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-green-500/30 overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-400/20 to-transparent rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 border border-green-500/50 bg-green-500/20 rounded-2xl shadow-lg">
+                      <CheckCircle className="w-8 h-8 text-green-300" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent mb-1">
+                        Start Your Free Trial
+                      </h2>
+                      <p className="text-sm text-green-200/80">14 days free, then R{provider.billingInfo.monthlyFee.toFixed(2)}/month</p>
+                    </div>
+                  </div>
+                  <span className="px-4 py-2 bg-green-500/30 border border-green-400/50 rounded-full text-sm font-semibold text-green-200">
+                    NEW USER
+                  </span>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-lg font-semibold text-white">Trial Period</p>
+                      <p className="text-3xl font-bold text-green-300">FREE</p>
+                    </div>
+                    <div className="space-y-2 text-sm text-neutral-300">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span>14 days of full access - completely free</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span>No credit card required to start</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span>Cancel anytime during trial - no charges</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-lg font-semibold text-white">After Trial Ends</p>
+                      <p className="text-2xl font-bold text-blue-300">R{provider.billingInfo.monthlyFee.toFixed(2)}<span className="text-base font-medium text-neutral-400">/month</span></p>
+                    </div>
+                    <p className="text-sm text-neutral-300">
+                      Your subscription will automatically start after the 14-day trial period ends. 
+                      You can set up payment details now, and billing will begin only after your trial expires.
+                    </p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => {
+                    setIsNavigatingToPayment(true)
+                    router.push("/provider/billing/payment")
+                  }}
+                  disabled={isNavigatingToPayment}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                >
+                  {isNavigatingToPayment ? (
+                    <>
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      <span>Starting Trial...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      <span>Start Free 14-Day Trial</span>
+                    </>
+                  )}
+                </button>
+                
+                <p className="text-xs text-center text-green-200/70 mt-4">
+                  By starting the trial, you agree that billing will begin automatically after 14 days
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Current Plan */}
@@ -441,6 +529,9 @@ export default function ProviderBilling() {
                       <p className="text-xs text-neutral-400">
                         After trial ends, monthly subscription: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
                       </p>
+                      <p className="text-xs text-blue-300 mt-1 font-medium">
+                        Billing will start automatically after trial period ends
+                      </p>
                     </div>
                   </>
                 ) : (
@@ -462,7 +553,7 @@ export default function ProviderBilling() {
                   </>
                 )}
               </div>
-              {!provider.billingInfo.isInTrial && (
+              {!provider.billingInfo.isInTrial && !provider.billingInfo.isFirstTimeUser && (
                 <button 
                   onClick={() => {
                     setIsNavigatingToPayment(true)

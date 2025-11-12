@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import PayFastPaymentForm from "@/components/PayFastPaymentForm"
-import { ArrowLeft, CreditCard, Shield, CheckCircle, AlertCircle, RefreshCw } from "lucide-react"
+import { ArrowLeft, CreditCard, Shield, CheckCircle, AlertCircle, RefreshCw, Clock, Calendar } from "lucide-react"
 import Link from "next/link"
 
 interface BillingData {
@@ -19,6 +19,10 @@ interface BillingData {
       nextPaymentDate: string
       subscriptionStatus: string
       subscriptionStartDate: string
+      trialStartDate?: string | null
+      trialEndDate?: string | null
+      isInTrial?: boolean
+      isFirstTimeUser?: boolean
     }
   }
   invoices: any[]
@@ -148,6 +152,72 @@ export default function PaymentPage() {
             </div>
           )}
 
+          {/* First-Time User Trial Offer */}
+          {provider.billingInfo.isFirstTimeUser && (
+            <div className="relative border border-green-500/30 bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-green-600/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-green-500/30 overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-400/20 to-transparent rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 border border-green-500/50 bg-green-500/20 rounded-2xl shadow-lg">
+                      <CheckCircle className="w-8 h-8 text-green-300" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent mb-1">
+                        Start Your Free Trial
+                      </h2>
+                      <p className="text-sm text-green-200/80">14 days free, then R{provider.billingInfo.monthlyFee.toFixed(2)}/month</p>
+                    </div>
+                  </div>
+                  <span className="px-4 py-2 bg-green-500/30 border border-green-400/50 rounded-full text-sm font-semibold text-green-200">
+                    NEW USER
+                  </span>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-lg font-semibold text-white">Trial Period</p>
+                      <p className="text-3xl font-bold text-green-300">FREE</p>
+                    </div>
+                    <div className="space-y-2 text-sm text-neutral-300">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span>14 days of full access - completely free</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span>No credit card required to start</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span>Cancel anytime during trial - no charges</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-lg font-semibold text-white">After Trial Ends</p>
+                      <p className="text-2xl font-bold text-blue-300">R{provider.billingInfo.monthlyFee.toFixed(2)}<span className="text-base font-medium text-neutral-400">/month</span></p>
+                    </div>
+                    <p className="text-sm text-neutral-300">
+                      Your subscription will automatically start after the 14-day trial period ends. 
+                      You can set up payment details now, and billing will begin only after your trial expires.
+                    </p>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-center text-green-200/70">
+                  By proceeding with payment, you agree that billing will begin automatically after 14 days
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Payment Form */}
             <div className="lg:col-span-2">
@@ -161,6 +231,8 @@ export default function PaymentPage() {
                     providerId: provider.id,
                     subscriptionType: "monthly"
                   }}
+                  isEligibleForTrial={provider.billingInfo.isFirstTimeUser === true}
+                  isInTrial={provider.billingInfo.isInTrial === true}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
                 />
@@ -175,24 +247,85 @@ export default function PaymentPage() {
                   Payment Summary
                 </h2>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-neutral-300">Subscription Plan:</span>
-                    <span className="font-semibold text-white">Monthly Subscription</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-neutral-300">Amount:</span>
-                    <span className="text-2xl font-bold text-green-400">
-                      R {provider.billingInfo.monthlyFee.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-neutral-300">Billing Cycle:</span>
-                    <span className="text-white">30 Days</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-neutral-300">Next Billing:</span>
-                    <span className="text-white">{new Date(provider.billingInfo.nextPaymentDate).toLocaleDateString()}</span>
-                  </div>
+                  {provider.billingInfo.isInTrial && provider.billingInfo.trialEndDate ? (
+                    <>
+                      <div>
+                        <p className="text-sm text-neutral-300 mb-2">Trial Period</p>
+                        <div className="space-y-2">
+                          <p className="text-2xl font-bold text-green-400">
+                            FREE
+                            <span className="text-lg font-medium text-neutral-400 ml-2">14 Days</span>
+                          </p>
+                          <div className="flex items-center gap-2 text-sm text-blue-300">
+                            <Clock className="w-4 h-4" />
+                            <span>
+                              Trial ends: {new Date(provider.billingInfo.trialEndDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {(() => {
+                            const endDate = new Date(provider.billingInfo.trialEndDate!)
+                            const now = new Date()
+                            const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                            return daysRemaining > 0 ? (
+                              <p className="text-xs text-neutral-400">
+                                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
+                              </p>
+                            ) : null
+                          })()}
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-white/10">
+                        <p className="text-xs text-neutral-400 mb-1">
+                          After trial ends, monthly subscription: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
+                        </p>
+                        <p className="text-xs text-blue-300 font-medium">
+                          Billing will start automatically after trial period ends
+                        </p>
+                      </div>
+                    </>
+                  ) : provider.billingInfo.isFirstTimeUser ? (
+                    <>
+                      <div>
+                        <p className="text-sm text-neutral-300 mb-2">Starting Trial</p>
+                        <div className="space-y-2">
+                          <p className="text-2xl font-bold text-green-400">
+                            FREE
+                            <span className="text-lg font-medium text-neutral-400 ml-2">14 Days</span>
+                          </p>
+                          <p className="text-xs text-neutral-400">
+                            No payment required to start your trial
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-white/10">
+                        <p className="text-xs text-neutral-400 mb-1">
+                          After trial ends: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
+                        </p>
+                        <p className="text-xs text-blue-300 font-medium">
+                          Billing will start automatically after 14 days
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-sm text-neutral-300 mb-2">Subscription Amount</p>
+                        <p className="text-4xl font-bold">
+                          R{provider.billingInfo.monthlyFee.toFixed(2)}
+                          <span className="text-lg font-medium text-neutral-400">/30 days</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-neutral-400">
+                        <Calendar className="w-4 h-4" />
+                        <span>Next payment: {new Date(provider.billingInfo.nextPaymentDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="pt-3 border-t border-white/10">
+                        <p className="text-xs text-neutral-400">
+                          Amount calculated based on your active accommodations
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
