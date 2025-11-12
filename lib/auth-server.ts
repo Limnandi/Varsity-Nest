@@ -52,10 +52,11 @@ export async function createSecureSession(user: SecureUser): Promise<string> {
 
   // Store session in database for validation
   await query`
-    INSERT INTO user_sessions (id, user_id, expires_at, created_at)
-    VALUES (${sessionId}, ${user.id}, ${expiresAt.toISOString()}, NOW())
+    INSERT INTO user_sessions (id, user_id, expires_at, created_at, last_activity)
+    VALUES (${sessionId}, ${user.id}, ${expiresAt.toISOString()}, NOW(), NOW())
     ON CONFLICT (id) DO UPDATE SET
       expires_at = EXCLUDED.expires_at,
+      last_activity = NOW(),
       updated_at = NOW()
   `
 
@@ -75,23 +76,34 @@ export async function verifySecureSession(token: string): Promise<SecureSession 
       return null
     }
 
-    // Check if session exists and is valid in database
+    // Check if session exists and is valid in database (including inactivity check)
     const sessionResult = await query`
-      SELECT s.id, s.user_id, s.expires_at, s.created_at,
+      SELECT s.id, s.user_id, s.expires_at, s.created_at, s.last_activity,
              u.email, u.first_name, u.last_name, u.role, u.phone, u.student_number, u.institution,
              u.is_active, u.email_verified, u.created_at as user_created_at, u.updated_at,
              st.university, st.year_of_study, st.course, st.emergency_contact_name, st.emergency_contact_phone
       FROM user_sessions s
       JOIN users u ON s.user_id = u.id
       LEFT JOIN students st ON u.id = st.user_id
-      WHERE s.id = ${sessionId} AND s.user_id = ${userId} AND s.expires_at > NOW()
+      WHERE s.id = ${sessionId} 
+        AND s.user_id = ${userId} 
+        AND s.expires_at > NOW()
+        AND s.last_activity > NOW() - INTERVAL '10 minutes'
     `
 
     if (sessionResult.rows.length === 0) {
+      // Session expired due to inactivity or doesn't exist
       return null
     }
 
     const sessionData = sessionResult.rows[0]
+
+    // Update last_activity on successful verification
+    await query`
+      UPDATE user_sessions
+      SET last_activity = NOW(), updated_at = NOW()
+      WHERE id = ${sessionId}
+    `
 
   return {
       user: {
@@ -154,6 +166,58 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
       return null
     }
 
+    // Check for existing session with inactivity tracking
+    const sessionCheck = await query`
+      SELECT id, last_activity, expires_at
+      FROM user_sessions
+      WHERE user_id = ${stackUser.id}
+        AND expires_at > NOW()
+        AND last_activity > NOW() - INTERVAL '10 minutes'
+      ORDER BY last_activity DESC
+      LIMIT 1
+    `
+
+    // If no valid session exists or session expired due to inactivity, create/update session
+    if (sessionCheck.rows.length === 0) {
+      // Clean up expired/inactive sessions for this user
+      await query`
+        DELETE FROM user_sessions
+        WHERE user_id = ${stackUser.id}
+          AND (expires_at <= NOW() OR last_activity <= NOW() - INTERVAL '10 minutes')
+      `
+      
+      // Check if there's any existing session (even if expired) to reuse the ID
+      const existingSession = await query`
+        SELECT id
+        FROM user_sessions
+        WHERE user_id = ${stackUser.id}
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+      
+      const sessionId = existingSession.rows.length > 0 
+        ? existingSession.rows[0].id 
+        : `stackauth-${stackUser.id}`
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      
+      await query`
+        INSERT INTO user_sessions (id, user_id, expires_at, created_at, last_activity)
+        VALUES (${sessionId}, ${stackUser.id}, ${expiresAt.toISOString()}, NOW(), NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          expires_at = EXCLUDED.expires_at,
+          last_activity = NOW(),
+          updated_at = NOW()
+      `
+    } else {
+      // Update last_activity for active session
+      const sessionId = sessionCheck.rows[0].id
+      await query`
+        UPDATE user_sessions
+        SET last_activity = NOW(), updated_at = NOW()
+        WHERE id = ${sessionId}
+      `
+    }
+
     // Get user data from database
     const userResult = await query`
       SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.student_number, u.institution, 
@@ -213,11 +277,12 @@ export async function invalidateAllUserSessions(userId: string): Promise<void> {
   `
 }
 
-// Clean up expired sessions
+// Clean up expired sessions (including inactivity timeout)
 export async function cleanupExpiredSessions(): Promise<void> {
   await query`
     DELETE FROM user_sessions 
-    WHERE expires_at < NOW()
+    WHERE expires_at < NOW() 
+       OR last_activity < NOW() - INTERVAL '10 minutes'
   `
 }
 
