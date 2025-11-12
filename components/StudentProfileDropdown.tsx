@@ -9,9 +9,10 @@ import { useStudentAuth } from "@/hooks/useStudentAuth"
 
 interface StudentProfileDropdownProps {
   onClose?: () => void
+  isMobileMenu?: boolean
 }
 
-export default function StudentProfileDropdown({ onClose }: StudentProfileDropdownProps) {
+export default function StudentProfileDropdown({ onClose, isMobileMenu = false }: StudentProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -119,6 +120,61 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
     }
   ]
 
+  // Mobile menu mode - render as vertical links
+  if (isMobileMenu) {
+    return (
+      <div className="w-full space-y-2">
+        {/* Profile Header */}
+        <div className="flex items-center space-x-3 px-4 py-3 mb-4 border-b border-white/10">
+          <div className="relative">
+            {renderProfileAvatar("sm")}
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-lg"></div>
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-white">
+              {studentUser?.name || user?.displayName || user?.primaryEmail || 'Student'}
+            </p>
+            <p className="text-xs text-neutral-400">
+              {studentUser?.email || user?.primaryEmail || 'student@university.ac.za'}
+            </p>
+          </div>
+        </div>
+
+        {/* Menu Items as Vertical Links */}
+        {menuItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onClose}
+            className="block px-4 py-3 text-white hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 font-medium rounded-xl group relative overflow-hidden"
+          >
+            <span className="relative z-10 flex items-center space-x-3">
+              <item.icon className="w-5 h-5 text-neutral-400 group-hover:text-blue-400 transition-colors" />
+              <span>{item.label}</span>
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+          </Link>
+        ))}
+
+        {/* Logout Link */}
+        <button
+          onClick={() => {
+            onClose?.()
+            handleLogout()
+          }}
+          className="w-full block px-4 py-3 text-white hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-yellow-500/10 transition-all duration-300 font-medium rounded-xl group relative overflow-hidden text-left"
+        >
+          <span className="relative z-10 flex items-center space-x-3">
+            <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-orange-400 transition-colors" />
+            <span>Logout</span>
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-yellow-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+        </button>
+      </div>
+    )
+  }
+
+  // Desktop mode - render as dropdown
   return (
     <>
       <div className="relative">
@@ -154,72 +210,79 @@ export default function StudentProfileDropdown({ onClose }: StudentProfileDropdo
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="fixed z-[100] w-80 text-white rounded-2xl shadow-2xl shadow-blue-500/25 border border-white/10 animate-in slide-in-from-top-2 duration-300 bg-black/20 backdrop-blur-xl"
+          className="fixed z-[100] w-80 text-white rounded-2xl shadow-2xl border border-white/10 animate-in slide-in-from-top-2 duration-300 bg-black/20 backdrop-blur-xl overflow-hidden"
           style={{
             top: `${dropdownPosition.top}px`,
             right: `${dropdownPosition.right}px`,
           }}
         >
-          {/* Header */}
-          <div className="p-4 border-b border-white/10">
-            <div className="flex items-center space-x-3">
-              {renderProfileAvatar("lg")}
-              <div>
-                <p className="font-semibold text-white">
-                  {studentUser?.name || user?.displayName || user?.primaryEmail || 'Student'}
-                </p>
-                <p className="text-sm text-neutral-400">
-                  {studentUser?.email || user?.primaryEmail || 'student@university.ac.za'}
-                </p>
+          {/* Glass effect overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.1)_1px,transparent_0)] bg-[length:24px_24px] opacity-30 pointer-events-none"></div>
+          
+          {/* Content wrapper with relative positioning */}
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 bg-black/10 backdrop-blur-sm">
+              <div className="flex items-center space-x-3">
+                {renderProfileAvatar("lg")}
+                <div>
+                  <p className="font-semibold text-white">
+                    {studentUser?.name || user?.displayName || user?.primaryEmail || 'Student'}
+                  </p>
+                  <p className="text-sm text-neutral-400">
+                    {studentUser?.email || user?.primaryEmail || 'student@university.ac.za'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Menu Items */}
-          <div className="p-2">
-            {menuItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
+            {/* Menu Items */}
+            <div className="p-2">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => {
+                    setIsOpen(false)
+                    onClose?.()
+                  }}
+                  className="group flex items-center space-x-3 px-4 py-3 hover:bg-white/5 hover:text-blue-300 transition-all duration-300 font-medium rounded-xl relative overflow-hidden"
+                >
+                  <div className="relative">
+                    <item.icon className="w-5 h-5 text-neutral-400 group-hover:text-blue-400 transition-colors z-10 relative" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white group-hover:text-blue-300 transition-colors">{item.label}</p>
+                    <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">{item.description}</p>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Logout Button */}
+            <div className="p-2 border-t border-white/10">
+              <button
                 onClick={() => {
                   setIsOpen(false)
                   onClose?.()
+                  handleLogout()
                 }}
-                className="group flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10 hover:text-blue-300 transition-all duration-300 font-medium rounded-xl relative overflow-hidden"
+                className="group w-full flex items-center space-x-3 px-4 py-3 hover:bg-white/5 hover:text-orange-300 transition-all duration-300 font-medium rounded-xl relative overflow-hidden"
               >
                 <div className="relative">
-                  <item.icon className="w-5 h-5 text-neutral-400 group-hover:text-blue-400 transition-colors" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+                  <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-orange-400 transition-colors z-10 relative" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-white group-hover:text-blue-300 transition-colors">{item.label}</p>
-                  <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">{item.description}</p>
+                <div className="flex-1 text-left">
+                  <p className="text-white group-hover:text-orange-300 transition-colors">Logout</p>
+                  <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">Sign out of your account</p>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-              </Link>
-            ))}
-          </div>
-
-          {/* Logout Button */}
-          <div className="p-2 border-t border-white/10">
-            <button
-              onClick={() => {
-                setIsOpen(false)
-                onClose?.()
-                handleLogout()
-              }}
-              className="group w-full flex items-center space-x-3 px-4 py-3 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-yellow-500/10 hover:text-orange-300 transition-all duration-300 font-medium rounded-xl relative overflow-hidden"
-            >
-              <div className="relative">
-                <LogOut className="w-5 h-5 text-neutral-400 group-hover:text-orange-400 transition-colors" />
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-white group-hover:text-orange-300 transition-colors">Logout</p>
-                <p className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">Sign out of your account</p>
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-yellow-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-            </button>
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-yellow-500/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+              </button>
+            </div>
           </div>
         </div>
       )}

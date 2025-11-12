@@ -30,7 +30,10 @@ export default function StudentAuthSection({ onNavigate, isMobileMenu = false }:
       <>
         {/* Profile dropdown toggles on click for all viewports */}
         <div className="block">
-          <StudentProfileDropdown onClose={isMobileMenu ? onNavigate : undefined} />
+          <StudentProfileDropdown 
+            onClose={isMobileMenu ? onNavigate : undefined} 
+            isMobileMenu={isMobileMenu}
+          />
         </div>
       </>
     )
