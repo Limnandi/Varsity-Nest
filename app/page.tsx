@@ -1,7 +1,5 @@
 import AccommodationCard from "@/components/AccommodationCard"
 import HeroSection from "@/components/HeroSection"
-import TrustedBy from "@/components/TrustedBy"
-import StatsSection from "@/components/StatsSection"
 import { fetchFeaturedAccommodations } from "@/lib/repos/accommodations"
 import Link from "next/link"
 
@@ -12,7 +10,7 @@ export default async function Home() {
     <>
       <HeroSection />
 
-      <StatsSection />
+      {/* <StatsSection /> */}
 
       {/* Featured Accommodations */}
       <div className="py-20 px-4 bg-gradient-to-b from-[#040945] to-[#02042b]">
@@ -59,7 +57,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <TrustedBy />
+      {/* <TrustedBy /> */}
     </>
   )
 }
