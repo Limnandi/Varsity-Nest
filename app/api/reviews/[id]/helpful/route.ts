@@ -61,14 +61,24 @@ export async function POST(
     `
 
     if (existingVote.rows.length > 0) {
-      // Update existing vote
-      await query`
-        UPDATE review_helpfulness 
-        SET is_helpful = ${isHelpful}
-        WHERE review_id = ${reviewId} AND student_id = ${studentId}
-      `
+      const currentVote = existingVote.rows[0].is_helpful
+      
+      // If clicking the same button, remove the vote
+      if (currentVote === isHelpful) {
+        await query`
+          DELETE FROM review_helpfulness 
+          WHERE review_id = ${reviewId} AND student_id = ${studentId}
+        `
+      } else {
+        // If clicking different button, update to the new vote
+        await query`
+          UPDATE review_helpfulness 
+          SET is_helpful = ${isHelpful}
+          WHERE review_id = ${reviewId} AND student_id = ${studentId}
+        `
+      }
     } else {
-      // Insert new vote
+      // Insert new vote (student has no existing vote)
       await query`
         INSERT INTO review_helpfulness (review_id, student_id, is_helpful)
         VALUES (${reviewId}, ${studentId}, ${isHelpful})
