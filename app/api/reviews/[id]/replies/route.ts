@@ -21,10 +21,12 @@ export async function GET(
         u.last_name,
         u.email,
         u.profile_image_url,
-        s.university
+        s.university,
+        COALESCE(sp.show_email, true) as show_email
       FROM review_replies rr
       JOIN students s ON rr.student_id = s.id
       JOIN users u ON s.user_id = u.id
+      LEFT JOIN student_preferences sp ON sp.student_id = s.id
       WHERE rr.review_id = ${reviewId}
       ORDER BY rr.created_at ASC
     `

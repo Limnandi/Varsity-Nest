@@ -12,6 +12,7 @@ interface StudentDetailsModalProps {
   studentEmail: string
   profileImageUrl?: string
   createdAt?: string
+  showEmail?: boolean
 }
 
 export default function StudentDetailsModal({
@@ -20,7 +21,8 @@ export default function StudentDetailsModal({
   studentName,
   studentEmail,
   profileImageUrl,
-  createdAt
+  createdAt,
+  showEmail = true
 }: StudentDetailsModalProps) {
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -122,14 +124,16 @@ export default function StudentDetailsModal({
 
           {/* Details */}
           <div className="space-y-4">
-            {/* Email */}
-            <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
-              <Mail className="w-5 h-5 text-blue-400 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-xs text-neutral-400 mb-1">Email</p>
-                <p className="text-sm text-white break-all">{studentEmail}</p>
+            {/* Email - Only show if showEmail is true */}
+            {showEmail && (
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                <Mail className="w-5 h-5 text-blue-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs text-neutral-400 mb-1">Email</p>
+                  <p className="text-sm text-white break-all">{studentEmail}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Member Since */}
             {createdAt && (

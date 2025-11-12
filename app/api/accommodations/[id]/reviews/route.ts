@@ -25,11 +25,13 @@ export async function GET(
         u.email,
         u.profile_image_url,
           s.university,
+          COALESCE(sp.show_email, true) as show_email,
           AVG(r.rating) OVER() as average_rating,
           COUNT(*) OVER() as total_reviews
       FROM reviews r
       JOIN students s ON r.student_id = s.id
       JOIN users u ON s.user_id = u.id
+      LEFT JOIN student_preferences sp ON sp.student_id = s.id
       WHERE r.accommodation_id = ${id}
       )
       SELECT 
@@ -45,6 +47,7 @@ export async function GET(
         email,
         profile_image_url,
         university,
+        show_email,
         average_rating,
         total_reviews
       FROM review_data
@@ -64,7 +67,8 @@ export async function GET(
       last_name: row.last_name,
       email: row.email,
       profile_image_url: row.profile_image_url,
-      university: row.university
+      university: row.university,
+      show_email: row.show_email ?? true
     }))
 
     // Get stats from first row (all rows have same values due to window function)

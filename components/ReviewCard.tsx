@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Star, ThumbsUp, ThumbsDown, Calendar, MessageCircle, Flag, MoreVertical, Trash2 } from "lucide-react"
 import Image from "next/image"
 import ReplyCard from "./ReplyCard"
@@ -21,6 +21,7 @@ interface Review {
   profile_image_url?: string
   user_id?: string
   university?: string
+  show_email?: boolean
 }
 
 interface Reply {
@@ -81,6 +82,17 @@ export default function ReviewCard({
     notHelpful: (review.total_votes || 0) - (review.helpful_votes || 0), // Calculate initially from total
     total: review.total_votes || 0
   })
+
+  // Sync localVotes when review prop changes (from API updates)
+  useEffect(() => {
+    if (!isVoting) {
+      setLocalVotes({
+        helpful: review.helpful_votes || 0,
+        notHelpful: (review.total_votes || 0) - (review.helpful_votes || 0),
+        total: review.total_votes || 0
+      })
+    }
+  }, [review.helpful_votes, review.total_votes, isVoting])
 
   const handleVote = async (isHelpful: boolean) => {
     if (isVoting || !onVote) return
@@ -193,57 +205,53 @@ export default function ReviewCard({
     })
   }
 
-  const helpfulPercentage = (localVotes.total || 0) > 0 
-    ? Math.round(((localVotes.helpful || 0) / (localVotes.total || 1)) * 100) 
-    : 0
-
   return (
     <div 
-      className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+      className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300"
       onMouseEnter={() => setShowReplyButton(true)}
       onMouseLeave={() => setShowReplyButton(false)}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-3">
         <div 
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-2 cursor-pointer group flex-1 min-w-0"
           onClick={() => setShowStudentDetails(true)}
         >
           {review.profile_image_url ? (
             <Image
               src={review.profile_image_url}
               alt={`${review.first_name} ${review.last_name}`}
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-full object-cover border-2 border-white/20 group-hover:border-blue-500/50 transition-all"
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/20 group-hover:border-blue-500/50 transition-all flex-shrink-0"
             />
           ) : (
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold group-hover:ring-2 group-hover:ring-blue-500/50 transition-all">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold group-hover:ring-2 group-hover:ring-blue-500/50 transition-all flex-shrink-0">
               {getInitials(review.first_name, review.last_name)}
             </div>
           )}
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-white group-hover:text-blue-400 transition-colors">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm text-white group-hover:text-blue-400 transition-colors truncate">
                 {review.first_name}{review.university ? `, ${review.university}` : ''}
               </span>
               {review.is_verified && (
-                <span className="px-2 py-1 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300">
+                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full border border-green-500/50 bg-green-500/10 text-green-300 flex-shrink-0">
                   Verified
                 </span>
               )}
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                {renderStars(review.rating)}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-neutral-400">
+            <div className="flex items-center gap-1.5 text-xs text-neutral-400 mt-0.5">
               <Calendar className="w-3 h-3" />
               <span>{formatDate(review.created_at)}</span>
             </div>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            {renderStars(review.rating)}
-          </div>
+        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           
           {/* Three-dot menu for review author OR Report button for others */}
           {showReplyButton && (
@@ -289,28 +297,30 @@ export default function ReviewCard({
 
       {/* Comment */}
       {review.comment && (
-        <div className="mb-4">
-          <p className="text-neutral-300 leading-relaxed">{review.comment}</p>
+        <div className="mb-3">
+          <p className="text-sm text-neutral-300 leading-relaxed">{review.comment}</p>
         </div>
       )}
 
-      {/* Helpfulness Section */}
-      <div className="flex items-center justify-between pt-4 border-t border-white/10">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-neutral-400">
+      {/* Helpfulness Section - Count always visible, buttons only for students */}
+      <div className="flex items-center justify-between pt-3 border-t border-white/10">
+        <div className="flex items-center gap-2">
+          {isAuthenticated && currentUserRole === 'student' ? (
+            <>
+              <span className="text-xs text-neutral-400">
            Facts?
           </span>
-          <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
             <button
               onClick={() => handleVote(true)}
               disabled={isVoting}
-              className={`group flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 userVote === true
                   ? 'bg-green-500/20 text-green-400 border border-green-500/50 shadow-lg shadow-green-500/20'
                   : 'bg-white/5 text-neutral-400 border border-white/10 hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/30 hover:text-green-400'
               } ${isVoting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <ThumbsUp className={`w-5 h-5 transition-all duration-300 ${
+                  <ThumbsUp className={`w-3.5 h-3.5 transition-all duration-300 ${
                 userVote === true 
                   ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
                   : 'group-hover:drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]'
@@ -320,31 +330,37 @@ export default function ReviewCard({
             <button
               onClick={() => handleVote(false)}
               disabled={isVoting}
-              className={`group flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 userVote === false
                   ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-lg shadow-red-500/20'
                   : 'bg-white/5 text-neutral-400 border border-white/10 hover:border-red-500/50 hover:shadow-lg hover:shadow-red-500/30 hover:text-red-400'
               } ${isVoting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <ThumbsDown className={`w-5 h-5 transition-all duration-300 ${
+                  <ThumbsDown className={`w-3.5 h-3.5 transition-all duration-300 ${
                 userVote === false 
                   ? 'drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]' 
                   : 'group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]'
               }`} />
-              <span className="text-xs font-bold">{localVotes.notHelpful || 0}</span>
             </button>
           </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <ThumbsUp className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-xs font-bold text-green-300">{localVotes.helpful || 0}</span>
+            </div>
+          )}
         </div>
         
-        {(localVotes.total || 0) > 0 && (
-          <div className="text-sm text-neutral-400">
-            <span className="text-green-300 font-medium">{helpfulPercentage}%</span> found this helpful
+        {(localVotes.helpful || 0) > 0 && (
+          <div className="text-xs text-neutral-400">
+            <span className="text-green-300 font-medium">{localVotes.helpful || 0}</span> {(localVotes.helpful || 0) === 1 ? 'student' : 'students'} said Facts
           </div>
         )}
       </div>
 
       {/* Reply Section */}
-      <div className="mt-4 pt-4 border-t border-white/10">
+      <div className="mt-3 pt-3 border-t border-white/10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
             {/* Only show reply button for authenticated students */}
@@ -445,6 +461,7 @@ export default function ReviewCard({
         studentEmail={review.email}
         profileImageUrl={review.profile_image_url}
         createdAt={review.created_at}
+        showEmail={review.show_email ?? true}
       />
     </div>
   )

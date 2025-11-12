@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, Bell, Shield, Eye, Save, Mail, Smartphone, Trash2 } from "lucide-react"
+import { Settings, Shield, Save, Mail, Trash2 } from "lucide-react"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import { Toaster, toast } from "sonner"
 import ConfirmDialog from "@/components/ConfirmDialog"
@@ -24,8 +24,38 @@ export default function StudentSettingsPage() {
     profileVisibility: 'public',
     showPhoneNumber: false,
     showStudentNumber: false,
+    showEmail: true,
     twoFactorAuth: false
   })
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await fetch('/api/student/settings')
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setSettings({
+              emailNotifications: result.data.emailNotifications ?? true,
+              smsNotifications: result.data.smsNotifications ?? false,
+              marketingEmails: result.data.marketingEmails ?? false,
+              profileVisibility: result.data.profileVisibility ?? 'public',
+              showPhoneNumber: result.data.showPhoneNumber ?? false,
+              showStudentNumber: result.data.showStudentNumber ?? false,
+              showEmail: result.data.showEmail ?? true,
+              twoFactorAuth: result.data.twoFactorAuth ?? false
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error)
+      }
+    }
+    if (studentUser) {
+      loadSettings()
+    }
+  }, [studentUser])
 
   // Password change state - commented out for now
   // const [passwordData, setPasswordData] = useState({
@@ -178,8 +208,8 @@ export default function StudentSettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Notification Settings */}
-          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-6 text-white">
+          {/* Notification Settings - Commented Out */}
+          {/* <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-6 text-white">
             <h2 className="text-xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent flex items-center">
               <Bell className="w-5 h-5 mr-2" />
               Notifications
@@ -243,7 +273,7 @@ export default function StudentSettingsPage() {
                 </label>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Privacy Settings */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-6 text-white">
@@ -253,51 +283,19 @@ export default function StudentSettingsPage() {
             </h2>
             
             <div className="space-y-4">
-              <div className="p-4 bg-black/20 rounded-xl">
-                <label className="block text-sm font-medium text-neutral-300 mb-2">Profile Visibility</label>
-                <select
-                  value={settings.profileVisibility}
-                  onChange={(e) => setSettings({...settings, profileVisibility: e.target.value})}
-                  className="w-full px-4 py-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                >
-                  <option value="public">Public</option>
-                  <option value="private">Private</option>
-                  <option value="friends">Friends Only</option>
-                </select>
-              </div>
-
               <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl">
                 <div className="flex items-center space-x-3">
-                  <Eye className="w-5 h-5 text-green-400" />
+                  <Mail className="w-5 h-5 text-blue-400" />
                   <div>
-                    <p className="font-medium text-white">Show Phone Number</p>
-                    <p className="text-sm text-neutral-400">Display phone in profile</p>
+                    <p className="font-medium text-white">Show Email</p>
+                    <p className="text-sm text-neutral-400">Display email in profile details</p>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={settings.showPhoneNumber}
-                    onChange={(e) => setSettings({...settings, showPhoneNumber: e.target.checked})}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl">
-                <div className="flex items-center space-x-3">
-                  <Eye className="w-5 h-5 text-green-400" />
-                  <div>
-                    <p className="font-medium text-white">Show Student Number</p>
-                    <p className="text-sm text-neutral-400">Display student number in profile</p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={settings.showStudentNumber}
-                    onChange={(e) => setSettings({...settings, showStudentNumber: e.target.checked})}
+                    checked={settings.showEmail}
+                    onChange={(e) => setSettings({...settings, showEmail: e.target.checked})}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>

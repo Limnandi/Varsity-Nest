@@ -16,6 +16,7 @@ interface Reply {
   email: string
   profile_image_url?: string
   university?: string
+  show_email?: boolean
 }
 
 interface ReplyCardProps {
@@ -172,6 +173,7 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
       studentEmail={reply.email}
       profileImageUrl={reply.profile_image_url}
       createdAt={reply.created_at}
+      showEmail={reply.show_email ?? true}
     />
     </>
   )
