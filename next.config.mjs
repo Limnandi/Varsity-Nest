@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
+    // Run ESLint during builds
     ignoreDuringBuilds: false,
   },
   typescript: {
@@ -18,7 +19,15 @@ const nextConfig = {
         module: /node_modules\/@sentry/,
         message: /Critical dependency: the request of a dependency is an expression/,
       },
+      // Suppress webpack cache serialization warnings for large strings
+      // These are performance suggestions, not errors, and don't affect functionality
+      // The warnings suggest using Buffer instead of strings, but this is an internal
+      // webpack optimization that we can't directly control from application code
+      {
+        message: /Serializing big strings.*impacts deserialization performance/,
+      },
     ]
+    
     return config
   },
   images: {
