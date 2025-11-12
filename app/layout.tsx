@@ -13,6 +13,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { initializeLogging } from "@/lib/logging/config"
 import { performanceMonitor } from "@/lib/monitoring/performance"
 import ConsoleSecurityWarning from "@/components/ConsoleSecurityWarning"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -73,6 +74,7 @@ export default function RootLayout({
                     {children}
                     <SpeedInsights />
                     <Analytics />
+                    <Toaster richColors position="top-center" />
                   </Layout>
                 </div>
               </TooltipProvider>
