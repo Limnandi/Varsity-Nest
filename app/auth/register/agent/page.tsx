@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useStackApp } from "@stackframe/stack"
+import { useState, useEffect } from "react"
+import { useStackApp, useUser } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { UserCheck, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
@@ -17,6 +17,44 @@ export default function AgentRegistrationPage() {
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const app = useStackApp()
   const router = useRouter()
+  const user = useUser()
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (user) {
+        try {
+          // Fetch user role from session API
+          const response = await fetch('/api/auth/session', { credentials: 'include' })
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              const userRole = result.data.role
+              // Redirect based on role
+              switch (userRole) {
+                case 'admin':
+                  router.replace('/admin/dashboard')
+                  return
+                case 'provider':
+                  router.replace('/provider/dashboard')
+                  return
+                case 'agent':
+                  router.replace('/agent/dashboard')
+                  return
+                case 'student':
+                default:
+                  router.replace('/student/dashboard')
+                  return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking session:', error)
+        }
+      }
+    }
+    checkAuthAndRedirect()
+  }, [user, router])
 
   const checkEmailAvailability = async (email: string) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -96,11 +134,8 @@ export default function AgentRegistrationPage() {
             console.warn('Failed to update Stack Auth display name:', updateError)
           }
           
-          await fetch('/api/auth/resend-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
-          })
+          // Note: Verification email is automatically sent by StackAuth when signUpWithCredential is called
+          // No need to manually resend it here
         }
       } catch (error) {
         console.warn('Error getting StackAuth user:', error)

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useStackApp } from "@stackframe/stack"
+import { useState, useEffect } from "react"
+import { useStackApp, useUser } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home, Phone } from "lucide-react"
@@ -16,6 +16,44 @@ export default function StudentRegistrationPage() {
   const [isPending, setIsPending] = useState(false)
   const app = useStackApp()
   const router = useRouter()
+  const user = useUser()
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (user) {
+        try {
+          // Fetch user role from session API
+          const response = await fetch('/api/auth/session', { credentials: 'include' })
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              const userRole = result.data.role
+              // Redirect based on role
+              switch (userRole) {
+                case 'admin':
+                  router.replace('/admin/dashboard')
+                  return
+                case 'provider':
+                  router.replace('/provider/dashboard')
+                  return
+                case 'agent':
+                  router.replace('/agent/dashboard')
+                  return
+                case 'student':
+                default:
+                  router.replace('/student/dashboard')
+                  return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking session:', error)
+        }
+      }
+    }
+    checkAuthAndRedirect()
+  }, [user, router])
 
   // Handle cell number input change
   const handleCellNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,18 +163,8 @@ export default function StudentRegistrationPage() {
           
           await Promise.race([ensureUserPromise, ensureUserTimeout])
           
-          // Add timeout to verification email API call
-          const verificationPromise = fetch('/api/auth/resend-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
-          })
-          
-          const verificationTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Verification email timeout')), 15000)
-          )
-          
-          await Promise.race([verificationPromise, verificationTimeout])
+          // Note: Verification email is automatically sent by StackAuth when signUpWithCredential is called
+          // No need to manually resend it here
         }
       } catch (dbError) {
         console.warn('Database operations failed:', dbError)

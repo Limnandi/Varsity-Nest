@@ -122,46 +122,10 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
         throw new Error((signupResult as any).error?.message || 'Failed to register')
       }
       
-      // IMPORTANT: Manually trigger verification email (required for custom SMTP)
-      // We MUST wait for this to complete before redirecting
-      try {
-        console.log('🔵 Starting manual verification email send for:', email)
-        
-        // Get the newly created user (wait for StackAuth to create the user)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        console.log('🔵 Fetching user from StackAuth...')
-        
-        const currentUser = await app.getUser()
-        console.log('🔵 Current user:', currentUser ? 'Found' : 'Not found')
-        
-        if (currentUser) {
-          console.log('🔵 Fetching contact channels...')
-          const contactChannels = await currentUser.listContactChannels()
-          console.log('🔵 Contact channels found:', contactChannels.length)
-          
-          const emailChannel = contactChannels.find(
-            (channel: any) => channel.type === 'email' && channel.value === email
-          )
-          console.log('🔵 Email channel:', emailChannel ? 'Found' : 'Not found')
-          
-          if (emailChannel) {
-            console.log('🔵 Sending verification email...')
-            // CRITICAL: Send without callbackUrl parameter - just use the default from StackAuth config
-            await emailChannel.sendVerificationEmail()
-            console.log('✅ Verification email sent successfully to:', email)
-          } else {
-            console.warn('⚠️ Email channel not found for:', email)
-            console.warn('Available channels:', contactChannels)
-          }
-        } else {
-          console.warn('⚠️ No current user found after signup')
-        }
-      } catch (emailError) {
-        console.error('❌ Failed to send verification email:', emailError)
-        // Don't throw - user is created, they can resend from check-email page
-      }
+      // Note: Verification email is automatically sent by StackAuth when signUpWithCredential is called
+      // with verificationCallbackUrl. No need to manually send it here.
       
-      // Redirect to check-email page after successful registration (AFTER email is sent)
+      // Redirect to check-email page after successful registration
       onClose()
       resetForm()
       router.push('/auth/check-email')
