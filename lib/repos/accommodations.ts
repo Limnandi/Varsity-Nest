@@ -130,7 +130,9 @@ export async function fetchAccommodationByIdWithProvider(id: string) {
       amenities: schema.accommodations.amenities,
       providerId: schema.accommodations.providerId,
       providerName: schema.providers.businessName,
-      providerEmail: schema.providers.contactEmail
+      providerEmail: schema.providers.contactEmail,
+      providerUserId: schema.providers.userId,
+      providerPhone: schema.providers.contactPhone
     })
     .from(schema.accommodations)
     .leftJoin(schema.providers, eq(schema.accommodations.providerId, schema.providers.id))
