@@ -1,428 +1,265 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { X, Star, ThumbsUp, MessageCircle, MoreHorizontal, ReplyIcon, Send } from "lucide-react"
-import { StudentAuthService } from "@/lib/student-auth"
-import StudentAuthModal from "./StudentAuthModal"
-import ReportModal from "./ReportModal"
+import { X, MessageSquare, Filter, ArrowUpDown } from "lucide-react"
+import Image from "next/image"
+import { useState, useEffect, useMemo } from "react"
+import { createPortal } from "react-dom"
+import ReviewCard from "./ReviewCard"
 
 interface Review {
-  id: number
-  author: string
-  university: "UFS" | "CUT"
+  id: string
   rating: number
   comment: string
-  date: string
-  likes: number
-  likedBy: string[]
-  replies: any[]
+  is_verified: boolean
+  helpful_votes: number
+  total_votes: number
+  created_at: string
+  first_name: string
+  last_name: string
+  email: string
+  profile_image_url?: string
+  university?: string
 }
 
 interface ReviewsModalProps {
   isOpen: boolean
   onClose: () => void
   accommodationName: string
+  accommodationImage: string
   reviews: Review[]
-  onAddReview: (review: Omit<Review, "id" | "likes" | "likedBy" | "replies">) => void
-  onUpdateReviews: (reviews: Review[]) => void
+  averageRating: number
+  totalReviews: number
+  accommodationId: string
+  currentUserEmail?: string
+  currentUserRole?: string
+  isAuthenticated?: boolean
+  onVote?: (reviewId: string, isHelpful: boolean) => void
+  onReply?: (reviewId: string, comment: string) => Promise<void>
+  onReplyVote?: (replyId: string, isHelpful: boolean) => void
+  onReport?: (reviewId: string, reviewAuthor: string) => void
+  onReplyReport?: (replyId: string, replyAuthor: string) => void
+  onDelete?: (reviewId: string) => Promise<void>
+  userVotes?: Record<string, boolean | null>
+  replies?: Record<string, any[]>
+  userReplyVotes?: Record<string, boolean | null>
 }
 
 export default function ReviewsModal({
   isOpen,
   onClose,
   accommodationName,
+  accommodationImage,
   reviews,
-  onAddReview,
-  onUpdateReviews,
+  averageRating: _averageRating,
+  totalReviews: _totalReviews,
+  accommodationId: _accommodationId,
+  currentUserEmail,
+  currentUserRole,
+  isAuthenticated,
+  onVote,
+  onReply,
+  onReplyVote,
+  onReport,
+  onReplyReport,
+  onDelete,
+  userVotes = {},
+  replies = {},
+  userReplyVotes = {}
 }: ReviewsModalProps) {
-  const [currentStudent, setCurrentStudent] = useState<any>(null)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [showReportModal, setShowReportModal] = useState(false)
-  const [reportingReviewId, setReportingReviewId] = useState<number | null>(null)
-  const [reportingReviewAuthor, setReportingReviewAuthor] = useState("")
-  const [newReview, setNewReview] = useState({ rating: 5, comment: "" })
-  const [replyingTo, setReplyingTo] = useState<number | null>(null)
-  const [replyText, setReplyText] = useState("")
-  const [hoveredReview, setHoveredReview] = useState<number | null>(null)
-  const [hoveredReply, setHoveredReply] = useState<number | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [orderFilter, setOrderFilter] = useState<'most-relevant' | 'newest' | 'oldest'>('most-relevant')
+  const [starFilter, setStarFilter] = useState<number | null>(null)
 
   useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  // Prevent body scroll when modal is open and reset filters when closing
+  useEffect(() => {
     if (isOpen) {
-      const student = StudentAuthService.getCurrentStudent()
-      setCurrentStudent(student)
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+      // Reset filters when modal closes
+      setOrderFilter('most-relevant')
+      setStarFilter(null)
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
     }
   }, [isOpen])
 
-  const handleLike = (reviewId: number, isReply = false, replyId?: number) => {
-    if (!currentStudent) {
-      setShowAuthModal(true)
-      return
+  // Filter and sort reviews (must be called before early return to follow Rules of Hooks)
+  const filteredAndSortedReviews = useMemo(() => {
+    if (!isOpen) return []
+    let filtered = [...reviews]
+
+    // Apply star rating filter
+    if (starFilter !== null) {
+      filtered = filtered.filter(review => Math.round(review.rating) === starFilter)
     }
 
-    const updatedReviews = reviews.map((review) => {
-      if (review.id === reviewId) {
-        if (isReply && replyId) {
-          // Like a reply
-          const updatedReplies = review.replies.map((reply) => {
-            if (reply.id === replyId) {
-              const hasLiked = reply.likedBy.includes(currentStudent.id)
-              return {
-                ...reply,
-                likes: hasLiked ? reply.likes - 1 : reply.likes + 1,
-                likedBy: hasLiked
-                  ? reply.likedBy.filter((id: string) => id !== currentStudent.id)
-                  : [...reply.likedBy, currentStudent.id],
-              }
-            }
-            return reply
-          })
-          return { ...review, replies: updatedReplies }
-        } else {
-          // Like a review
-          const hasLiked = review.likedBy.includes(currentStudent.id)
-          return {
-            ...review,
-            likes: hasLiked ? review.likes - 1 : review.likes + 1,
-            likedBy: hasLiked
-              ? review.likedBy.filter((id) => id !== currentStudent.id)
-              : [...review.likedBy, currentStudent.id],
-          }
-        }
-      }
-      return review
-    })
-
-    onUpdateReviews(updatedReviews)
-  }
-
-  const handleAddReview = () => {
-    if (!currentStudent) {
-      setShowAuthModal(true)
-      return
+    // Apply order filter
+    switch (orderFilter) {
+      case 'most-relevant':
+        // Sort by reaction counts (helpful_votes) descending
+        filtered.sort((a, b) => (b.helpful_votes || 0) - (a.helpful_votes || 0))
+        break
+      case 'newest':
+        // Sort by created_at descending (newest first)
+        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        break
+      case 'oldest':
+        // Sort by created_at ascending (oldest first)
+        filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        break
     }
 
-    if (newReview.comment.trim()) {
-      onAddReview({
-        author: currentStudent.name,
-        university: currentStudent.university,
-        rating: newReview.rating,
-        comment: newReview.comment.trim(),
-        date: new Date().toLocaleDateString(),
-      })
-      setNewReview({ rating: 5, comment: "" })
-    }
-  }
-
-  const handleAddReply = (reviewId: number) => {
-    if (!currentStudent) {
-      setShowAuthModal(true)
-      return
-    }
-
-    if (replyText.trim()) {
-      const updatedReviews = reviews.map((review) => {
-        if (review.id === reviewId) {
-          const newReply = {
-            id: Date.now(),
-            author: currentStudent.name,
-            university: currentStudent.university,
-            comment: replyText.trim(),
-            date: new Date().toLocaleDateString(),
-            likes: 0,
-            likedBy: [],
-          }
-          return {
-            ...review,
-            replies: [...review.replies, newReply],
-          }
-        }
-        return review
-      })
-
-      onUpdateReviews(updatedReviews)
-      setReplyText("")
-      setReplyingTo(null)
-    }
-  }
-
-  const handleReport = (reviewId: number, reviewAuthor: string) => {
-    if (!currentStudent) {
-      setShowAuthModal(true)
-      return
-    }
-
-    setReportingReviewId(reviewId)
-    setReportingReviewAuthor(reviewAuthor)
-    setShowReportModal(true)
-  }
-
-  const handleAuthSuccess = (student: any) => {
-    setCurrentStudent(student)
-    setShowAuthModal(false)
-  }
+    return filtered
+  }, [reviews, orderFilter, starFilter, isOpen])
 
   if (!isOpen) return null
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
-          <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-xl font-bold">Reviews for {accommodationName}</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+      {mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 overflow-y-auto"
+          onClick={onClose}
+          aria-hidden={!isOpen}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="All reviews"
+            className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl text-white shadow-[0_10px_40px_rgba(59,130,246,0.25)] max-w-4xl w-full mx-4 my-8 transform transition-all duration-300 animate-in slide-in-from-bottom-4 sm:animate-in zoom-in-95 max-h-[90vh] flex flex-col"
+          >
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 z-10 p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
-          </div>
 
-          <div className="flex flex-col lg:flex-row max-h-[calc(90vh-80px)]">
-            {/* Reviews List */}
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="space-y-6">
-                {reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="border-b border-gray-200 pb-6 last:border-b-0"
-                    onMouseEnter={() => setHoveredReview(review.id)}
-                    onMouseLeave={() => setHoveredReview(null)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className="font-semibold text-gray-900">{review.author}</span>
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            {review.university}
-                          </span>
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating ? "text-yellow-400 fill-current" : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-500">{review.date}</span>
-                        </div>
-                        <p className="text-gray-700 mb-3">{review.comment}</p>
-                        <div className="flex items-center space-x-4">
-                          <button
-                            onClick={() => handleLike(review.id)}
-                            className={`flex items-center space-x-1 text-sm transition-colors ${
-                              currentStudent && review.likedBy.includes(currentStudent.id)
-                                ? "text-blue-600"
-                                : "text-gray-500 hover:text-blue-600"
-                            }`}
-                          >
-                            <ThumbsUp className="w-4 h-4" />
-                            <span>{review.likes}</span>
-                          </button>
-                          <button
-                            onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}
-                            className="flex items-center space-x-1 text-sm text-gray-500 hover:text-blue-600 transition-colors"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            <span>Reply</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Report Button - Shows on hover */}
-                      {hoveredReview === review.id && (
-                        <button
-                          onClick={() => handleReport(review.id, review.author)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                          title="Report this review"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Reply Form */}
-                    {replyingTo === review.id && (
-                      <div className="mt-4 ml-6 p-4 bg-gray-50 rounded-lg">
-                        <div className="flex space-x-3">
-                          <textarea
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Write a reply..."
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                            rows={2}
-                          />
-                          <button
-                            onClick={() => handleAddReply(review.id)}
-                            disabled={!replyText.trim()}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Replies */}
-                    {review.replies.length > 0 && (
-                      <div className="mt-4 ml-6 space-y-4">
-                        {review.replies.map((reply) => (
-                          <div
-                            key={reply.id}
-                            className="p-4 bg-gray-50 rounded-lg"
-                            onMouseEnter={() => setHoveredReply(reply.id)}
-                            onMouseLeave={() => setHoveredReply(null)}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <ReplyIcon className="w-4 h-4 text-gray-400" />
-                                  <span className="font-medium text-gray-900">{reply.author}</span>
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                    {reply.university}
-                                  </span>
-                                  <span className="text-sm text-gray-500">{reply.date}</span>
-                                </div>
-                                <p className="text-gray-700 mb-2">{reply.comment}</p>
-                                <button
-                                  onClick={() => handleLike(review.id, true, reply.id)}
-                                  className={`flex items-center space-x-1 text-sm transition-colors ${
-                                    currentStudent && reply.likedBy.includes(currentStudent.id)
-                                      ? "text-blue-600"
-                                      : "text-gray-500 hover:text-blue-600"
-                                  }`}
-                                >
-                                  <ThumbsUp className="w-4 h-4" />
-                                  <span>{reply.likes}</span>
-                                </button>
-                              </div>
-
-                              {/* Report Button for Reply - Shows on hover */}
-                              {hoveredReply === reply.id && (
-                                <button
-                                  onClick={() => handleReport(reply.id, reply.author)}
-                                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                  title="Report this reply"
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {reviews.length === 0 && (
-                  <div className="text-center py-12">
-                    <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No reviews yet</h3>
-                    <p className="text-gray-500">Be the first to share your experience!</p>
-                  </div>
-                )}
+            {/* Header */}
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-start gap-4 mb-4">
+                {/* Property Image */}
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 border-white/20">
+                  <Image
+                    src={accommodationImage || "/placeholder.jpg"}
+                    alt={accommodationName}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                </div>
+                
+                {/* Property Name */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent break-words">
+                    {accommodationName}
+                  </h2>
+                </div>
+              </div>
+              
+              {/* Ratings and Reviews Title */}
+              <div className="mt-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-purple-400" />
+                  <span>Ratings and Reviews</span>
+                </h3>
               </div>
             </div>
 
-            {/* Add Review Form */}
-            <div className="lg:w-96 border-l border-gray-200 p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Your Review</h3>
+            {/* Filters */}
+            <div className="px-6 py-4 border-b border-white/10 bg-black/20">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Order Filter */}
+                <div className="flex-1">
+                  <label className="block text-xs text-neutral-400 mb-2 flex items-center gap-2">
+                    <ArrowUpDown className="w-3 h-3" />
+                    Order
+                  </label>
+                  <select
+                    value={orderFilter}
+                    onChange={(e) => setOrderFilter(e.target.value as 'most-relevant' | 'newest' | 'oldest')}
+                    className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="most-relevant" className="bg-gray-800 text-white">Most Relevant</option>
+                    <option value="newest" className="bg-gray-800 text-white">Newest</option>
+                    <option value="oldest" className="bg-gray-800 text-white">Oldest</option>
+                  </select>
+                </div>
 
-              {currentStudent ? (
+                {/* Star Rating Filter */}
+                <div className="flex-1">
+                  <label className="block text-xs text-neutral-400 mb-2 flex items-center gap-2">
+                    <Filter className="w-3 h-3" />
+                    Star Rating
+                  </label>
+                  <select
+                    value={starFilter === null ? 'all' : starFilter}
+                    onChange={(e) => setStarFilter(e.target.value === 'all' ? null : parseInt(e.target.value))}
+                    className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all" className="bg-gray-800 text-white">All Ratings</option>
+                    <option value="5" className="bg-gray-800 text-white">5 Stars</option>
+                    <option value="4" className="bg-gray-800 text-white">4 Stars</option>
+                    <option value="3" className="bg-gray-800 text-white">3 Stars</option>
+                    <option value="2" className="bg-gray-800 text-white">2 Stars</option>
+                    <option value="1" className="bg-gray-800 text-white">1 Star</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Reviews List - Scrollable */}
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              {filteredAndSortedReviews.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800">
-                      <strong>Signed in as:</strong> {currentStudent.name}
-                    </p>
-                    <p className="text-xs text-green-600">{currentStudent.university} Student</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
-                    <div className="flex space-x-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setNewReview({ ...newReview, rating: star })}
-                          className="focus:outline-none"
-                        >
-                          <Star
-                            className={`w-6 h-6 ${
-                              star <= newReview.rating ? "text-yellow-400 fill-current" : "text-gray-300"
-                            }`}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
-                    <textarea
-                      value={newReview.comment}
-                      onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={4}
-                      placeholder="Share your experience with this accommodation..."
+                  {filteredAndSortedReviews.map((review) => (
+                    <ReviewCard
+                      key={review.id}
+                      review={review}
+                      onVote={onVote}
+                      onReply={onReply}
+                      onReplyVote={onReplyVote}
+                      onReport={onReport}
+                      onReplyReport={onReplyReport}
+                      onDelete={onDelete}
+                      userVote={userVotes[review.id]}
+                      replies={replies[review.id] || []}
+                      userReplyVotes={userReplyVotes}
+                      currentUserEmail={currentUserEmail}
+                      currentUserRole={currentUserRole}
+                      isAuthenticated={isAuthenticated}
                     />
-                  </div>
-
-                  <button
-                    onClick={handleAddReview}
-                    disabled={!newReview.comment.trim()}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Submit Review
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      StudentAuthService.logoutStudent()
-                      setCurrentStudent(null)
-                    }}
-                    className="w-full text-gray-600 hover:text-gray-800 text-sm"
-                  >
-                    Sign out
-                  </button>
+                  ))}
                 </div>
               ) : (
-                <div className="text-center">
-                  <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">Student Verification Required</h4>
-                  <p className="text-gray-600 mb-4">Only verified students can write reviews to ensure authenticity.</p>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Sign In / Register
-                  </button>
+                <div className="text-center py-12">
+                  <MessageSquare className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
+                  <p className="text-neutral-400">
+                    {starFilter !== null 
+                      ? `No ${starFilter}-star reviews found` 
+                      : 'No reviews yet'}
+                  </p>
+                  <p className="text-sm text-neutral-500 mt-2">
+                    {starFilter !== null 
+                      ? 'Try selecting a different rating filter' 
+                      : 'Be the first to share your experience!'}
+                  </p>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Student Auth Modal */}
-      <StudentAuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={handleAuthSuccess} />
-
-      {/* Report Modal */}
-      <ReportModal
-        isOpen={showReportModal}
-        onClose={() => {
-          setShowReportModal(false)
-          setReportingReviewId(null)
-          setReportingReviewAuthor("")
-        }}
-        itemType="review"
-        itemAuthor={reportingReviewAuthor}
-        onSubmit={async (reason: string, description: string) => {
-          // TODO: Implement report submission
-          console.log('Report submitted:', { reason, description, reviewId: reportingReviewId })
-          setShowReportModal(false)
-          setReportingReviewId(null)
-          setReportingReviewAuthor("")
-        }}
-      />
+        </div>,
+        document.body
+      )}
     </>
   )
 }
