@@ -163,7 +163,7 @@ export function createPayFastPayment(
     
     // Customer information
     name_first: userName.split(" ")[0] || userName,
-    name_last: userName.split(" ").slice(1).join(" ") || "",
+    name_last: userName.split(" ").slice(1).join(" ") || userName, // Use full name if last name is empty
     email_address: userEmail,
     
     // Payment details
@@ -194,19 +194,22 @@ export function createPayFastPayment(
     // frequency=3 means Monthly billing (not "3 months")
     frequency: (customData?.subscriptionType === "monthly" || customData?.subscriptionType === "recurring") ? "3" : undefined,
     billing_date: customData?.billingDate,
-    recurring_amount: customData?.recurringAmount?.toFixed(2),
+    // PayFast requires recurring_amount minimum of 5.00 ZAR for subscriptions
+    // Ensure we meet the minimum requirement
+    recurring_amount: customData?.recurringAmount ? Math.max(customData.recurringAmount, 5.00).toFixed(2) : undefined,
     // cycles: "0" means ongoing until cancelled (unlimited)
     // Required for subscriptions - "0" = no limit, continues until cancelled
-    cycles: customData?.cycles ? customData.cycles.toString() : 
+    cycles: customData?.cycles !== undefined ? customData.cycles.toString() : 
             (customData?.subscriptionType === "monthly" || customData?.subscriptionType === "recurring") ? "0" : undefined,
     
     // Unique payment ID for tracking
     m_payment_id: customData?.paymentId || `vn_${Date.now()}`,
   }
 
-  // Remove undefined values
+  // Remove undefined and empty string values (PayFast rejects empty strings)
   Object.keys(data).forEach(key => {
-    if (data[key as keyof PayFastData] === undefined) {
+    const value = data[key as keyof PayFastData]
+    if (value === undefined || value === '') {
       delete data[key as keyof PayFastData]
     }
   })

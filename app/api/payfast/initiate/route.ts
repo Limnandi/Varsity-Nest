@@ -152,7 +152,13 @@ export async function POST(request: Request) {
         
         const accommodationsCount = Number(result?.count || 0)
         const wantsFeatured = Boolean(customData?.wantsFeatured)
-        const calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+        let calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+        
+        // PayFast requires recurring_amount minimum of 5.00 ZAR for subscriptions
+        // Ensure we meet the minimum requirement
+        if (calculatedAmount < 5.00) {
+          calculatedAmount = 5.00
+        }
 
         // Generate secure payment ID
         const paymentId = PaymentSecurityService.generateSecurePaymentId()
@@ -167,10 +173,10 @@ export async function POST(request: Request) {
           userId: session.user.id
         }
 
-        // Create PayFast subscription with billing_date set to trial end date
-        // This allows users to add payment details now, but won't charge until after trial
+        // Create PayFast subscription with R0 initial amount and billing_date set to trial end date
+        // Initial amount is 0 (R0) for trial, recurring_amount is what will be charged after trial
         const paymentData = createPayFastPayment(
-          calculatedAmount,
+          0, // R0 for trial - no charge upfront
           effectiveEmail,
           effectiveName,
           itemName,
@@ -178,7 +184,7 @@ export async function POST(request: Request) {
             ...serverCustomDataForTrial,
             subscriptionType: "monthly",
             billingDate: billingDate,
-            recurringAmount: calculatedAmount,
+            recurringAmount: calculatedAmount, // This is what will be charged after trial ends
             cycles: 0 // Ongoing subscription
           }
         )
@@ -188,7 +194,8 @@ export async function POST(request: Request) {
         console.log("[PAYFAST INITIATE] ===== PAYFAST PAYLOAD (TRIAL SETUP) =====")
         console.log("=".repeat(80))
         console.log("[PAYFAST INITIATE] Provider ID:", providerId)
-        console.log("[PAYFAST INITIATE] Amount:", calculatedAmount)
+        console.log("[PAYFAST INITIATE] Initial Amount (Trial):", 0)
+        console.log("[PAYFAST INITIATE] Recurring Amount (After Trial):", calculatedAmount)
         console.log("[PAYFAST INITIATE] Billing Date:", billingDate)
         console.log("[PAYFAST INITIATE] Trial End Date:", trialEndDate.toISOString())
         console.log("[PAYFAST INITIATE] Full Payment Data:", JSON.stringify(paymentData, null, 2))
@@ -268,15 +275,21 @@ export async function POST(request: Request) {
         console.log("=".repeat(80) + "\n")
 
         // Record pending transaction for future payment
+        // Store recurring amount (what will be charged after trial) but initial payment is R0
         const transaction = await secureDb.db
           .insert(schema.paymentTransactions)
           .values({
             providerId: providerId!,
-            amount: calculatedAmount,
+            amount: calculatedAmount, // Store recurring amount for future billing
             status: 'pending',
             idempotencyKey: idempotencyKey || null,
             mPaymentId: paymentId,
-            gatewayResponse: { paymentData, trialActivated: true },
+            gatewayResponse: { 
+              paymentData, 
+              trialActivated: true,
+              initialAmount: 0,
+              recurringAmount: calculatedAmount
+            },
             createdAt: new Date()
           })
           .returning()
@@ -291,10 +304,12 @@ export async function POST(request: Request) {
         })
 
         // Return payment data to redirect to PayFast for payment method setup
+        // Amount is 0 for trial, but recurring_amount is set for post-trial billing
         return NextResponse.json({
           paymentData,
           transactionId: transaction[0]?.id,
-          amount: calculatedAmount,
+          amount: 0, // R0 for trial
+          recurringAmount: calculatedAmount, // Amount that will be charged after trial
           trialActivated: true,
           trialPaymentSetup: true,
           billingDate: billingDate,
@@ -321,7 +336,13 @@ export async function POST(request: Request) {
           
           const accommodationsCount = Number(result?.count || 0)
           const wantsFeatured = Boolean(customData?.wantsFeatured)
-          const calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+          let calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+          
+          // PayFast requires recurring_amount minimum of 5.00 ZAR for subscriptions
+          // Ensure we meet the minimum requirement
+          if (calculatedAmount < 5.00) {
+            calculatedAmount = 5.00
+          }
 
           // Generate secure payment ID
           const paymentId = PaymentSecurityService.generateSecurePaymentId()
@@ -336,9 +357,10 @@ export async function POST(request: Request) {
             userId: session.user.id
           }
 
-          // Create PayFast subscription with billing_date set to trial end date
+          // Create PayFast subscription with R0 initial amount and billing_date set to trial end date
+          // Initial amount is 0 (R0) since user is in trial, recurring_amount is what will be charged after trial
           const paymentData = createPayFastPayment(
-            calculatedAmount,
+            0, // R0 for trial - no charge upfront
             effectiveEmail,
             effectiveName,
             itemName,
@@ -346,7 +368,7 @@ export async function POST(request: Request) {
               ...serverCustomDataForTrial,
               subscriptionType: "monthly",
               billingDate: billingDate,
-              recurringAmount: calculatedAmount,
+              recurringAmount: calculatedAmount, // This is what will be charged after trial ends
               cycles: 0 // Ongoing subscription
             }
           )
@@ -385,7 +407,8 @@ export async function POST(request: Request) {
           return NextResponse.json({ 
             paymentData,
             transactionId: transaction.id,
-            amount: calculatedAmount,
+            amount: 0, // R0 for trial
+            recurringAmount: calculatedAmount, // Amount that will be charged after trial
             trialPaymentSetup: true,
             billingDate: billingDate,
             message: "Payment will be processed automatically after your trial ends."
