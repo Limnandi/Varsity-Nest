@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import RoomTypeCard from "./RoomTypeCard"
-import { Bed, TrendingUp, Filter } from "lucide-react"
+import { Bed } from "lucide-react"
 
 interface RoomType {
   id: string
@@ -32,8 +32,6 @@ export default function RoomTypesSection({
 }: RoomTypesSectionProps) {
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'single' | 'sharing'>('all')
-  const [sortBy, setSortBy] = useState<'price' | 'availability' | 'name'>('price')
 
   const [accommodationTotals, setAccommodationTotals] = useState<{
     totalRooms: number
@@ -72,23 +70,8 @@ export default function RoomTypesSection({
     loadRoomTypes()
   }, [loadRoomTypes])
 
-  const filteredRoomTypes = roomTypes.filter(roomType => {
-    if (filter === 'all') return true
-    return roomType.type === filter
-  })
-
-  const sortedRoomTypes = [...filteredRoomTypes].sort((a, b) => {
-    switch (sortBy) {
-      case 'price':
-        return a.price - b.price
-      case 'availability':
-        return b.availableCount - a.availableCount
-      case 'name':
-        return a.name.localeCompare(b.name)
-      default:
-        return 0
-    }
-  })
+  // Show all room types as-is (no filtering or sorting)
+  const displayRoomTypes = roomTypes
 
   const getRoomTypeStats = () => {
     // Use database totals as source of truth, fallback to calculating from room types
@@ -108,12 +91,12 @@ export default function RoomTypesSection({
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="h-6 bg-gray-300/10 dark:bg-gray-700/10 rounded w-1/3 mb-3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 rounded-2xl"></div>
+              <div key={i} className="h-32 bg-gray-200/10 dark:bg-gray-700/10 rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -123,89 +106,42 @@ export default function RoomTypesSection({
 
   if (roomTypes.length === 0) {
     return (
-      <div className="text-center py-12">
-        <Bed className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-white mb-2">No Room Types Available</h3>
-        <p className="text-neutral-400">This accommodation doesn&apos;t have any room types configured yet.</p>
+      <div className="text-center py-8 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+        <Bed className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+        <h3 className="text-base font-semibold text-white mb-1">No Room Types Available</h3>
+        <p className="text-sm text-neutral-400">This accommodation doesn&apos;t have any room types configured yet.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
-        <div className="flex-1">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-3">
-            <Bed className="w-6 h-6 text-blue-400" />
+    <div className="space-y-4 w-full">
+      {/* Compact Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-2">
+            <Bed className="w-5 h-5 text-blue-400" />
             Room Types & Pricing
           </h2>
-          <p className="text-neutral-400 text-sm sm:text-base">
-            Choose from {roomTypes.length} room type{roomTypes.length !== 1 ? 's' : ''} starting from R{stats.priceRange.min}
-          </p>
+          <span className="text-xs text-neutral-400">
+            {roomTypes.length} type{roomTypes.length !== 1 ? 's' : ''} • {stats.availableRooms}/{stats.totalRooms} available
+          </span>
         </div>
         
-        <div className="flex items-center gap-2 text-sm text-neutral-400">
-          <TrendingUp className="w-4 h-4" />
-          <span>{stats.availableRooms} of {stats.totalRooms} rooms available</span>
-        </div>
-      </div>
-
-      {/* Filters and Sorting */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <Filter className="w-4 h-4 text-neutral-400" />
-          <span className="text-sm text-neutral-400">Filter:</span>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
-          >
-            <option value="all">All Types</option>
-            <option value="single">Single</option>
-            <option value="sharing">Sharing</option>
-          </select>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-neutral-400">Sort by:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
-          >
-            <option value="price">Price</option>
-            <option value="availability">Availability</option>
-            <option value="name">Name</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Price Range Display */}
-      {stats.priceRange.min !== stats.priceRange.max && (
-        <div className="p-5 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="text-center sm:text-left">
-              <p className="text-sm text-neutral-400 mb-2">Starting from</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white">R{stats.priceRange.min}</p>
-            </div>
-            <div className="text-center sm:text-left">
-              <p className="text-sm text-neutral-400 mb-2">Up to</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white">R{stats.priceRange.max}</p>
-            </div>
-            <div className="text-center sm:text-right">
-              <p className="text-sm text-neutral-400 mb-2">Price Range</p>
-              <p className="text-xl font-semibold text-white">
-                R{stats.priceRange.min} - R{stats.priceRange.max}
-              </p>
-            </div>
+        {/* Compact Price Range */}
+        {stats.priceRange.min !== stats.priceRange.max && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-neutral-400">From</span>
+            <span className="text-lg font-bold text-white">R{stats.priceRange.min}</span>
+            <span className="text-neutral-400">-</span>
+            <span className="text-lg font-bold text-white">R{stats.priceRange.max}</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Room Types Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10 lg:gap-12 items-start">
-        {sortedRoomTypes.map((roomType) => (
+      {/* Room Types Grid - More Compact */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+        {displayRoomTypes.map((roomType) => (
           <RoomTypeCard
             key={roomType.id}
             roomType={roomType}
@@ -216,33 +152,18 @@ export default function RoomTypesSection({
         ))}
       </div>
 
-      {/* Summary */}
-      <div className="p-5 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="text-center sm:text-left">
-            <p className="text-sm text-neutral-400 mb-2">Total Room Types</p>
-            <p className="text-2xl font-bold text-white">{roomTypes.length}</p>
-          </div>
-          <div className="text-center sm:text-left">
-            <p className="text-sm text-neutral-400 mb-2">Available Rooms</p>
-            <p className="text-2xl font-bold text-green-400">{stats.availableRooms}</p>
-          </div>
-          <div className="text-center sm:text-right">
-            <p className="text-sm text-neutral-400 mb-2">Total Rooms</p>
-            <p className="text-2xl font-bold text-white">{stats.totalRooms}</p>
+      {/* Compact Summary */}
+      {showSelection && selectedRoomType && (
+        <div className="p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-neutral-400 mb-1">Selected Room</p>
+              <p className="text-sm font-semibold text-white">{selectedRoomType.name}</p>
+            </div>
+            <p className="text-base font-bold text-green-400">R{selectedRoomType.price}/month</p>
           </div>
         </div>
-        
-        {showSelection && selectedRoomType && (
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <div className="text-center sm:text-left">
-              <p className="text-sm text-neutral-400 mb-2">Selected Room</p>
-              <p className="text-lg font-semibold text-white">{selectedRoomType.name}</p>
-              <p className="text-sm text-green-400">R{selectedRoomType.price}/month</p>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }
