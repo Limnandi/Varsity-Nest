@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
-import { Phone, Mail, Clock, Send, CheckCircle, AlertCircle } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Phone, Mail, Clock, Send, CheckCircle, AlertCircle, ChevronDown } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 import { publicEnv } from "@/lib/env.client"
 
@@ -17,7 +17,35 @@ export default function Contact() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [isSubjectOpen, setIsSubjectOpen] = useState(false)
   const recaptchaRef = useRef<ReCAPTCHA>(null)
+  const subjectRef = useRef<HTMLDivElement>(null)
+
+  const subjects = [
+    { value: "", label: "Select a subject" },
+    { value: "accommodation-inquiry", label: "Accommodation Inquiry" },
+    { value: "booking-assistance", label: "Booking Assistance" },
+    { value: "property-listing", label: "List My Property" },
+    { value: "technical-support", label: "Technical Support" },
+    { value: "general-inquiry", label: "General Inquiry" },
+  ]
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (subjectRef.current && !subjectRef.current.contains(event.target as Node)) {
+        setIsSubjectOpen(false)
+      }
+    }
+
+    if (isSubjectOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isSubjectOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -212,21 +240,39 @@ export default function Contact() {
                   <label htmlFor="subject" className="block text-sm font-medium text-neutral-300 mb-2">
                     Subject *
                   </label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    required
-                    value={formData.subject}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="accommodation-inquiry">Accommodation Inquiry</option>
-                    <option value="booking-assistance">Booking Assistance</option>
-                    <option value="property-listing">List My Property</option>
-                    <option value="technical-support">Technical Support</option>
-                    <option value="general-inquiry">General Inquiry</option>
-                  </select>
+                  <div className="relative" ref={subjectRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsSubjectOpen(!isSubjectOpen)}
+                      className="w-full px-4 py-3 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 flex items-center justify-between"
+                    >
+                      <span className={formData.subject ? "text-white" : "text-neutral-400"}>
+                        {subjects.find(s => s.value === formData.subject)?.label || "Select a subject"}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${isSubjectOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isSubjectOpen && (
+                      <div className="absolute z-50 w-full mt-2 bg-black/30 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl shadow-blue-500/10 overflow-hidden">
+                        {subjects.map((subject) => (
+                          <button
+                            key={subject.value}
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({ ...prev, subject: subject.value }))
+                              setIsSubjectOpen(false)
+                            }}
+                            className={`w-full px-4 py-3 text-left text-sm transition-all duration-200 hover:bg-white/10 ${
+                              formData.subject === subject.value
+                                ? "bg-blue-600/30 text-white border-l-2 border-blue-500"
+                                : "text-neutral-300 hover:text-white"
+                            } ${subject.value === "" ? "text-neutral-400" : ""}`}
+                          >
+                            {subject.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Filter, X } from "lucide-react"
 import type { Accommodation } from "@/lib/types"
 
@@ -73,7 +74,7 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
   }
 
   return (
-    <div className="relative z-[9999] w-full sm:w-auto" ref={filterRef}>
+    <div className="relative w-full sm:w-auto" ref={filterRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center sm:justify-start space-x-2 px-3 sm:px-4 py-2 bg-black/20 border border-white/10 rounded-lg hover:bg-white/10 transition-all duration-300 text-white backdrop-blur-sm w-full sm:w-auto text-sm sm:text-base"
@@ -90,11 +91,34 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
       {isOpen && (
         <>
           {/* Backdrop for mobile */}
-          <div 
-            className="fixed inset-0 bg-black/50 z-[9998] sm:hidden"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="fixed sm:absolute top-auto sm:top-full left-0 sm:left-0 right-0 sm:right-auto bottom-0 sm:bottom-auto mt-0 sm:mt-2 w-full sm:w-80 max-w-full sm:max-w-none bg-black/20 border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-blue-500/10 z-[9999] p-4 sm:p-6 backdrop-blur-xl max-h-[80vh] sm:max-h-none overflow-y-auto">
+          {typeof window !== 'undefined' && window.innerWidth < 640 && (
+            <div 
+              className="fixed inset-0 bg-black/50 z-[9998]"
+              onClick={() => setIsOpen(false)}
+            />
+          )}
+          {typeof window !== 'undefined' && window.innerWidth < 640 ? (
+            // Mobile: Fixed positioning at bottom
+            createPortal(
+              <div className="fixed bottom-0 left-0 right-0 w-full bg-black/20 border-t border-white/10 rounded-t-2xl shadow-2xl shadow-blue-500/10 z-[9999] p-4 sm:p-6 backdrop-blur-xl max-h-[80vh] overflow-y-auto">
+                {renderDropdownContent()}
+              </div>,
+              document.body
+            )
+          ) : (
+            // Desktop: Absolute positioning (renders outside container)
+            <div className="absolute top-full left-0 mt-2 w-80 bg-black/20 border border-white/10 rounded-2xl shadow-2xl shadow-blue-500/10 z-[9999] p-6 backdrop-blur-xl">
+              {renderDropdownContent()}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
+  function renderDropdownContent() {
+    return (
+      <>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-white text-base sm:text-lg break-words">Filters</h3>
             <button onClick={() => setIsOpen(false)} className="text-neutral-300 hover:text-white transition-colors flex-shrink-0 p-1">
@@ -104,33 +128,43 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
 
           {/* Price Range */}
           <div className="mb-4 sm:mb-6">
-            <label className="block text-xs sm:text-sm font-medium mb-2 text-neutral-300 break-words">Price Range</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={filters.priceRange[0]}
-                onChange={(e) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    priceRange: [Number(e.target.value), prev.priceRange[1]],
-                  }))
-                }
-                className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 sm:py-2 border border-white/10 rounded text-xs sm:text-sm bg-black/20 text-white placeholder-neutral-400"
-                placeholder="Min"
-              />
-              <span className="text-neutral-300 flex-shrink-0">-</span>
-              <input
-                type="number"
-                value={filters.priceRange[1]}
-                onChange={(e) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    priceRange: [prev.priceRange[0], Number(e.target.value)],
-                  }))
-                }
-                className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 sm:py-2 border border-white/10 rounded text-xs sm:text-sm bg-black/20 text-white placeholder-neutral-400"
-                placeholder="Max"
-              />
+            <label className="block text-xs sm:text-sm font-medium mb-3 text-neutral-300 break-words">Price Range (R)</label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs text-neutral-400 mb-1.5">Min</label>
+                  <input
+                    type="number"
+                    value={filters.priceRange[0]}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        priceRange: [Number(e.target.value), prev.priceRange[1]],
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-white/20 bg-black/30 backdrop-blur-xl rounded-lg text-sm text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="pt-6">
+                  <span className="text-neutral-400 text-lg">-</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs text-neutral-400 mb-1.5">Max</label>
+                  <input
+                    type="number"
+                    value={filters.priceRange[1]}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        priceRange: [prev.priceRange[0], Number(e.target.value)],
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-white/20 bg-black/30 backdrop-blur-xl rounded-lg text-sm text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                    placeholder="5000"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -191,9 +225,7 @@ export default function AdvancedFilters({ accommodations, onFilter }: AdvancedFi
               Clear
             </button>
           </div>
-        </div>
         </>
-      )}
-    </div>
-  )
+    )
+  }
 }

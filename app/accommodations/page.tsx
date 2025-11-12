@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react"
-import { SlidersHorizontal } from "lucide-react"
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense, useRef } from "react"
+import { SlidersHorizontal, ChevronDown } from "lucide-react"
 import SkeletonCard from "@/components/SkeletonCard"
 import AccommodationCard from "@/components/AccommodationCard"
 import { CacheManager } from "@/lib/cache"
@@ -18,6 +18,32 @@ export default function Accommodations() {
   const [isLoading, setIsLoading] = useState(true)
   const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "rating" | "reviews">("price-desc")
   const [useVirtualization, setUseVirtualization] = useState(false)
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const sortRef = useRef<HTMLDivElement>(null)
+
+  const sortOptions = [
+    { value: "price-desc" as const, label: "Price: High to Low" },
+    { value: "price-asc" as const, label: "Price: Low to High" },
+    { value: "rating" as const, label: "Highest Rated" },
+    { value: "reviews" as const, label: "Most Reviews" },
+  ]
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false)
+      }
+    }
+
+    if (isSortOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isSortOpen])
 
   useEffect(() => {
     const load = async () => {
@@ -136,7 +162,7 @@ export default function Accommodations() {
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-2xl shadow-blue-500/10 overflow-hidden">
+        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-2xl shadow-blue-500/10 overflow-visible">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1 min-w-0">
               <Suspense fallback={<div className="h-12 bg-black/20 border border-white/10 rounded-lg animate-pulse"></div>}>
@@ -155,16 +181,37 @@ export default function Accommodations() {
 
             <div className="flex items-center space-x-2 w-full sm:w-auto">
               <SlidersHorizontal className="w-4 h-4 text-neutral-300 flex-shrink-0" />
-              <select
-                value={sortBy}
-                onChange={(e) => handleSortChange(e.target.value as typeof sortBy)}
-                className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-neutral-300 backdrop-blur-sm w-full sm:w-auto min-w-0"
-              >
-                <option value="price-desc" className="bg-gray-800 text-white">Price: High to Low</option>
-                <option value="price-asc" className="bg-gray-800 text-white">Price: Low to High</option>
-                <option value="rating" className="bg-gray-800 text-white">Highest Rated</option>
-                <option value="reviews" className="bg-gray-800 text-white">Most Reviews</option>
-              </select>
+              <div className="relative w-full sm:w-auto" ref={sortRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsSortOpen(!isSortOpen)}
+                  className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg hover:bg-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white backdrop-blur-sm w-full sm:w-auto min-w-[180px] flex items-center justify-between transition-all duration-300"
+                >
+                  <span className="text-sm">{sortOptions.find(opt => opt.value === sortBy)?.label || "Price: High to Low"}</span>
+                  <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 flex-shrink-0 ml-2 ${isSortOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isSortOpen && (
+                  <div className="absolute z-50 w-full mt-2 bg-black/30 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl shadow-blue-500/10 overflow-hidden min-w-[180px]">
+                    {sortOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          handleSortChange(option.value)
+                          setIsSortOpen(false)
+                        }}
+                        className={`w-full px-4 py-3 text-left text-sm transition-all duration-200 hover:bg-white/10 ${
+                          sortBy === option.value
+                            ? "bg-blue-600/30 text-white border-l-2 border-blue-500"
+                            : "text-neutral-300 hover:text-white"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -178,7 +225,7 @@ export default function Accommodations() {
 
         {/* Accommodations Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-8">
             {[...Array(6)].map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -207,7 +254,7 @@ export default function Accommodations() {
             />
           </Suspense>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-8">
             {sortedAccommodations.map((acc) => (
               <AccommodationCard
                 key={acc.id}
