@@ -57,7 +57,7 @@ export const providers = pgTable("providers", {
   subscriptionStatus: varchar("subscription_status", { length: 20 }).default("inactive").$type<"inactive" | "trial" | "active" | "past_due" | "canceled">(),
   trialStartDate: timestamp("trial_start_date", { withTimezone: true }),
   trialEndDate: timestamp("trial_end_date", { withTimezone: true }),
-  subscriptionToken: varchar("subscription_token", { length: 255 }), // PayFast subscription token for recurring billing management
+  subscriptionToken: varchar("subscription_token", { length: 255 }), // Paystack subscription code for recurring billing management
   lastPaymentDate: timestamp("last_payment_date", { withTimezone: true }),
   nextPaymentDate: timestamp("next_payment_date", { withTimezone: true }),
   isFeatured: boolean("is_featured").default(false),
@@ -81,7 +81,7 @@ export const agents = pgTable("agents", {
   description: text("description"),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
-  subscriptionToken: varchar("subscription_token", { length: 255 }), // PayFast subscription token for recurring billing management
+  subscriptionToken: varchar("subscription_token", { length: 255 }), // Paystack subscription code for recurring billing management
   settings: jsonb("settings").default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -220,7 +220,7 @@ export const payments = pgTable("payments", {
   bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("ZAR"),
-  paymentMethod: varchar("payment_method", { length: 20 }).notNull().$type<"payfast" | "card" | "eft">(),
+  paymentMethod: varchar("payment_method", { length: 20 }).notNull().$type<"paystack" | "card" | "eft">(),
   paymentReference: varchar("payment_reference", { length: 100 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending").$type<"pending" | "completed" | "failed" | "refunded">(),
   gatewayResponse: jsonb("gateway_response"),
@@ -275,8 +275,8 @@ export const paymentTransactions = pgTable("payment_transactions", {
   currency: varchar("currency", { length: 3 }).default("ZAR"),
   mPaymentId: varchar("m_payment_id", { length: 100 }).notNull().unique(),
   pfPaymentId: varchar("pf_payment_id", { length: 100 }),
-  paymentToken: varchar("payment_token", { length: 255 }), // PayFast payment token for refunds
-  subscriptionToken: varchar("subscription_token", { length: 255 }), // PayFast subscription token for recurring billing
+  paymentToken: varchar("payment_token", { length: 255 }), // Paystack authorization code for refunds
+  subscriptionToken: varchar("subscription_token", { length: 255 }), // Paystack subscription code for recurring billing
   idempotencyKey: varchar("idempotency_key", { length: 255 }).unique(),
   status: varchar("status", { length: 20 }).notNull().default("pending").$type<"pending" | "completed" | "failed" | "cancelled">(),
   paymentDate: timestamp("payment_date", { withTimezone: true }),
