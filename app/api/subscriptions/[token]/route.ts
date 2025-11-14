@@ -1,8 +1,8 @@
 /**
  * Get Subscription Details Endpoint
  * 
- * Retrieves subscription details from PayFast for providers and agents
- * Documentation: https://developers.payfast.co.za/documentation/#recurring-billing
+ * Retrieves subscription details from Paystack for providers and agents
+ * Documentation: https://paystack.com/docs/api/#subscription
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -10,7 +10,7 @@ import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/au
 import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { PayFastAPIClient } from "@/lib/payfast-api-client"
+import { PaystackAPIClient } from "@/lib/paystack-api-client"
 import { captureException } from "@/lib/logging/config"
 
 export async function GET(
@@ -63,8 +63,8 @@ export async function GET(
       }
     }
 
-    // Get subscription details from PayFast API
-    const subscription = await PayFastAPIClient.getSubscription(subscriptionToken)
+    // Get subscription details from Paystack API
+    const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
     return NextResponse.json({
       success: true,
@@ -86,8 +86,9 @@ export async function GET(
 /**
  * Update Subscription Endpoint
  * 
- * Allows providers and agents to update their PayFast recurring subscriptions
- * Documentation: https://developers.payfast.co.za/documentation/#recurring-billing
+ * Allows providers and agents to update their Paystack recurring subscriptions
+ * Note: Paystack doesn't support direct subscription updates. Updates must be made to the plan.
+ * Documentation: https://paystack.com/docs/api/#plan
  */
 export async function PUT(
   request: NextRequest,
@@ -116,10 +117,10 @@ export async function PUT(
 
     // Parse request body
     const body = await request.json()
-    const { cycles, frequency, end_date, amount } = body
+    const { amount, interval, name, description } = body
 
     // Validate at least one update parameter is provided
-    if (!cycles && !frequency && !end_date && !amount) {
+    if (!amount && !interval && !name && !description) {
       return NextResponse.json({ error: 'At least one update parameter is required' }, { status: 400 })
     }
 
@@ -148,15 +149,32 @@ export async function PUT(
       }
     }
 
-    // Build update object
-    const updates: any = {}
-    if (cycles !== undefined) updates.cycles = cycles
-    if (frequency !== undefined) updates.frequency = frequency
-    if (end_date !== undefined) updates.end_date = end_date
-    if (amount !== undefined) updates.amount = amount // Amount in cents (ZAR)
+    // Get subscription to find plan code
+    const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
+    const planCode = subscription.plan?.plan_code
 
-    // Update subscription via PayFast API
-    const updatedSubscription = await PayFastAPIClient.updateSubscription(subscriptionToken, updates)
+    if (!planCode) {
+      return NextResponse.json({ error: 'Plan code not found for subscription' }, { status: 404 })
+    }
+
+    // Build update object for plan
+    const planUpdates: any = {}
+    if (amount !== undefined) planUpdates.amount = amount // Amount in ZAR (will be converted to kobo)
+    if (interval !== undefined) {
+      const validIntervals = ["hourly", "daily", "weekly", "monthly", "quarterly", "biannually", "annually"]
+      if (validIntervals.includes(interval)) {
+        planUpdates.interval = interval
+      }
+    }
+    if (name !== undefined) planUpdates.name = name
+    if (description !== undefined) planUpdates.description = description
+    planUpdates.update_existing_subscriptions = true // Update all subscriptions using this plan
+
+    // Update plan via Paystack API (this updates all subscriptions using the plan)
+    const updatedPlan = await PaystackAPIClient.updatePlan(planCode, planUpdates)
+
+    // Get updated subscription details
+    const updatedSubscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
     return NextResponse.json({
       success: true,
