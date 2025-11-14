@@ -1,8 +1,8 @@
 /**
  * Unpause Subscription Endpoint
  * 
- * Allows providers and agents to resume their paused PayFast recurring subscriptions
- * Documentation: https://developers.payfast.co.za/documentation/#recurring-billing
+ * Allows providers and agents to resume their paused Paystack recurring subscriptions
+ * Documentation: https://paystack.com/docs/api/#subscription
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -10,7 +10,7 @@ import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/au
 import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { PayFastAPIClient } from "@/lib/payfast-api-client"
+import { PaystackAPIClient } from "@/lib/paystack-api-client"
 import { captureException, captureMessage } from "@/lib/logging/config"
 
 export async function PUT(
@@ -68,8 +68,19 @@ export async function PUT(
       subscription = agent
     }
 
-    // Unpause subscription via PayFast API
-    const updatedSubscription = await PayFastAPIClient.unpauseSubscription(subscriptionToken)
+    // Get subscription to retrieve email token
+    const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
+    const emailToken = subscription.email_token
+
+    if (!emailToken) {
+      return NextResponse.json({ error: 'Email token not found for subscription' }, { status: 404 })
+    }
+
+    // Enable subscription via Paystack API
+    await PaystackAPIClient.enableSubscription(subscriptionToken, emailToken)
+    
+    // Get updated subscription details
+    const updatedSubscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
     // Update database
     if (entityType === 'provider') {
