@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import PayFastPaymentForm from "@/components/PayFastPaymentForm"
+import PaystackPaymentForm from "@/components/PaystackPaymentForm"
 import { ArrowLeft, CreditCard, Shield, CheckCircle, AlertCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
@@ -152,7 +152,7 @@ export default function AgentPaymentPage() {
             {/* Payment Form */}
             <div className="lg:col-span-2">
               <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/10">
-                <PayFastPaymentForm
+                <PaystackPaymentForm
                   amount={agent.billingInfo.monthlyFee}
                   userEmail={agent.email}
                   userName={agent.contactPerson}
