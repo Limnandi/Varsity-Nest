@@ -159,10 +159,15 @@ export async function getCurrentUserFromRequest(request: NextRequest): Promise<S
 // Get current user from StackAuth (fallback for OAuth)
 export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> {
   try {
+    console.log(`[AUTH SERVER] getCurrentUserFromStackAuth() called`)
     const app = getStackServerApp()
+    console.log(`[AUTH SERVER] Stack app initialized, calling getUser()...`)
     const stackUser = await app.getUser({ or: 'return-null' })
     
+    console.log(`[AUTH SERVER] Stack getUser() result:`, stackUser ? { id: stackUser.id, email: stackUser.primaryEmail } : 'null')
+    
     if (!stackUser?.id) {
+      console.log(`[AUTH SERVER] No stackUser.id found, returning null`)
       return null
     }
 
