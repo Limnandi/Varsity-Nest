@@ -27,6 +27,19 @@ function splitFullName(fullName?: string): { firstName: string; lastName: string
 
 export async function POST(request: NextRequest) {
   try {
+    // Safely parse JSON body - handle empty or malformed requests
+    let body
+    try {
+      const text = await request.text()
+      if (!text || text.trim() === '') {
+        return NextResponse.json({ error: 'Request body is required' }, { status: 400 })
+      }
+      body = JSON.parse(text)
+    } catch (parseError) {
+      console.error('ensure-user JSON parse error:', parseError)
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+    }
+
     const { 
       userId, 
       fullName, 
@@ -35,7 +48,7 @@ export async function POST(request: NextRequest) {
       cellNumber,
       studentNumber,
       university
-    } = await request.json()
+    } = body
     if (!userId || typeof userId !== 'string') {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
