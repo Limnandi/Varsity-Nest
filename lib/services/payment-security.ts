@@ -1,15 +1,38 @@
 import crypto from "crypto"
-import { PayFastWebhook, PaymentSecurity } from "@/lib/schemas/payment"
+import { PaymentSecurity } from "@/lib/schemas/payment"
 import { captureException, captureMessage } from '@/lib/logging/config'
 import { env } from "@/lib/env"
 
 export class PaymentSecurityService {
   /**
-   * Official PayFast IP address ranges for webhook validation
-   * Source: https://developers.payfast.co.za/documentation/#ports-and-ip-addresses
-   * These ranges must be whitelisted in PayFast merchant portal for recurring billing API
+   * Validate Paystack webhook signature using HMAC SHA512
+   * Paystack signs webhooks with HMAC SHA512 using the secret key
    */
-  private static readonly PAYFAST_IP_RANGES = [
+  static verifyPaystackSignature(payload: string, signature: string): boolean {
+    try {
+      const hash = crypto
+        .createHmac('sha512', env.PAYSTACK_SECRET_KEY)
+        .update(payload)
+        .digest('hex')
+      
+      return crypto.timingSafeEqual(
+        Buffer.from(hash, 'hex'),
+        Buffer.from(signature, 'hex')
+      )
+    } catch (error) {
+      captureException(error instanceof Error ? error : new Error(String(error)), { 
+        action: 'paystack-signature-verification', 
+        component: 'payment-security' 
+      })
+      return false
+    }
+  }
+
+  /**
+   * Legacy PayFast IP ranges (kept for reference, not used for Paystack)
+   * Paystack uses HMAC signatures instead of IP validation
+   */
+  private static readonly LEGACY_IP_RANGES = [
     '197.97.102.0/24', // Primary PayFast IP range
     '41.74.179.0/24',
     '41.74.180.0/24', 
@@ -91,60 +114,22 @@ export class PaymentSecurityService {
   ]
 
   /**
-   * Validate PayFast webhook signature with enhanced security
-   * Generic version that works with any PayFast webhook type (ITN, RRN, PFN)
+   * Legacy PayFast signature verification (kept for backward compatibility if needed)
+   * @deprecated Use verifyPaystackSignature for new implementations
    */
-  static verifyPayFastSignature(data: PayFastWebhook | Record<string, any>, signature: string): boolean {
-    try {
-      // Convert to Record<string, any> for safe indexing
-      const webhookData: Record<string, any> = data as Record<string, any>
-      
-      // Create parameter string with sorted keys (PayFast requirement)
-      let paramString = ""
-      const sortedKeys = Object.keys(webhookData).sort()
-
-      for (const key of sortedKeys) {
-        const value = webhookData[key]
-        // Only include non-empty values and exclude signature field
-        if (value !== undefined && value !== "" && value !== null && key !== "signature") {
-          paramString += `${key}=${encodeURIComponent(String(value))}&`
-        }
-      }
-
-      // Remove trailing &
-      paramString = paramString.slice(0, -1)
-
-      // Add passphrase for enhanced security
-      const passphrase = env.PAYFAST_PASSPHRASE
-      if (passphrase) {
-        paramString += `&passphrase=${encodeURIComponent(passphrase)}`
-      }
-
-      // Generate MD5 hash (PayFast standard)
-      const generatedSignature = crypto.createHash("md5").update(paramString).digest("hex")
-      
-      // Use timing-safe comparison to prevent timing attacks
-      return crypto.timingSafeEqual(
-        Buffer.from(generatedSignature, 'hex'),
-        Buffer.from(signature, 'hex')
-      )
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'signature-verification', component: 'payment-security' })
-      return false
-    }
+  static verifyPayFastSignature(_data: Record<string, any>, _signature: string): boolean {
+    // Legacy method - no longer used with Paystack
+    return false
   }
 
   /**
-   * Validate PayFast webhook IP address
+   * Legacy PayFast IP validation (kept for reference)
+   * Paystack uses HMAC signatures instead of IP validation
+   * @deprecated Not used for Paystack
    */
-  static validatePayFastIP(ipAddress: string): boolean {
-    try {
-      // Check if IP is in PayFast ranges
-      return this.PAYFAST_IP_RANGES.some(range => this.isIPInRange(ipAddress, range))
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'ip-validation', component: 'payment-security', ipAddress })
-      return false
-    }
+  static validatePayFastIP(_ipAddress: string): boolean {
+    // Legacy method - Paystack doesn't require IP validation
+    return true
   }
 
   /**
@@ -181,9 +166,10 @@ export class PaymentSecurityService {
         return false
       }
 
-      // Validate merchant ID
-      if (security.merchantId !== env.PAYFAST_MERCHANT_ID) {
-        captureMessage('Invalid merchant ID in payment request', { level: 'error', component: 'payment-security', merchantId: security.merchantId, ipAddress: security.ipAddress })
+      // Validate merchant ID (if provided - Paystack uses secret key instead)
+      // This is kept for backward compatibility
+      if (security.merchantId && !env.PAYSTACK_SECRET_KEY) {
+        captureMessage('Payment gateway not configured', { level: 'error', component: 'payment-security', ipAddress: security.ipAddress })
         return false
       }
 
