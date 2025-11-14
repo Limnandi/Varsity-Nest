@@ -1,7 +1,7 @@
 # Varsity Nest — Developer Onboarding
 
 ## Overview
-Varsity Nest is a Next.js 15 application for student accommodation discovery and provider management. It includes server-side routed pages, authenticated student, provider and admin dashboards, wishlist functionality, profile management, payments via PayFast, analytics, and strong security and performance defaults.
+Varsity Nest is a Next.js 15 application for student accommodation discovery and provider management. It includes server-side routed pages, authenticated student, provider and admin dashboards, wishlist functionality, profile management, payments via Paystack, analytics, and strong security and performance defaults.
 
 - Framework: Next.js 15 - App Router
 - Language: TypeScript
@@ -10,7 +10,7 @@ Varsity Nest is a Next.js 15 application for student accommodation discovery and
 - DB: Neon/Postgres via Drizzle (`neon-http`), plus a secure DB layer
 - Queue/Cache/OTP: Upstash Redis (REST)
 - Media: Cloudinary
-- Payments: PayFast (Instant Transaction Notification supported)
+- Payments: Paystack (Webhook events supported)
 - Observability: Sentry
 
 ## Monorepo / Tooling
@@ -55,9 +55,8 @@ Create `.env.local` (never commit). All variables are validated at startup in `l
 - `RESEND_API_KEY`
 - `NEXTAUTH_SECRET`
 - `STACK_SECRET_SERVER_KEY` (or `STACK_SECRET`)
-- `PAYFAST_MERCHANT_ID`
-- `PAYFAST_MERCHANT_KEY`
-- `PAYFAST_PASSPHRASE`
+- `PAYSTACK_SECRET_KEY`
+- `PAYSTACK_PUBLIC_KEY`
 - `RECAPTCHA_SECRET_KEY`
 - `SENTRY_DSN` (required in production)
 - `ALLOWED_ORIGINS` (comma-separated, required in production)
@@ -91,10 +90,10 @@ pnpm dev
 - Secure DB layer: `lib/database-secure.ts` exposes `secureDb` with parameterized helpers.
 - Migrations/seed: see `scripts/` and `database/schema.sql`.
 
-## Payments (PayFast)
-- Payment creation/signature: `lib/payfast.ts` (`createPayFastPayment`, `generatePayFastSignature`)
-- ITN verification (server-to-server): `verifyPayFastITNWithServer`
-- Notify route handler: `app/api/payfast/notify/route.ts`
+## Payments (Paystack)
+- Payment creation: `lib/paystack.ts` (`createPaystackPayment`, `createPaystackPlan`)
+- API client: `lib/paystack-api-client.ts` (`PaystackAPIClient`)
+- Webhook handler: `app/api/paystack/webhook/route.ts`
 - Ensure `NEXT_PUBLIC_APP_URL` is set correctly for return/cancel/notify URLs.
 
 ## Caching & OTP (Redis)
@@ -121,7 +120,7 @@ pnpm dev
 
 ## Observability
 - Sentry initialized in `lib/sentry.ts`
-- Errors captured in various services (Cloudinary upload/delete, DB, PayFast ITN)
+- Errors captured in various services (Cloudinary upload/delete, DB, Paystack webhooks)
 
 ## Code Style & Practices
 - Strict typing in exported APIs; avoid `any` for new code
@@ -152,7 +151,7 @@ pnpm dev
   - Admin sync endpoint for accommodation ratings at `/api/admin/sync-ratings`
 - **Provider**: `app/provider/*` (accommodations, billing, dashboard)
 - **Public**: `app/page.tsx`, `app/listing/[id]` (accommodation discovery with wishlist and reviews)
-- **API**: `app/api/*` (auth, admin, provider, student, payfast, docs, reviews)
+- **API**: `app/api/*` (auth, admin, provider, student, paystack, docs, reviews)
 
 ## Gotchas & Tips
 - Params in Next.js 15 can be Promises in route/page handlers; await them before destructuring.
