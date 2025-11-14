@@ -20,6 +20,7 @@ import {
   Info
 } from "lucide-react"
 import jsPDF from "jspdf"
+// Import jspdf-autotable to extend jsPDF prototype
 import "jspdf-autotable"
 
 // TypeScript interfaces for type safety
@@ -233,6 +234,17 @@ export default function ProviderBilling() {
   const exportInvoice = (invoice: Invoice) => {
     if (!provider) return
 
+    // Ensure jspdf-autotable is loaded (it extends jsPDF prototype)
+    try {
+      // Force import if not already loaded
+      if (typeof window !== 'undefined' && !(jsPDF.prototype as any).autoTable) {
+        // @ts-ignore
+        require("jspdf-autotable")
+      }
+    } catch (e) {
+      console.warn("jspdf-autotable not available, using fallback")
+    }
+
     const doc = new jsPDF()
     
     // Header
@@ -257,16 +269,31 @@ export default function ProviderBilling() {
     doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 196, 86, { align: "right" })
     doc.text(`Status: ${invoice.status.toUpperCase()}`, 196, 92, { align: "right" })
 
-    // Invoice Table
-    ;(doc as any).autoTable({
-      startY: 110,
-      head: [["Description", "Quantity", "Unit Price", "Total"]],
-      body: [[invoice.description, "1", `R ${invoice.amount.toFixed(2)}`, `R ${invoice.amount.toFixed(2)}`]],
-      theme: "striped",
-    })
-
-    // Total
-    const finalY = (doc as any).lastAutoTable.finalY
+    // Invoice Table - Check if autoTable is available
+    if (typeof (doc as any).autoTable === 'function') {
+      // @ts-ignore - autoTable is added to jsPDF by jspdf-autotable
+      doc.autoTable({
+        startY: 110,
+        head: [["Description", "Quantity", "Unit Price", "Total"]],
+        body: [[invoice.description, "1", `R ${invoice.amount.toFixed(2)}`, `R ${invoice.amount.toFixed(2)}`]],
+        theme: "striped",
+      })
+      // @ts-ignore - lastAutoTable is added by jspdf-autotable
+      var finalY = (doc as any).lastAutoTable?.finalY || 110
+    } else {
+      // Fallback: Draw table manually if autoTable is not available
+      doc.setFontSize(10)
+      doc.text("Description", 14, 110)
+      doc.text("Quantity", 100, 110)
+      doc.text("Unit Price", 140, 110)
+      doc.text("Total", 180, 110)
+      doc.line(14, 115, 196, 115)
+      doc.text(invoice.description, 14, 122)
+      doc.text("1", 100, 122)
+      doc.text(`R ${invoice.amount.toFixed(2)}`, 140, 122)
+      doc.text(`R ${invoice.amount.toFixed(2)}`, 180, 122)
+      var finalY = 130
+    }
     doc.setFontSize(14)
     doc.text(`Total: R ${invoice.amount.toFixed(2)}`, 196, finalY + 15, { align: "right" })
 
