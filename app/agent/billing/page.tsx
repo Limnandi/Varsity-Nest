@@ -544,7 +544,7 @@ export default function AgentBilling() {
                 <CreditCard className="w-8 h-8 text-purple-400" />
               </div>
               <div>
-                <p className="font-semibold text-lg">PayFast Secure Gateway</p>
+                <p className="font-semibold text-lg">Paystack Secure Gateway</p>
                 <p className="text-sm text-neutral-400">All major credit cards, debit cards, and EFT supported</p>
               </div>
             </div>
