@@ -5,11 +5,28 @@ import { ApiErrorResponseBuilder } from "@/lib/api-error-response"
 
 export const GET = ApiMiddleware.withMiddleware(
   async (request: NextRequest) => {
+    const requestId = Math.random().toString(36).substring(7)
+    console.log(`[SESSION API] [${requestId}] GET /api/auth/session - Headers:`, {
+      cookie: request.headers.get('cookie') ? 'present' : 'missing',
+      referer: request.headers.get('referer'),
+      userAgent: request.headers.get('user-agent')?.substring(0, 50)
+    })
+    
     try {
       // Always query fresh data from database via StackAuth to ensure profile updates are reflected
+      console.log(`[SESSION API] [${requestId}] Calling getCurrentUserFromStackAuth()...`)
       const user = await getCurrentUserFromStackAuth()
       
+      console.log(`[SESSION API] [${requestId}] getCurrentUserFromStackAuth result:`, user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified
+      } : 'null')
+      
       if (!user) {
+        console.warn(`[SESSION API] [${requestId}] No user found - returning 401`)
         return await ApiErrorResponseBuilder.createAuthErrorResponse(
           "Authentication required",
           request,
@@ -18,6 +35,7 @@ export const GET = ApiMiddleware.withMiddleware(
       }
 
       if (!user.isActive) {
+        console.warn(`[SESSION API] [${requestId}] User account is deactivated - returning 403`)
         return await ApiErrorResponseBuilder.createAuthorizationErrorResponse(
           "Account deactivated",
           request,
@@ -26,6 +44,7 @@ export const GET = ApiMiddleware.withMiddleware(
       }
 
       if (!user.emailVerified) {
+        console.warn(`[SESSION API] [${requestId}] User email not verified - returning 403`)
         return await ApiErrorResponseBuilder.createAuthorizationErrorResponse(
           "Email not verified. Please verify your email to continue.",
           request,
@@ -56,11 +75,13 @@ export const GET = ApiMiddleware.withMiddleware(
         profileImageCloudinaryId: user.profileImageCloudinaryId,
       }
 
+      console.log(`[SESSION API] [${requestId}] Returning successful session data for user: ${userData.email}, role: ${userData.role}`)
       return ApiMiddleware.createResponse(
         userData,
         "Session retrieved successfully"
       )
     } catch (error) {
+      console.error(`[SESSION API] [${requestId}] Error in session API:`, error)
       return await ApiErrorResponseBuilder.createErrorResponse(
         error instanceof Error ? error : new Error(String(error)),
         request,
