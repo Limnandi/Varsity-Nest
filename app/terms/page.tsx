@@ -87,7 +87,7 @@ export default function TermsPage() {
               <section className="mb-10">
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-5">8. Fees and Payment</h2>
                 <p className="text-neutral-300 leading-relaxed mb-5 text-base">
-                  Certain features or services on Varsity Nest may require payment. You agree to pay all applicable fees for these services and any other charges incurred through your account. All payments are processed securely through PayFast, and you agree to comply with the payment terms outlined.
+                  Certain features or services on Varsity Nest may require payment. You agree to pay all applicable fees for these services and any other charges incurred through your account. All payments are processed securely through Paystack, and you agree to comply with the payment terms outlined.
                 </p>
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-5">
                   <h3 className="text-lg font-semibold text-red-400 mb-3">No Refund Policy:</h3>
@@ -124,7 +124,7 @@ export default function TermsPage() {
               <section className="mb-10">
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-5">12. Third-Party Services</h2>
                 <p className="text-neutral-300 leading-relaxed text-base">
-                  Varsity Nest integrates with third-party services including StackAuth for authentication and PayFast for payments. Your use of these services is subject to their respective terms of service and privacy policies. Massive Operations is not responsible for the actions or policies of these third-party services.
+                  Varsity Nest integrates with third-party services including StackAuth for authentication and Paystack for payments. Your use of these services is subject to their respective terms of service and privacy policies. Massive Operations is not responsible for the actions or policies of these third-party services.
                 </p>
               </section>
 
