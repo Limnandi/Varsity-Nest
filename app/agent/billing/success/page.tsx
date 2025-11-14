@@ -16,50 +16,26 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
-      console.log(`[PAYMENT SUCCESS] Page loaded - URL: ${typeof window !== 'undefined' ? window.location.href : 'unknown'}`)
-      console.log(`[PAYMENT SUCCESS] Search params:`, searchParams ? Object.fromEntries(searchParams.entries()) : 'null')
-      
       // Extract payment reference from URL parameters
       // Paystack sends 'reference' and 'trxref' parameters
-      // Legacy Payfast parameters also supported for backward compatibility (if migrating)
       const paymentReference = searchParams?.get("reference") || 
                                searchParams?.get("trxref") ||
                                searchParams?.get("pf_payment_id") || 
                                searchParams?.get("payment_id") || 
                                searchParams?.get("token")
-      
-      console.log(`[PAYMENT SUCCESS] Extracted payment reference: ${paymentReference}`)
 
       // Always fetch transaction from database to get accurate amount
       // Build API URL with reference if available
       const apiUrl = paymentReference 
-        ? `/api/provider/billing/latest-transaction?reference=${encodeURIComponent(paymentReference)}`
-        : "/api/provider/billing/latest-transaction"
+        ? `/api/agent/billing/latest-transaction?reference=${encodeURIComponent(paymentReference)}`
+        : "/api/agent/billing/latest-transaction"
       
-      console.log(`[PAYMENT SUCCESS] Fetching transaction from API: ${apiUrl}`)
       try {
         const response = await fetch(apiUrl, {
           credentials: 'include'
         })
-        console.log(`[PAYMENT SUCCESS] Latest transaction API response status: ${response.status}`)
-        
         if (response.ok) {
           const data = await response.json()
-          console.log(`[PAYMENT SUCCESS] Latest transaction data:`, { paymentId: data.paymentId, status: data.status, amount: data.amount })
-          
-          // Always try to activate subscription (even if status is pending, user was redirected from Paystack success)
-          // This handles the case where webhook hasn't been called yet
-          try {
-            console.log(`[PAYMENT SUCCESS] Attempting to activate subscription...`)
-            const activateResponse = await fetch("/api/provider/billing/activate-subscription", {
-              method: "POST",
-              credentials: "include"
-            })
-            console.log(`[PAYMENT SUCCESS] Activate subscription response status: ${activateResponse.status}`)
-          } catch (activateError) {
-            console.warn(`[PAYMENT SUCCESS] Subscription activation error (non-critical):`, activateError)
-            // Silently handle activation errors - payment was successful, webhook will eventually process it
-          }
           
           setPaymentDetails({
             paymentId: data.paymentId || paymentReference || "pending-verification",
@@ -68,10 +44,7 @@ export default function PaymentSuccessPage() {
             itemName: data.itemName || "Subscription Payment"
           })
         } else {
-          const errorText = await response.text().catch(() => '')
-          console.warn(`[PAYMENT SUCCESS] Latest transaction API failed: ${response.status} - ${errorText}`)
           // If fetch fails but we have a reference, show success with reference (amount will be 0)
-          // This is better than showing nothing
           setPaymentDetails({
             paymentId: paymentReference || "pending-verification",
             status: "COMPLETE",
@@ -80,7 +53,6 @@ export default function PaymentSuccessPage() {
           })
         }
       } catch (error) {
-        console.error(`[PAYMENT SUCCESS] Error fetching latest transaction:`, error)
         // Show success anyway (user was redirected from Paystack)
         setPaymentDetails({
           paymentId: "pending-verification",
@@ -90,7 +62,6 @@ export default function PaymentSuccessPage() {
         })
       }
       
-      console.log(`[PAYMENT SUCCESS] Setting isLoading to false`)
       setIsLoading(false)
     }
 
@@ -185,13 +156,11 @@ export default function PaymentSuccessPage() {
 
   // If we have payment reference in URL, show success even while loading auth
   const hasPaymentReference = searchParams?.get("reference") || searchParams?.get("trxref")
-  console.log(`[PAYMENT SUCCESS] Render check - isLoading: ${isLoading}, hasPaymentReference: ${hasPaymentReference}, paymentDetails: ${paymentDetails ? 'exists' : 'null'}`)
   
   if (isLoading && !hasPaymentReference) {
-    console.log(`[PAYMENT SUCCESS] Showing loading state (no payment reference)`)
     return (
-      <AuthGuard requiredRole="provider">
-        <DashboardLayout userRole="provider">
+      <AuthGuard requiredRole="agent">
+        <DashboardLayout userRole="agent">
           <div className="min-h-[60vh] flex items-center justify-center p-6">
             <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-green-500/20">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-400 mx-auto mb-4"></div>
@@ -206,7 +175,6 @@ export default function PaymentSuccessPage() {
 
   // If we have payment reference but no details yet, show loading
   if (!paymentDetails && hasPaymentReference) {
-    console.log(`[PAYMENT SUCCESS] Showing loading state (has payment reference but no details yet)`)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#02042b] to-[#040945] p-6">
         <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-green-500/20 max-w-md text-center">
@@ -219,10 +187,9 @@ export default function PaymentSuccessPage() {
   }
 
   if (!paymentDetails && !hasPaymentReference) {
-    console.log(`[PAYMENT SUCCESS] No payment details and no reference - showing error state`)
     return (
-      <AuthGuard requiredRole="provider">
-        <DashboardLayout userRole="provider">
+      <AuthGuard requiredRole="agent">
+        <DashboardLayout userRole="agent">
           <div className="min-h-[60vh] flex items-center justify-center p-6">
             <div className="relative border border-red-500/30 bg-red-500/10 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-red-500/20 max-w-md text-center">
               <div className="mx-auto mb-6 w-16 h-16 border border-red-500/50 bg-red-500/10 rounded-full flex items-center justify-center">
@@ -233,7 +200,7 @@ export default function PaymentSuccessPage() {
                 Unable to verify payment details. Please contact support if you believe this is an error.
               </p>
               <button
-                onClick={() => router.push("/provider/billing")}
+                onClick={() => router.push("/agent/billing")}
                 className="px-6 py-3 bg-red-600/20 border border-red-500/50 text-red-300 rounded-xl hover:bg-red-600/30 transition-all duration-300 font-medium"
               >
                 Return to Billing
@@ -245,10 +212,9 @@ export default function PaymentSuccessPage() {
     )
   }
 
-  console.log(`[PAYMENT SUCCESS] Rendering success page with payment details`)
   return (
-    <AuthGuard requiredRole="provider">
-      <DashboardLayout userRole="provider">
+    <AuthGuard requiredRole="agent">
+      <DashboardLayout userRole="agent">
         <div className="space-y-8 p-6 text-white">
           {/* Header */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-green-500/20">
@@ -333,7 +299,7 @@ export default function PaymentSuccessPage() {
                 Download Receipt
               </button>
               <Link
-                href="/provider/accommodations"
+                href="/agent/accommodations"
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl hover:from-green-700 hover:to-blue-700 transition-all duration-300 font-medium shadow-lg shadow-green-500/20 hover:shadow-green-500/40"
               >
                 <Building className="w-5 h-5" />
@@ -341,7 +307,7 @@ export default function PaymentSuccessPage() {
                 <ArrowRight className="w-5 h-5" />
               </Link>
               <Link
-                href="/provider/dashboard"
+                href="/agent/dashboard"
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
               >
                 <Home className="w-5 h-5" />
@@ -359,3 +325,4 @@ export default function PaymentSuccessPage() {
     </AuthGuard>
   )
 }
+
