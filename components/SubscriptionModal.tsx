@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { X, CreditCard, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import PayFastPaymentForm from "./PayFastPaymentForm"
+import PaystackPaymentForm from "./PaystackPaymentForm"
 
 interface SubscriptionModalProps {
   isOpen: boolean
@@ -322,7 +322,7 @@ export default function SubscriptionModal({
               </div>
             </div>
 
-            <PayFastPaymentForm
+            <PaystackPaymentForm
               amount={amount}
               userEmail={userEmail}
               userName={userName}
