@@ -12,19 +12,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    if (session.user.role !== 'agent') {
+      return NextResponse.json({ error: "Agent role required" }, { status: 403 })
+    }
+
     // Get payment reference from query params if provided
     const searchParams = request.nextUrl.searchParams
     const reference = searchParams.get("reference") || searchParams.get("trxref")
 
-    // Get provider or agent ID from database based on user ID
+    // Get agent ID from database based on user ID
     const userId = session.user.id
-    
-    // Find provider or agent record for this user
-    const [provider] = await secureDb.db
-      .select({ id: schema.providers.id })
-      .from(schema.providers)
-      .where(eq(schema.providers.userId, userId))
-      .limit(1)
     
     const [agent] = await secureDb.db
       .select({ id: schema.agents.id })
@@ -32,21 +29,14 @@ export async function GET(request: NextRequest) {
       .where(eq(schema.agents.userId, userId))
       .limit(1)
 
-    const providerId = provider?.id
-    const agentId = agent?.id
-
-    if (!providerId && !agentId) {
-      return NextResponse.json({ error: "No provider or agent ID found" }, { status: 400 })
+    if (!agent) {
+      return NextResponse.json({ error: "No agent ID found" }, { status: 400 })
     }
 
     let transaction
 
     // If reference is provided, look up by reference (Paystack uses mPaymentId for reference)
     if (reference) {
-      const conditions = providerId 
-        ? eq(schema.paymentTransactions.providerId, providerId)
-        : eq(schema.paymentTransactions.agentId, agentId)
-
       const [found] = await secureDb.db
         .select({
           id: schema.paymentTransactions.id,
@@ -58,7 +48,6 @@ export async function GET(request: NextRequest) {
           paymentDate: schema.paymentTransactions.paymentDate,
           gatewayResponse: schema.paymentTransactions.gatewayResponse,
           createdAt: schema.paymentTransactions.createdAt,
-          providerId: schema.paymentTransactions.providerId,
           agentId: schema.paymentTransactions.agentId,
         })
         .from(schema.paymentTransactions)
@@ -70,21 +59,14 @@ export async function GET(request: NextRequest) {
         )
         .limit(1)
 
-      // Verify the transaction belongs to this user
-      if (found && (
-        (providerId && found.providerId === providerId) || 
-        (agentId && found.agentId === agentId)
-      )) {
+      // Verify the transaction belongs to this agent
+      if (found && found.agentId === agent.id) {
         transaction = found
       }
     }
 
     // If no transaction found by reference, get the most recent transaction
     if (!transaction) {
-      const conditions = providerId 
-        ? eq(schema.paymentTransactions.providerId, providerId)
-        : eq(schema.paymentTransactions.agentId, agentId)
-
       const [latest] = await secureDb.db
         .select({
           id: schema.paymentTransactions.id,
@@ -98,7 +80,7 @@ export async function GET(request: NextRequest) {
           createdAt: schema.paymentTransactions.createdAt,
         })
         .from(schema.paymentTransactions)
-        .where(conditions)
+        .where(eq(schema.paymentTransactions.agentId, agent.id))
         .orderBy(desc(schema.paymentTransactions.createdAt))
         .limit(1)
 
@@ -125,7 +107,7 @@ export async function GET(request: NextRequest) {
       createdAt: transaction.createdAt,
     })
   } catch (error) {
-    console.error("[LATEST TRANSACTION] Error:", error)
+    console.error("[AGENT LATEST TRANSACTION] Error:", error)
     return NextResponse.json(
       { error: "Failed to fetch transaction", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
