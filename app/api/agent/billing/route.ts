@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
               payment.status === 'failed' ? 'failed' :
               payment.status === 'cancelled' ? 'refunded' : 'pending',
       description: `Varsity Nest Monthly Subscription - ${new Date(payment.created_at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })}`,
-      paymentMethod: 'PayFast'
+      paymentMethod: 'paystack'
     }))
 
     const hasRecentPayment = invoices.some((inv: any) => {
