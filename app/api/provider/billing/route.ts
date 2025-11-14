@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       amount: Number(payment.amount),
       status: payment.status === 'completed' ? 'paid' : 'pending',
       description: `Varsity Nest Monthly Subscription - ${new Date(payment.created_at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })}`,
-      paymentMethod: 'PayFast' // Default to PayFast since that's the payment gateway
+      paymentMethod: 'paystack' // Paystack payment gateway
     }))
 
     // Determine subscription status (use database status if available, otherwise calculate)
