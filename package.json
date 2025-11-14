@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
+    "@paystack/paystack-sdk": "^1.0.1",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -39,9 +40,8 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@sentry/nextjs": "^10.8.0",
-    "@stackframe/stack": "^2.8.36",
+    "@stackframe/stack": "^2.8.51",
     "@tanstack/react-query": "^5.89.0",
-    "@types/winston": "^2.4.4",
     "@upstash/redis": "^1.35.3",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
@@ -122,5 +122,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@10.21.0+sha512.da3337267e400fdd3d479a6c68079ac6db01d8ca4f67572083e722775a796788a7a9956613749e000fac20d424b594f7a791a5f4e2e13581c5ef947f26968a40"
+  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c",
+  "pnpm": {
+    "overrides": {
+      "lucide-react": "^0.542.0"
+    }
+  }
 }
