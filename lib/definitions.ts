@@ -153,7 +153,7 @@ export interface Payment {
   booking_id: string
   amount: number
   currency: string
-  payment_method: "payfast" | "card" | "eft"
+  payment_method: "paystack" | "card" | "eft"
   payment_reference: string
   status: "pending" | "completed" | "failed" | "refunded"
   gateway_response?: any
