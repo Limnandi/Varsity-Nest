@@ -158,7 +158,7 @@ CHECK (currency IN ('ZAR', 'USD', 'EUR'));
 
 ALTER TABLE payments 
 ADD CONSTRAINT chk_payments_payment_method_valid 
-CHECK (payment_method IN ('payfast', 'card', 'eft'));
+CHECK (payment_method IN ('paystack', 'card', 'eft'));
 
 ALTER TABLE payments 
 ADD CONSTRAINT chk_payments_status_valid 
