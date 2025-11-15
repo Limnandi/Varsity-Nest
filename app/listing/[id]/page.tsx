@@ -6,6 +6,8 @@ import ShareSection from "@/components/ShareSection"
 import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { notFound } from "next/navigation"
+import { Metadata } from "next"
+import { env } from "@/lib/env"
 import { 
   MapPin, 
   Bath, 
@@ -34,6 +36,67 @@ async function getListing(id: string) {
   } catch (error) {
     console.error("Failed to fetch listing:", error)
     return null
+  }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const listing = await getListing(id)
+
+  if (!listing) {
+    return {
+      title: "Property Not Found | Varsity Nest",
+      description: "The property you are looking for could not be found.",
+    }
+  }
+
+  const baseUrl = env.APP_URL
+  const listingUrl = `${baseUrl}/listing/${id}`
+  
+  // Get the first image or use a default placeholder
+  const images = Array.isArray(listing.images) ? listing.images : []
+  let imageUrl = images.length > 0 && images[0] ? String(images[0]) : `${baseUrl}/placeholder.jpg`
+  
+  // Ensure image URL is absolute (Cloudinary URLs are already absolute, but handle relative URLs too)
+  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`
+  }
+
+  // Create a clean description (truncate if too long)
+  const description = listing.description 
+    ? listing.description.substring(0, 200).replace(/\n/g, ' ').trim() + (listing.description.length > 200 ? '...' : '')
+    : `Check out ${listing.name} - ${listing.address}. R${listing.price} per month.`
+
+  const title = `${listing.name} | Varsity Nest`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: listingUrl,
+      siteName: "Varsity Nest",
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: listing.name,
+        },
+      ],
+      locale: "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+    alternates: {
+      canonical: listingUrl,
+    },
   }
 }
 

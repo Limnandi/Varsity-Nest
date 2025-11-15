@@ -22,15 +22,18 @@ export default function ShareSection({ accommodationId, accommodationName }: Sha
     const url = getListingUrl()
     const urlWithParams = `${url}?utm_source=whatsapp&utm_medium=referral&utm_campaign=socialmedia`
     const message = `Check out this property I found on VarsityNest! ${accommodationName} - ${urlWithParams}`
-    const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`
+    
+    // Use wa.me which automatically detects device and opens appropriate WhatsApp (Web or App)
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
   }
 
   const handleFacebookShare = () => {
     const url = getListingUrl()
     const urlWithParams = `${url}?utm_source=facebook&utm_medium=referral&utm_campaign=socialmedia`
+    // Facebook sharer URL - opens Facebook share dialog with the listing URL
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlWithParams)}`
-    window.open(facebookUrl, '_blank')
+    window.open(facebookUrl, '_blank', 'width=600,height=400')
   }
 
   const handleCopyLink = async () => {
