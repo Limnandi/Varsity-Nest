@@ -7,18 +7,29 @@ export class PaymentSecurityService {
   /**
    * Validate Paystack webhook signature using HMAC SHA512
    * Paystack signs webhooks with HMAC SHA512 using the secret key
+   * The signature is in the x-paystack-signature header
    */
   static verifyPaystackSignature(payload: string, signature: string): boolean {
     try {
+      if (!signature || !payload) {
+        return false
+      }
+      
       const hash = crypto
         .createHmac('sha512', env.PAYSTACK_SECRET_KEY)
         .update(payload)
         .digest('hex')
       
-      return crypto.timingSafeEqual(
-        Buffer.from(hash, 'hex'),
-        Buffer.from(signature, 'hex')
-      )
+      // Use timing-safe comparison to prevent timing attacks
+      // Both must be same length for timingSafeEqual to work
+      const hashBuffer = Buffer.from(hash, 'hex')
+      const signatureBuffer = Buffer.from(signature, 'hex')
+      
+      if (hashBuffer.length !== signatureBuffer.length) {
+        return false
+      }
+      
+      return crypto.timingSafeEqual(hashBuffer, signatureBuffer)
     } catch (error) {
       captureException(error instanceof Error ? error : new Error(String(error)), { 
         action: 'paystack-signature-verification', 
@@ -29,126 +40,25 @@ export class PaymentSecurityService {
   }
 
   /**
-   * Legacy PayFast IP ranges (kept for reference, not used for Paystack)
-   * Paystack uses HMAC signatures instead of IP validation
+   * Validate Paystack webhook IP address
+   * Paystack sends webhooks from these IP addresses:
+   * - 52.31.139.75
+   * - 52.49.173.169
+   * - 52.214.14.220
    */
-  private static readonly LEGACY_IP_RANGES = [
-    '197.97.102.0/24', // Primary PayFast IP range
-    '41.74.179.0/24',
-    '41.74.180.0/24', 
-    '41.74.181.0/24',
-    '41.74.182.0/24',
-    '41.74.183.0/24',
-    '41.74.184.0/24',
-    '41.74.185.0/24',
-    '41.74.186.0/24',
-    '41.74.187.0/24',
-    '41.74.188.0/24',
-    '41.74.189.0/24',
-    '41.74.190.0/24',
-    '41.74.191.0/24',
-    '41.74.192.0/24',
-    '41.74.193.0/24',
-    '41.74.194.0/24',
-    '41.74.195.0/24',
-    '41.74.196.0/24',
-    '41.74.197.0/24',
-    '41.74.198.0/24',
-    '41.74.199.0/24',
-    '41.74.200.0/24',
-    '41.74.201.0/24',
-    '41.74.202.0/24',
-    '41.74.203.0/24',
-    '41.74.204.0/24',
-    '41.74.205.0/24',
-    '41.74.206.0/24',
-    '41.74.207.0/24',
-    '41.74.208.0/24',
-    '41.74.209.0/24',
-    '41.74.210.0/24',
-    '41.74.211.0/24',
-    '41.74.212.0/24',
-    '41.74.213.0/24',
-    '41.74.214.0/24',
-    '41.74.215.0/24',
-    '41.74.216.0/24',
-    '41.74.217.0/24',
-    '41.74.218.0/24',
-    '41.74.219.0/24',
-    '41.74.220.0/24',
-    '41.74.221.0/24',
-    '41.74.222.0/24',
-    '41.74.223.0/24',
-    '41.74.224.0/24',
-    '41.74.225.0/24',
-    '41.74.226.0/24',
-    '41.74.227.0/24',
-    '41.74.228.0/24',
-    '41.74.229.0/24',
-    '41.74.230.0/24',
-    '41.74.231.0/24',
-    '41.74.232.0/24',
-    '41.74.233.0/24',
-    '41.74.234.0/24',
-    '41.74.235.0/24',
-    '41.74.236.0/24',
-    '41.74.237.0/24',
-    '41.74.238.0/24',
-    '41.74.239.0/24',
-    '41.74.240.0/24',
-    '41.74.241.0/24',
-    '41.74.242.0/24',
-    '41.74.243.0/24',
-    '41.74.244.0/24',
-    '41.74.245.0/24',
-    '41.74.246.0/24',
-    '41.74.247.0/24',
-    '41.74.248.0/24',
-    '41.74.249.0/24',
-    '41.74.250.0/24',
-    '41.74.251.0/24',
-    '41.74.252.0/24',
-    '41.74.253.0/24',
-    '41.74.254.0/24',
-    '41.74.255.0/24'
-  ]
-
-  /**
-   * Legacy PayFast signature verification (kept for backward compatibility if needed)
-   * @deprecated Use verifyPaystackSignature for new implementations
-   */
-  static verifyPayFastSignature(_data: Record<string, any>, _signature: string): boolean {
-    // Legacy method - no longer used with Paystack
-    return false
+  static validatePaystackIP(clientIP: string): boolean {
+    const allowedIPs = [
+      '52.31.139.75',
+      '52.49.173.169',
+      '52.214.14.220'
+    ]
+    
+    // Extract IP from x-forwarded-for (first IP in chain)
+    const ip = clientIP.split(',')[0]?.trim() || clientIP
+    
+    return allowedIPs.includes(ip)
   }
 
-  /**
-   * Legacy PayFast IP validation (kept for reference)
-   * Paystack uses HMAC signatures instead of IP validation
-   * @deprecated Not used for Paystack
-   */
-  static validatePayFastIP(_ipAddress: string): boolean {
-    // Legacy method - Paystack doesn't require IP validation
-    return true
-  }
-
-  /**
-   * Check if IP is in CIDR range
-   */
-  private static isIPInRange(ip: string, cidr: string): boolean {
-    const [range, bits] = cidr.split('/')
-    const mask = -1 << (32 - parseInt(bits))
-    const ipNum = this.ipToNumber(ip)
-    const rangeNum = this.ipToNumber(range)
-    return (ipNum & mask) === (rangeNum & mask)
-  }
-
-  /**
-   * Convert IP address to number
-   */
-  private static ipToNumber(ip: string): number {
-    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet), 0) >>> 0
-  }
 
   /**
    * Validate payment security context
