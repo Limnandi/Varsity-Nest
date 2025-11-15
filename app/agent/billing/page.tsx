@@ -16,7 +16,8 @@ import {
   Pause,
   Play,
   X,
-  Info
+  Info,
+  Settings
 } from "lucide-react"
 import Link from "next/link"
 import jsPDF from "jspdf"
@@ -72,6 +73,7 @@ export default function AgentBilling() {
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false)
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
+  const [isGeneratingManagementLink, setIsGeneratingManagementLink] = useState(false)
 
   const fetchSubscriptionDetails = useCallback(async (token: string) => {
     try {
@@ -223,6 +225,38 @@ export default function AgentBilling() {
     }
   }
 
+  const handleOpenManagementLink = async () => {
+    if (!agent?.subscriptionToken) return
+
+    try {
+      setIsGeneratingManagementLink(true)
+      setSubscriptionError(null)
+      
+      const response = await fetch(`/api/subscriptions/${agent.subscriptionToken}/manage-link`, {
+        method: 'GET',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to generate management link')
+      }
+
+      const data = await response.json()
+      if (data.success && data.link) {
+        // Open the management link in a new tab
+        window.open(data.link, '_blank', 'noopener,noreferrer')
+      } else {
+        throw new Error('No management link received')
+      }
+    } catch (err) {
+      console.error('Generate management link error:', err)
+      setSubscriptionError(err instanceof Error ? err.message : 'Failed to open management link')
+    } finally {
+      setIsGeneratingManagementLink(false)
+    }
+  }
+
   const exportInvoice = (invoice: Invoice) => {
     if (!agent) return
 
@@ -360,27 +394,27 @@ export default function AgentBilling() {
   return (
     <AuthGuard requiredRole="agent">
       <DashboardLayout userRole="agent">
-        <div className="space-y-8 p-6">
-          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/20">
+        <div className="space-y-4 sm:space-y-8 p-4 sm:p-6 overflow-x-hidden">
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-blue-500/20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
                   Billing & Subscriptions
                 </h1>
-                <p className="text-neutral-300 text-lg">{agent.businessName}</p>
+                <p className="text-neutral-300 text-sm sm:text-lg break-words">{agent.businessName}</p>
               </div>
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 px-6 py-3 border border-blue-500/50 bg-blue-500/10 backdrop-blur-xl rounded-xl text-blue-300 hover:bg-blue-500/20 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 border border-blue-500/50 bg-blue-500/10 backdrop-blur-xl rounded-xl text-blue-300 hover:bg-blue-500/20 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/20 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto justify-center break-words"
               >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
+                <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="break-words">Refresh</span>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="group relative border border-white/10 bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-300 hover:scale-[1.02]">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 border border-blue-500/50 bg-blue-500/10 rounded-xl shadow-lg">
@@ -429,8 +463,8 @@ export default function AgentBilling() {
 
           {/* Subscription Management */}
           {agent.subscriptionToken && (
-            <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-blue-500/10">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
                 Subscription Management
               </h2>
               
@@ -494,6 +528,15 @@ export default function AgentBilling() {
 
                   {/* Subscription Actions */}
                   <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={handleOpenManagementLink}
+                      disabled={isGeneratingManagementLink || isManagingSubscription}
+                      className="flex items-center gap-2 px-6 py-3 border border-blue-500/50 bg-blue-500/10 backdrop-blur-xl rounded-xl text-blue-300 hover:bg-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Open Paystack management page to change card or cancel subscription"
+                    >
+                      <Settings className="w-4 h-4" />
+                      {isGeneratingManagementLink ? 'Opening...' : 'Manage Subscription'}
+                    </button>
                     {subscriptionDetails.status === 'active' && (
                       <button
                         onClick={handlePauseSubscription}
@@ -535,8 +578,8 @@ export default function AgentBilling() {
             </div>
           )}
 
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
-            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-blue-500/10">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
               Payment Method
             </h2>
             <div className="flex items-center space-x-4">
@@ -553,30 +596,30 @@ export default function AgentBilling() {
             </button>
           </div>
 
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10">
-            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-blue-500/10">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
               Billing History
             </h2>
             
             {invoices.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="mx-auto mb-4 w-16 h-16 border border-blue-500/30 bg-blue-500/10 rounded-full flex items-center justify-center">
-                  <CreditCard className="w-8 h-8 text-blue-400 opacity-40" />
+              <div className="text-center py-8 sm:py-12">
+                <div className="mx-auto mb-4 w-12 h-12 sm:w-16 sm:h-16 border border-blue-500/30 bg-blue-500/10 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 opacity-40" />
                 </div>
-                <p className="text-lg font-medium text-neutral-300">No billing history yet</p>
-                <p className="text-sm text-neutral-400 mt-2">Your payment history will appear here</p>
+                <p className="text-base sm:text-lg font-medium text-neutral-300 break-words">No billing history yet</p>
+                <p className="text-xs sm:text-sm text-neutral-400 mt-2 break-words">Your payment history will appear here</p>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center gap-4 mb-6">
-                  <label className="text-sm font-medium text-neutral-300">Select invoice to download:</label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                  <label className="text-xs sm:text-sm font-medium text-neutral-300 break-words whitespace-nowrap">Select invoice to download:</label>
                   <select
                     value={selectedInvoice?.id || ''}
                     onChange={(e) => {
                       const invoice = invoices.find(inv => inv.id === e.target.value)
                       setSelectedInvoice(invoice || null)
                     }}
-                    className="px-4 py-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 sm:px-4 py-2 bg-black/20 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm w-full sm:w-auto min-w-0 flex-1 sm:flex-initial"
                   >
                     <option value="">Choose an invoice...</option>
                     {invoices.map((invoice) => (
@@ -588,24 +631,24 @@ export default function AgentBilling() {
                   {selectedInvoice && (
                     <button
                       onClick={() => exportInvoice(selectedInvoice)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20"
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 text-xs sm:text-sm w-full sm:w-auto justify-center break-words"
                     >
-                      <Download className="w-4 h-4" />
-                      Download PDF
+                      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="break-words">Download PDF</span>
                     </button>
                   )}
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="border-b border-white/10">
-                        <th className="p-4 text-left text-sm font-medium text-neutral-300">Invoice ID</th>
-                        <th className="p-4 text-left text-sm font-medium text-neutral-300">Date</th>
-                        <th className="p-4 text-left text-sm font-medium text-neutral-300">Description</th>
-                        <th className="p-4 text-left text-sm font-medium text-neutral-300">Amount</th>
-                        <th className="p-4 text-left text-sm font-medium text-neutral-300">Status</th>
-                        <th className="p-4 text-center text-sm font-medium text-neutral-300">Select</th>
+                        <th className="p-2 sm:p-4 text-left text-xs sm:text-sm font-medium text-neutral-300 break-words">Invoice ID</th>
+                        <th className="p-2 sm:p-4 text-left text-xs sm:text-sm font-medium text-neutral-300 break-words">Date</th>
+                        <th className="p-2 sm:p-4 text-left text-xs sm:text-sm font-medium text-neutral-300 break-words">Description</th>
+                        <th className="p-2 sm:p-4 text-left text-xs sm:text-sm font-medium text-neutral-300 break-words">Amount</th>
+                        <th className="p-2 sm:p-4 text-left text-xs sm:text-sm font-medium text-neutral-300 break-words">Status</th>
+                        <th className="p-2 sm:p-4 text-center text-xs sm:text-sm font-medium text-neutral-300 break-words">Select</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -614,20 +657,20 @@ export default function AgentBilling() {
                           key={invoice.id} 
                           className={`border-b border-white/5 hover:bg-white/5 transition-colors ${selectedInvoice?.id === invoice.id ? 'bg-blue-500/10' : ''}`}
                         >
-                          <td className="p-4 font-mono text-sm">{invoice.id}</td>
-                          <td className="p-4 text-sm">{new Date(invoice.date).toLocaleDateString()}</td>
-                          <td className="p-4 text-sm text-neutral-300">{invoice.description}</td>
-                          <td className="p-4 text-sm font-semibold">R{invoice.amount.toFixed(2)}</td>
-                          <td className="p-4">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(invoice.status)}`}>
+                          <td className="p-2 sm:p-4 font-mono text-xs sm:text-sm break-words">{invoice.id}</td>
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm break-words">{new Date(invoice.date).toLocaleDateString()}</td>
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-neutral-300 break-words">{invoice.description}</td>
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm font-semibold break-words">R{invoice.amount.toFixed(2)}</td>
+                          <td className="p-2 sm:p-4">
+                            <span className={`inline-flex items-center gap-1 px-2 sm:px-3 py-1 text-xs font-medium rounded-full border break-words ${getStatusColor(invoice.status)}`}>
                               {getStatusIcon(invoice.status)}
-                              {invoice.status.toUpperCase()}
+                              <span className="hidden sm:inline break-words">{invoice.status.toUpperCase()}</span>
                             </span>
                           </td>
-                          <td className="p-4 text-center">
+                          <td className="p-2 sm:p-4 text-center">
                             <button
                               onClick={() => setSelectedInvoice(invoice)}
-                              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 ${
+                              className={`px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 break-words ${
                                 selectedInvoice?.id === invoice.id
                                   ? 'bg-blue-600 text-white'
                                   : 'bg-white/10 text-neutral-300 hover:bg-white/20'

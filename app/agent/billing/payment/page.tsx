@@ -56,8 +56,7 @@ export default function AgentPaymentPage() {
   }, [])
 
   const handlePaymentSuccess = () => {
-    // Payment form will handle the redirect to PayFast
-    console.log("Payment initiated successfully")
+    // Payment form will handle the redirect to PayStack
   }
 
   const handlePaymentError = (error: string) => {
@@ -233,7 +232,7 @@ export default function AgentPaymentPage() {
                   <p>• Debit Cards</p>
                   <p>• EFT (Electronic Funds Transfer)</p>
                   <p>• Instant EFT</p>
-                  <p>• PayFast Wallet</p>
+                  <p>• Bank Transfer</p>
                 </div>
               </div>
 
