@@ -9,8 +9,8 @@
 
 import Paystack from "@paystack/paystack-sdk"
 import { env } from "@/lib/env"
-import { captureException, captureMessage } from "@/lib/logging/config"
-import { convertToKobo, convertFromKobo } from "@/lib/paystack"
+import { captureException } from "@/lib/logging/config"
+import { convertToKobo } from "@/lib/paystack"
 
 /**
  * Initialize Paystack client
@@ -437,6 +437,117 @@ export class PaystackAPIClient {
         component: "paystack-api-client",
         action: "sendSubscriptionManagementEmail",
         subscriptionCode
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Create a refund for a transaction
+   * 
+   * @param transaction - Transaction reference or ID
+   * @param amount - Optional amount to refund in ZAR (will be converted to kobo). If not provided, full amount is refunded
+   * @param currency - Optional currency (defaults to ZAR)
+   * @param customerNote - Optional note for customer
+   * @param merchantNote - Optional note for merchant
+   * @returns Refund creation response
+   */
+  static async createRefund(
+    transaction: string,
+    amount?: number,
+    currency: string = "ZAR",
+    customerNote?: string,
+    merchantNote?: string
+  ) {
+    try {
+      const refundData: any = {
+        transaction
+      }
+
+      if (amount !== undefined) {
+        refundData.amount = convertToKobo(amount)
+      }
+
+      if (currency) {
+        refundData.currency = currency
+      }
+
+      if (customerNote) {
+        refundData.customer_note = customerNote
+      }
+
+      if (merchantNote) {
+        refundData.merchant_note = merchantNote
+      }
+
+      // Paystack SDK might not have refund method, using direct API call
+      const response = await fetch("https://api.paystack.co/refund", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(refundData)
+      })
+
+      const data = await response.json()
+
+      if (!data.status) {
+        throw new Error(data.message || "Failed to create refund")
+      }
+
+      return data.data
+    } catch (error) {
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        component: "paystack-api-client",
+        action: "createRefund",
+        transaction,
+        amount
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Retry a refund with customer account details
+   * Used when refund status is "needs-attention"
+   * 
+   * @param refundId - The ID of the previously initiated refund
+   * @param refundAccountDetails - Customer's account details for refund
+   * @returns Retry refund response
+   */
+  static async retryRefundWithCustomerDetails(
+    refundId: number,
+    refundAccountDetails: {
+      currency: string
+      account_number: string
+      bank_id: string
+    }
+  ) {
+    try {
+      const response = await fetch(`https://api.paystack.co/refund/retry_with_customer_details/${refundId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          refund_account_details: refundAccountDetails
+        })
+      })
+
+      const data = await response.json()
+
+      if (!data.status) {
+        throw new Error(data.message || "Failed to retry refund")
+      }
+
+      return data.data
+    } catch (error) {
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        component: "paystack-api-client",
+        action: "retryRefundWithCustomerDetails",
+        refundId
       })
       throw error
     }

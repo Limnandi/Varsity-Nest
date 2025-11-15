@@ -4,7 +4,7 @@ import { PaymentSecurityService } from "@/lib/services/payment-security"
 import { PaymentAuditService } from "@/lib/services/payment-audit"
 import { PaymentReconciliationService } from "@/lib/services/payment-reconciliation"
 import { PaystackAPIClient } from "@/lib/paystack-api-client"
-import { createPaystackPayment, convertFromKobo } from "@/lib/paystack"
+import { createPaystackPayment } from "@/lib/paystack"
 import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 import { secureDb } from "@/lib/database-secure"
 import { eq, count } from "drizzle-orm"
@@ -89,7 +89,6 @@ export async function POST(request: Request) {
     let providerId: string | null = null
     let agentId: string | null = null
     let effectiveEmail: string = session.user.email
-    let effectiveName: string = session.user.name || 'User'
 
     if (session.user.role === 'provider') {
       const [providerRow] = await secureDb.db
@@ -113,7 +112,6 @@ export async function POST(request: Request) {
 
       providerId = providerRow.id
       effectiveEmail = providerRow.contactEmail || session.user.email
-      effectiveName = providerRow.contactPerson || session.user.name || 'Provider'
 
       // Check if provider is eligible for trial subscription
       const isEligibleForTrial = !providerRow.trialStartDate && 
@@ -188,12 +186,26 @@ export async function POST(request: Request) {
 
         // Create server-side custom data (prevent client tampering)
         // Exclude entityType from customData to prevent client tampering - always use session.user.role
-        const { entityType: _, ...customDataWithoutEntityType } = customData || {}
+        const customDataWithoutEntityType = customData ? (() => {
+          const { entityType: _, ...rest } = customData as any
+          return rest
+        })() : {}
         // Always set entityType from session.user.role - never trust client data
         const entityTypeFromSession = session.user.role as 'provider' | 'agent'
-        const serverCustomDataForTrial = {
+        const serverCustomDataForTrial: {
+          providerId?: string
+          agentId?: string
+          paymentId: string
+          idempotencyKey: string
+          timestamp: number
+          userId: string
+          planCode: string
+          subscriptionType: string
+          entityType: 'provider' | 'agent'
+        } = {
           ...customDataWithoutEntityType,
           providerId: providerId || undefined,
+          agentId: undefined, // Providers don't have agentId
           paymentId,
           idempotencyKey,
           timestamp: Date.now(),
@@ -210,7 +222,6 @@ export async function POST(request: Request) {
         // Initialize transaction for card tokenization (NOT a subscription yet)
         // We'll create the subscription after we get the authorization_code
         // entityType is already set in serverCustomDataForTrial from session.user.role
-        console.log(`[PAYSTACK INITIATE] Using entityType from serverCustomDataForTrial: ${serverCustomDataForTrial.entityType}, userId: ${session.user.id}`)
         // Create object directly - don't use type annotation to avoid type narrowing issues
         const customDataForPayment = {
           providerId: serverCustomDataForTrial.providerId,
@@ -222,8 +233,6 @@ export async function POST(request: Request) {
           invoiceLimit: 0, // Unlimited
           entityType: serverCustomDataForTrial.entityType as 'provider' | 'agent' // CRITICAL: Explicitly preserve entityType with type assertion
         }
-        console.log(`[PAYSTACK INITIATE] customDataForPayment.entityType: ${customDataForPayment.entityType}, hasEntityType: ${'entityType' in customDataForPayment}, keys: ${Object.keys(customDataForPayment).join(', ')}`)
-        console.log(`[PAYSTACK INITIATE] About to call createPaystackPayment with entityType: ${customDataForPayment.entityType}`)
         const paymentRequest = createPaystackPayment(
           tokenizationAmount, // R1.00 for card tokenization
           effectiveEmail,
@@ -361,12 +370,26 @@ export async function POST(request: Request) {
 
           // Create server-side custom data
           // Exclude entityType from customData to prevent client tampering - always use session.user.role
-          const { entityType: _, ...customDataWithoutEntityType } = customData || {}
+          const customDataWithoutEntityType = customData ? (() => {
+            const { entityType: _, ...rest } = customData as any
+            return rest
+          })() : {}
           // Always set entityType from session.user.role - never trust client data
           const entityTypeFromSession = session.user.role as 'provider' | 'agent'
-          const serverCustomDataForTrial = {
+          const serverCustomDataForTrial: {
+            providerId?: string
+            agentId?: string
+            paymentId: string
+            idempotencyKey: string
+            timestamp: number
+            userId: string
+            planCode: string
+            subscriptionType: string
+            entityType: 'provider' | 'agent'
+          } = {
             ...customDataWithoutEntityType,
             providerId: providerId || undefined,
+            agentId: undefined, // Providers don't have agentId
             paymentId,
             idempotencyKey,
             timestamp: Date.now(),
@@ -378,7 +401,6 @@ export async function POST(request: Request) {
 
           // Initialize transaction with plan
           // entityType is already set in serverCustomDataForTrial from session.user.role
-          console.log(`[PAYSTACK INITIATE] Using entityType from serverCustomDataForTrial: ${serverCustomDataForTrial.entityType}, userId: ${session.user.id}`)
           // Create object directly - don't use type annotation to avoid type narrowing issues
           const customDataForPayment = {
             providerId: serverCustomDataForTrial.providerId,
@@ -390,7 +412,6 @@ export async function POST(request: Request) {
             invoiceLimit: 0,
             entityType: serverCustomDataForTrial.entityType as 'provider' | 'agent' // CRITICAL: Explicitly preserve entityType with type assertion
           }
-          console.log(`[PAYSTACK INITIATE] About to call createPaystackPayment with entityType: ${customDataForPayment.entityType}`)
           const paymentRequest = createPaystackPayment(
             0, // R0 for trial
             effectiveEmail,
@@ -490,7 +511,6 @@ export async function POST(request: Request) {
 
       agentId = agentRow.id
       effectiveEmail = agentRow.contactEmail || session.user.email
-      effectiveName = agentRow.contactPerson || session.user.name || 'Agent'
     }
 
     // Calculate amount server-side (prevent client manipulation)
@@ -538,10 +558,24 @@ export async function POST(request: Request) {
 
     // Create server-side custom data (prevent client tampering)
     // Exclude entityType from customData to prevent client tampering - always use session.user.role
-    const { entityType: _, ...customDataWithoutEntityType } = customData || {}
+    const customDataWithoutEntityType = customData ? (() => {
+      const { entityType: _, ...rest } = customData as any
+      return rest
+    })() : {}
     // Always set entityType from session.user.role - never trust client data
     const entityTypeFromSession = session.user.role as 'provider' | 'agent'
-    const serverCustomData = {
+    const serverCustomData: {
+      providerId?: string
+      agentId?: string
+      paymentId: string
+      idempotencyKey: string
+      timestamp: number
+      userId: string
+      subscriptionType?: string
+      planCode?: string
+      invoiceLimit?: number
+      entityType: 'provider' | 'agent'
+    } = {
       ...customDataWithoutEntityType,
       providerId: providerId || undefined,
       agentId: agentId || undefined,
@@ -553,7 +587,7 @@ export async function POST(request: Request) {
     }
 
     // Determine if this is a subscription or one-time payment
-    const isSubscription = customData?.subscriptionType === "monthly" || customData?.subscriptionType === "recurring"
+    const isSubscription = customData?.subscriptionType === "monthly"
     let planCode: string | undefined
     let transactionResponse: any
 
@@ -581,7 +615,6 @@ export async function POST(request: Request) {
 
       // Create payment request with plan
       // entityType is already set in serverCustomData from session.user.role
-      console.log(`[PAYSTACK INITIATE] Using entityType from serverCustomData: ${serverCustomData.entityType}, userId: ${session.user.id}`)
       // Create object directly - don't use type annotation to avoid type narrowing issues
       const customDataForPayment = {
         providerId: serverCustomData.providerId,
@@ -593,7 +626,6 @@ export async function POST(request: Request) {
         invoiceLimit: 0,
         entityType: serverCustomData.entityType as 'provider' | 'agent' // CRITICAL: Explicitly preserve entityType with type assertion
       }
-      console.log(`[PAYSTACK INITIATE] About to call createPaystackPayment with entityType: ${customDataForPayment.entityType}`)
       const paymentRequest = createPaystackPayment(
         finalAmount,
         effectiveEmail,
@@ -631,7 +663,6 @@ export async function POST(request: Request) {
     } else {
       // One-time payment
       // entityType is already set in serverCustomData from session.user.role
-      console.log(`[PAYSTACK INITIATE] Using entityType from serverCustomData: ${serverCustomData.entityType}, userId: ${session.user.id}`)
       // Create object directly - don't use type annotation to avoid type narrowing issues
       const customDataForPayment = {
         providerId: serverCustomData.providerId,
@@ -643,7 +674,6 @@ export async function POST(request: Request) {
         invoiceLimit: serverCustomData.invoiceLimit,
         entityType: serverCustomData.entityType as 'provider' | 'agent' // CRITICAL: Explicitly preserve entityType with type assertion
       }
-      console.log(`[PAYSTACK INITIATE] About to call createPaystackPayment with entityType: ${customDataForPayment.entityType}`)
       const paymentRequest = createPaystackPayment(
         finalAmount,
         effectiveEmail,
@@ -676,18 +706,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Failed to initialize payment" }, { status: 500 })
       }
     }
-
-    // Log Paystack transaction for debugging
-    console.log("\n" + "=".repeat(80))
-    console.log("[PAYSTACK INITIATE] ===== PAYSTACK TRANSACTION =====")
-    console.log("=".repeat(80))
-    console.log("[PAYSTACK INITIATE] Entity Type:", providerId ? 'provider' : 'agent')
-    console.log("[PAYSTACK INITIATE] Entity ID:", providerId || agentId)
-    console.log("[PAYSTACK INITIATE] Amount:", finalAmount)
-    console.log("[PAYSTACK INITIATE] Reference:", transactionResponse.reference)
-    console.log("[PAYSTACK INITIATE] Authorization URL:", transactionResponse.authorization_url)
-    console.log("[PAYSTACK INITIATE] Plan Code:", planCode || "N/A (one-time payment)")
-    console.log("=".repeat(80))
 
     // Record pending transaction
     try {

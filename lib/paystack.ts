@@ -1,5 +1,3 @@
-import { env } from "@/lib/env"
-
 /**
  * Paystack Payment Utilities
  * 
@@ -65,7 +63,7 @@ export function convertFromKobo(amountInKobo: number): number {
 export function createPaystackPayment(
   amount: number,
   userEmail: string,
-  itemName: string,
+  _itemName: string,
   customData?: {
     providerId?: string
     agentId?: string
@@ -84,7 +82,9 @@ export function createPaystackPayment(
   console.log(`[PAYSTACK] Received customData.entityType: ${customData?.entityType}, type: ${typeof customData?.entityType}, providerId: ${customData?.providerId || 'none'}, agentId: ${customData?.agentId || 'none'}`)
   console.log(`[PAYSTACK] customData keys:`, customData ? Object.keys(customData).join(', ') : 'none')
   const entityType = customData?.entityType || (customData?.providerId ? 'provider' : 'agent')
-  const callbackUrl = `${env.APP_URL}/${entityType}/billing/success`
+  // Use ngrok URL for callback (temporary for development)
+  const baseUrl = process.env.NGROK_URL || 'https://iluminada-honeylike-superstylishly.ngrok-free.dev'
+  const callbackUrl = `${baseUrl}/${entityType}/billing/success`
   
   // Log callback URL for debugging
   console.log(`[PAYSTACK] Creating payment - entityType: ${entityType}, callbackUrl: ${callbackUrl}, providerId: ${customData?.providerId || 'none'}, agentId: ${customData?.agentId || 'none'}`)
@@ -131,7 +131,9 @@ export function createPaystackPayment(
   if (customData?.planCode) {
     request.plan = customData.planCode
     // Remove amount if plan is provided (plan amount takes precedence)
-    delete request.amount
+    // TypeScript workaround: create new object without amount
+    const { amount: _, ...requestWithoutAmount } = request
+    Object.assign(request, requestWithoutAmount)
     if (customData.invoiceLimit !== undefined) {
       request.invoice_limit = customData.invoiceLimit
     }

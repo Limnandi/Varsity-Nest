@@ -9,13 +9,17 @@ export const PaystackWebhookEventSchema = z.enum([
   "invoice.create",
   "invoice.payment_failed",
   "invoice.update",
-  "subscription.expiring_cards"
+  "subscription.expiring_cards",
+  "refund.processed",
+  "refund.processing",
+  "refund.pending",
+  "refund.failed"
 ])
 
 // Paystack webhook base schema
 export const PaystackWebhookSchema = z.object({
   event: PaystackWebhookEventSchema,
-  data: z.record(z.any()) // Data structure varies by event type
+  data: z.any() // Data structure varies by event type - use z.any() to avoid Zod v4 issues
 })
 
 // Paystack subscription data schema
@@ -41,7 +45,7 @@ export const PaystackSubscriptionDataSchema = z.object({
     email: z.string().email(),
     customer_code: z.string(),
     phone: z.string().nullable().optional(),
-    metadata: z.record(z.any()).nullable().optional()
+    metadata: z.record(z.string(), z.any()).nullable().optional()
   }).optional(),
   authorization: z.object({
     authorization_code: z.string(),
@@ -79,7 +83,7 @@ export const PaystackInvoiceDataSchema = z.object({
     email: z.string().email(),
     customer_code: z.string(),
     phone: z.string().nullable().optional(),
-    metadata: z.record(z.any()).nullable().optional()
+    metadata: z.record(z.string(), z.any()).nullable().optional()
   }).optional(),
   transaction: z.object({
     reference: z.string(),
@@ -106,33 +110,39 @@ export const PaystackInvoiceDataSchema = z.object({
 })
 
 // Paystack charge success data schema
+// Based on actual Paystack webhook structure for charge.success event
+// Using z.any() for complex/variable structures to avoid Zod v4 compatibility issues
 export const PaystackChargeSuccessDataSchema = z.object({
-  amount: z.number(), // Amount in kobo
-  currency: z.string(),
-  transaction_date: z.string(),
+  id: z.number().optional(),
+  domain: z.string(),
   status: z.string(),
   reference: z.string(),
-  domain: z.string(),
-  metadata: z.record(z.any()).optional(),
-  gateway_response: z.string(),
-  message: z.string().optional(),
+  amount: z.number(),
+  message: z.string().nullable().optional(),
+  gateway_response: z.string().nullable().optional(),
+  paid_at: z.string().nullable().optional(),
+  created_at: z.string(),
   channel: z.string().optional(),
-  ip_address: z.string().optional(),
+  currency: z.string(),
+  ip_address: z.string().nullable().optional(),
+  metadata: z.any().optional(), // Can be object, number, string, or null
   log: z.any().optional(),
-  fees: z.number().optional(),
+  fees: z.number().nullable().optional(),
+  fees_split: z.any().optional(),
+  fees_breakdown: z.any().optional(),
   authorization: z.object({
     authorization_code: z.string(),
-    bin: z.string().optional(),
-    last4: z.string().optional(),
-    exp_month: z.string().optional(),
-    exp_year: z.string().optional(),
-    channel: z.string().optional(),
-    card_type: z.string().optional(),
-    bank: z.string().optional(),
-    country_code: z.string().optional(),
-    brand: z.string().optional(),
+    bin: z.string().nullable().optional(),
+    last4: z.string().nullable().optional(),
+    exp_month: z.string().nullable().optional(),
+    exp_year: z.string().nullable().optional(),
+    channel: z.string().nullable().optional(),
+    card_type: z.string().nullable().optional(),
+    bank: z.string().nullable().optional(),
+    country_code: z.string().nullable().optional(),
+    brand: z.string().nullable().optional(),
     reusable: z.boolean().optional(),
-    signature: z.string().optional(),
+    signature: z.string().nullable().optional(),
     account_name: z.string().nullable().optional()
   }).optional(),
   customer: z.object({
@@ -142,14 +152,23 @@ export const PaystackChargeSuccessDataSchema = z.object({
     email: z.string().email(),
     customer_code: z.string(),
     phone: z.string().nullable().optional(),
-    metadata: z.record(z.any()).nullable().optional()
+    metadata: z.any().optional(),
+    risk_action: z.string().optional(),
+    international_format_phone: z.string().nullable().optional()
   }).optional(),
   plan: z.object({
-    name: z.string(),
-    plan_code: z.string(),
-    amount: z.number(),
-    interval: z.string()
-  }).optional()
+    name: z.string().optional(),
+    plan_code: z.string().optional(),
+    amount: z.number().optional(),
+    interval: z.string().optional()
+  }).optional(),
+  subaccount: z.any().optional(),
+  split: z.any().optional(),
+  order_id: z.string().nullable().optional(),
+  paidAt: z.string().nullable().optional(),
+  requested_amount: z.number().optional(),
+  pos_transaction_data: z.any().optional(),
+  source: z.any().optional() // Can be string or object
 })
 
 // Payment initiation request schema
