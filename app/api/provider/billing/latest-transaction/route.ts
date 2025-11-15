@@ -43,9 +43,6 @@ export async function GET(request: NextRequest) {
 
     // If reference is provided, look up by reference (Paystack uses mPaymentId for reference)
     if (reference) {
-      const conditions = providerId 
-        ? eq(schema.paymentTransactions.providerId, providerId)
-        : eq(schema.paymentTransactions.agentId, agentId)
 
       const [found] = await secureDb.db
         .select({

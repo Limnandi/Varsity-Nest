@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
 import { calculateProviderSubscriptionPrice } from "@/lib/payments"
+import { PaystackAPIClient } from "@/lib/paystack-api-client"
+import { secureDb } from "@/lib/database-secure"
+import * as schema from "@/lib/schema"
+import { eq } from "drizzle-orm"
 
 export async function GET(request: NextRequest) {
   try {
@@ -107,11 +111,48 @@ export async function GET(request: NextRequest) {
       LIMIT 50
     `
 
+    // Verify pending transactions with Paystack to ensure status is accurate
+    // This handles cases where webhook hasn't been processed yet
+    const pendingPayments = paymentsResult.rows.filter((p: any) => p.status === 'pending')
+    
+    for (const pendingPayment of pendingPayments) {
+      const reference = pendingPayment.m_payment_id || pendingPayment.pf_payment_id
+      if (reference) {
+        try {
+          // Verify transaction with Paystack
+          const verifiedTransaction = await PaystackAPIClient.verifyTransaction(reference)
+          
+          // If transaction is successful, update status in database
+          if (verifiedTransaction.status === 'success') {
+            const paymentDate = verifiedTransaction.paid_at ? new Date(verifiedTransaction.paid_at) : new Date()
+            
+            // Update transaction status
+            await secureDb.db
+              .update(schema.paymentTransactions)
+              .set({
+                status: 'completed',
+                paymentDate: paymentDate,
+                pfPaymentId: verifiedTransaction.id?.toString() || reference,
+                gatewayResponse: verifiedTransaction
+              })
+              .where(eq(schema.paymentTransactions.id, pendingPayment.id))
+            
+            // Update the payment object for this iteration
+            pendingPayment.status = 'completed'
+            pendingPayment.paymentDate = paymentDate
+          }
+        } catch (verifyError) {
+          // If verification fails, transaction might still be pending or failed
+          // Keep it as pending - webhook will eventually process it
+        }
+      }
+    }
+    
     // Transform payments to invoices
     // Only include completed payments and the most recent pending payment
     const completedPayments = paymentsResult.rows.filter((p: any) => p.status === 'completed')
-    const pendingPayments = paymentsResult.rows.filter((p: any) => p.status === 'pending')
-    const mostRecentPending = pendingPayments.length > 0 ? [pendingPayments[0]] : []
+    const stillPendingPayments = paymentsResult.rows.filter((p: any) => p.status === 'pending')
+    const mostRecentPending = stillPendingPayments.length > 0 ? [stillPendingPayments[0]] : []
     
     const allRelevantPayments = [...completedPayments, ...mostRecentPending]
     
@@ -166,7 +207,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("Billing API error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch billing data" },
       { status: 500 }
