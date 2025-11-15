@@ -60,7 +60,7 @@ export default function PaystackPaymentForm({
       }
 
       const responseData = await resp.json()
-      const { authorizationUrl, idempotent, trialActivated, trialPaymentSetup, isTokenization, amount: responseAmount } = responseData
+      const { authorizationUrl, idempotent, trialActivated, trialPaymentSetup } = responseData
 
       // Handle trial activation with Paystack redirect
       if (trialActivated && trialPaymentSetup && authorizationUrl) {
@@ -200,7 +200,7 @@ export default function PaystackPaymentForm({
             <CreditCard className="w-5 h-5" />
             <span>
               {isEligibleForTrial 
-                ? 'Start Trial (R1.00 card verification)' 
+                ? 'Start Trial' 
                 : isInTrial 
                   ? `Set Up Payment (R ${amount.toFixed(2)} after trial)`
                   : `Pay R ${amount.toFixed(2)} with Paystack`}

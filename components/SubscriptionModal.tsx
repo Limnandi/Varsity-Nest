@@ -240,7 +240,7 @@ export default function SubscriptionModal({
                       ? 'No payment required - start your 14-day free trial now'
                       : isInTrial 
                         ? 'Payment will be processed automatically after your trial ends'
-                        : 'Secure payment through PayFast'}
+                        : 'Secure payment through PayStack'}
                   </p>
                 </div>
               </div>
