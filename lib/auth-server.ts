@@ -130,7 +130,6 @@ export async function verifySecureSession(token: string): Promise<SecureSession 
       iat: Math.floor(new Date(sessionData.created_at).getTime() / 1000)
     }
   } catch (error) {
-    console.error('JWT verification failed:', error)
     return null
   }
 }
@@ -159,15 +158,10 @@ export async function getCurrentUserFromRequest(request: NextRequest): Promise<S
 // Get current user from StackAuth (fallback for OAuth)
 export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> {
   try {
-    console.log(`[AUTH SERVER] getCurrentUserFromStackAuth() called`)
     const app = getStackServerApp()
-    console.log(`[AUTH SERVER] Stack app initialized, calling getUser()...`)
     const stackUser = await app.getUser({ or: 'return-null' })
     
-    console.log(`[AUTH SERVER] Stack getUser() result:`, stackUser ? { id: stackUser.id, email: stackUser.primaryEmail } : 'null')
-    
     if (!stackUser?.id) {
-      console.log(`[AUTH SERVER] No stackUser.id found, returning null`)
       return null
     }
 
@@ -261,7 +255,6 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
       profileImageCloudinaryId: user.profile_image_cloudinary_id,
     }
   } catch (error) {
-    console.error('StackAuth user fetch failed:', error)
     return null
   }
 }
