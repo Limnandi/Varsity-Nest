@@ -40,7 +40,7 @@ export async function PUT(
 
     // Verify subscription belongs to user
     const entityType = user.role
-    let subscription: any = null
+    let entityRecord: { id: string } | null = null
 
     if (entityType === 'provider') {
       const [provider] = await secureDb.db
@@ -53,7 +53,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Subscription not found or access denied' }, { status: 404 })
       }
 
-      subscription = provider
+      entityRecord = provider
     } else { // agent
       const [agent] = await secureDb.db
         .select({ id: schema.agents.id, subscriptionToken: schema.agents.subscriptionToken })
@@ -65,7 +65,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Subscription not found or access denied' }, { status: 404 })
       }
 
-      subscription = agent
+      entityRecord = agent
     }
 
     // Get subscription to retrieve email token
@@ -83,6 +83,10 @@ export async function PUT(
     const updatedSubscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
     // Update database
+    if (!entityRecord) {
+      return NextResponse.json({ error: 'Entity record not found' }, { status: 404 })
+    }
+    
     if (entityType === 'provider') {
       await secureDb.db
         .update(schema.providers)
@@ -90,14 +94,14 @@ export async function PUT(
           subscriptionStatus: 'canceled',
           subscriptionToken: null // Clear token after cancellation
         })
-        .where(eq(schema.providers.id, subscription.id))
+        .where(eq(schema.providers.id, entityRecord.id))
     } else {
       await secureDb.db
         .update(schema.agents)
         .set({
           subscriptionToken: null // Clear token after cancellation
         })
-        .where(eq(schema.agents.id, subscription.id))
+        .where(eq(schema.agents.id, entityRecord.id))
     }
 
     captureMessage('Subscription cancelled', {

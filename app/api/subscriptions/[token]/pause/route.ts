@@ -41,7 +41,7 @@ export async function PUT(
 
     // Verify subscription belongs to user
     const entityType = user.role
-    let subscription: any = null
+    let entityRecord: { id: string } | null = null
 
     if (entityType === 'provider') {
       const [provider] = await secureDb.db
@@ -54,7 +54,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Subscription not found or access denied' }, { status: 404 })
       }
 
-      subscription = provider
+      entityRecord = provider
     } else { // agent
       const [agent] = await secureDb.db
         .select({ id: schema.agents.id, subscriptionToken: schema.agents.subscriptionToken })
@@ -66,7 +66,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Subscription not found or access denied' }, { status: 404 })
       }
 
-      subscription = agent
+      entityRecord = agent
     }
 
     // Get subscription to retrieve email token
@@ -85,13 +85,13 @@ export async function PUT(
     const updatedSubscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
     // Update database
-    if (entityType === 'provider') {
+    if (entityType === 'provider' && entityRecord) {
       await secureDb.db
         .update(schema.providers)
         .set({
           subscriptionStatus: 'inactive' // Paused subscriptions are considered inactive
         })
-        .where(eq(schema.providers.id, subscription.id))
+        .where(eq(schema.providers.id, entityRecord.id))
     } else {
       // For agents, we can add subscription status tracking if needed
     }
@@ -100,8 +100,7 @@ export async function PUT(
       level: 'info',
       component: 'subscription-management',
       subscriptionToken,
-      entityType,
-      cycles
+      entityType
     })
 
     return NextResponse.json({

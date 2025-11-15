@@ -64,20 +64,53 @@ export async function GET(
     }
 
     // Get subscription details from Paystack API
-    const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
+    try {
+      const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
-    return NextResponse.json({
-      success: true,
-      subscription
-    })
+      if (!subscription) {
+        return NextResponse.json(
+          { 
+            error: 'Subscription not found in Paystack', 
+            details: 'The subscription may not be available yet. Please try again in a few moments.',
+            subscriptionToken 
+          },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        subscription
+      })
+    } catch (paystackError) {
+      // If subscription doesn't exist in Paystack yet (e.g., just created), return a more helpful error
+      const errorMessage = paystackError instanceof Error ? paystackError.message : String(paystackError)
+      
+      // Check if it's a 404 or "not found" error
+      if (errorMessage.includes('not found') || errorMessage.includes('404') || errorMessage.includes('does not exist') || errorMessage.includes('No subscription')) {
+        return NextResponse.json(
+          { 
+            error: 'Subscription not found in Paystack', 
+            details: 'The subscription may not be available yet. Please try again in a few moments.',
+            subscriptionToken 
+          },
+          { status: 404 }
+        )
+      }
+      
+      // Re-throw other errors to be caught by outer catch
+      throw paystackError
+    }
   } catch (error) {
     captureException(
       error instanceof Error ? error : new Error(String(error)),
       { component: 'subscription-management', action: 'get' }
     )
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
     return NextResponse.json(
-      { error: 'Failed to get subscription details', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to get subscription details', details: errorMessage },
       { status: 500 }
     )
   }
@@ -171,7 +204,7 @@ export async function PUT(
     planUpdates.update_existing_subscriptions = true // Update all subscriptions using this plan
 
     // Update plan via Paystack API (this updates all subscriptions using the plan)
-    const updatedPlan = await PaystackAPIClient.updatePlan(planCode, planUpdates)
+    await PaystackAPIClient.updatePlan(planCode, planUpdates)
 
     // Get updated subscription details
     const updatedSubscription = await PaystackAPIClient.getSubscription(subscriptionToken)
