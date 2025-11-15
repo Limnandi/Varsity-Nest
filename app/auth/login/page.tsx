@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
 //import { OAuthButton } from "@stackframe/stack" //Temporal disable - SSO disabled
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
-import ReCAPTCHA from "react-google-recaptcha"
-import { publicEnv } from "@/lib/env.client"
 import EmailVerificationModal from "@/components/EmailVerificationModal"
 import ForgotPasswordModal from "@/components/ForgotPasswordModal"
 
@@ -27,7 +25,6 @@ export default function LoginPage() {
   } | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const recaptchaRef = useRef<ReCAPTCHA>(null)
   const app = useStackApp()
   const user = useUser()
 
@@ -111,12 +108,6 @@ export default function LoginPage() {
       return
     }
 
-    const recaptchaToken = recaptchaRef.current?.getValue()
-    if (!recaptchaToken) {
-      setError("Please complete the reCAPTCHA verification")
-      return
-    }
-
     setIsPending(true)
     setError("")
 
@@ -133,7 +124,6 @@ export default function LoginPage() {
         })
         setShowVerificationModal(true)
         setIsPending(false)
-        recaptchaRef.current?.reset()
         return
       }
 
@@ -151,7 +141,6 @@ export default function LoginPage() {
         // Check if error is due to email not verified
         if (stackError.message?.includes('email') && stackError.message?.includes('verif')) {
           setError("Please verify your email before signing in. Check your inbox for the verification link.")
-          recaptchaRef.current?.reset()
           setIsPending(false)
           return
         }
@@ -180,7 +169,6 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       setError(error.message || "Login failed. Please try again.")
-      recaptchaRef.current?.reset()
     } finally {
       setIsPending(false)
     }
@@ -300,14 +288,6 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
-          </div>
-
-          {/* ReCAPTCHA */}
-          <div className="flex justify-center py-2">
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={publicEnv.RECAPTCHA_SITE_KEY}
-            />
           </div>
 
           {/* Submit Button */}
