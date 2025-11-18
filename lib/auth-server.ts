@@ -60,12 +60,22 @@ export async function createSecureSession(user: SecureUser): Promise<string> {
       updated_at = NOW()
   `
 
+  // Store session in Redis for single-session enforcement
+  const { setUserSession } = await import('./redis')
+  await setUserSession(user.id, token, 7 * 24 * 60 * 60)
+
   return token
 }
 
 // Verify and validate JWT session token
 export async function verifySecureSession(token: string): Promise<SecureSession | null> {
   try {
+    // Check token blacklist first (for instant logout)
+    const { isTokenBlacklisted } = await import('./redis')
+    if (await isTokenBlacklisted(token)) {
+      return null
+    }
+
     const { payload } = await jwtVerify(token, encodedKey, {
       algorithms: ['HS256']
     })
@@ -73,6 +83,14 @@ export async function verifySecureSession(token: string): Promise<SecureSession 
     const { userId, sessionId, role, email, exp } = payload
 
     if (!userId || !sessionId || !role || !email || !exp) {
+      return null
+    }
+
+    // Check Redis for single-session enforcement
+    const { getUserSession } = await import('./redis')
+    const redisToken = await getUserSession(userId as string)
+    if (redisToken !== token) {
+      // Different session active - enforce single session
       return null
     }
 

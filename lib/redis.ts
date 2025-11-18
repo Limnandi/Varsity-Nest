@@ -52,3 +52,47 @@ export async function getOTPAttempts(
   const attempts = await redis.get(key) as string | null
   return attempts ? Number.parseInt(attempts as string) : 0
 }
+
+// Session Management - Single Session Enforcement
+export async function setUserSession(userId: string, sessionToken: string, expiresIn: number = 7 * 24 * 60 * 60): Promise<void> {
+  const key = `user:${userId}:session`
+  await redis.set(key, sessionToken, { ex: expiresIn })
+}
+
+export async function getUserSession(userId: string): Promise<string | null> {
+  const key = `user:${userId}:session`
+  const token = await redis.get(key) as string | null
+  return token
+}
+
+export async function invalidateUserSession(userId: string): Promise<void> {
+  const key = `user:${userId}:session`
+  await redis.del(key)
+}
+
+// Token Blacklist - For instant logout
+export async function blacklistToken(token: string, expiresIn: number = 24 * 60 * 60): Promise<void> {
+  const key = `blacklist:${token}`
+  await redis.set(key, '1', { ex: expiresIn })
+}
+
+export async function isTokenBlacklisted(token: string): Promise<boolean> {
+  const key = `blacklist:${token}`
+  const blacklisted = await redis.get(key)
+  return blacklisted !== null
+}
+
+// Rate Limiting
+export async function checkRateLimit(key: string, maxRequests: number, windowSeconds: number): Promise<{ allowed: boolean; remaining: number }> {
+  const current = await redis.get(key)
+  const count = current ? Number.parseInt(current as string) : 0
+  
+  if (count >= maxRequests) {
+    return { allowed: false, remaining: 0 }
+  }
+  
+  await redis.incr(key)
+  await redis.expire(key, windowSeconds)
+  
+  return { allowed: true, remaining: maxRequests - count - 1 }
+}
