@@ -118,7 +118,7 @@ export async function fetchAccommodationsByStatus(status: string, limit = 200, o
   }))
 }
 
-export async function fetchAccommodationByIdWithProvider(id: string) {
+export async function fetchAccommodationByIdWithProvider(id: string, userRole?: string, userId?: string) {
   const [accommodation] = await secureDb.db
     .select({
       id: schema.accommodations.id,
@@ -132,14 +132,96 @@ export async function fetchAccommodationByIdWithProvider(id: string) {
       providerName: schema.providers.businessName,
       providerEmail: schema.providers.contactEmail,
       providerUserId: schema.providers.userId,
-      providerPhone: schema.providers.contactPhone
+      providerPhone: schema.providers.contactPhone,
+      isActive: schema.accommodations.isActive,
+      accreditationStatus: schema.accommodations.accreditationStatus,
+      isVerified: schema.accommodations.isVerified,
+      featured: schema.accommodations.featured,
+      isOpen: schema.accommodations.isOpen,
+      availableRooms: schema.accommodations.availableRooms,
+      totalRooms: schema.accommodations.totalRooms,
+      area: schema.accommodations.area,
+      distance: schema.accommodations.distance
     })
     .from(schema.accommodations)
     .leftJoin(schema.providers, eq(schema.accommodations.providerId, schema.providers.id))
     .where(eq(schema.accommodations.id, id))
     .limit(1)
   
-  return accommodation || null
+  if (!accommodation) {
+    return null
+  }
+
+  // Check if user is owner or admin - they can see inactive properties
+  const isOwnerOrAdmin = userRole === 'admin' || userRole === 'provider'
+  
+  // For non-owners/admins: return null if inactive (will trigger 404)
+  if (!isOwnerOrAdmin) {
+    const isActive = accommodation.isActive !== false
+    
+    if (!isActive) {
+      return null
+    }
+  }
+  
+  // If provider, verify ownership
+  if (userRole === 'provider' && userId) {
+    const providerResult = await secureDb.db
+      .select({ id: schema.providers.id })
+      .from(schema.providers)
+      .where(eq(schema.providers.userId, userId))
+      .limit(1)
+    
+    if (providerResult.length > 0) {
+      const providerId = providerResult[0].id
+      if (accommodation.providerId !== providerId) {
+        // Not the owner, apply same restrictions as public
+        const isActive = accommodation.isActive !== false
+        
+        if (!isActive) {
+          return null
+        }
+      }
+    }
+  }
+  
+  // Map to snake_case for backward compatibility with existing code
+  return {
+    id: accommodation.id,
+    name: accommodation.name,
+    description: accommodation.description,
+    address: accommodation.address,
+    price: accommodation.price,
+    images: accommodation.images || [],
+    amenities: accommodation.amenities || [],
+    provider_id: accommodation.providerId,
+    provider_name: accommodation.providerName,
+    provider_email: accommodation.providerEmail,
+    provider_user_id: accommodation.providerUserId,
+    provider_phone: accommodation.providerPhone,
+    providerId: accommodation.providerId,
+    providerName: accommodation.providerName,
+    providerEmail: accommodation.providerEmail,
+    providerUserId: accommodation.providerUserId,
+    providerPhone: accommodation.providerPhone,
+    is_active: accommodation.isActive,
+    is_published: accommodation.isPublished,
+    isActive: accommodation.isActive,
+    isPublished: accommodation.isPublished,
+    accreditation_status: accommodation.accreditationStatus,
+    accreditationStatus: accommodation.accreditationStatus,
+    is_verified: accommodation.isVerified,
+    isVerified: accommodation.isVerified,
+    featured: accommodation.featured,
+    is_open: accommodation.isOpen,
+    isOpen: accommodation.isOpen,
+    available_rooms: accommodation.availableRooms,
+    availableRooms: accommodation.availableRooms,
+    total_rooms: accommodation.totalRooms,
+    totalRooms: accommodation.totalRooms,
+    area: accommodation.area,
+    distance: accommodation.distance
+  }
 }
 
 export async function fetchAccommodationsByProvider(providerId: string, limit = 200): Promise<DbAccommodation[]> {

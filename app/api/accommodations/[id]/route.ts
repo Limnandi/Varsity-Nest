@@ -22,7 +22,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
     }
 
-    if (user && user.role === 'provider') {
+    // Check if user is provider/owner or admin - they can see inactive properties
+    const isOwnerOrAdmin = user && (user.role === 'provider' || user.role === 'admin')
+    
+    if (isOwnerOrAdmin && user.role === 'provider') {
       const providerResult = await query`
         SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
       `
@@ -35,6 +38,20 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       
       if (accommodation.providerId !== providerId) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      
+      // Provider can see their own properties regardless of status
+      return NextResponse.json(accommodation)
+    }
+
+    // For non-owners/admins: block inactive or unpublished accommodations
+    if (!isOwnerOrAdmin) {
+      const isActive = accommodation.isActive !== false
+      const isPublished = (accommodation as any).isPublished !== false
+      
+      if (!isActive || !isPublished) {
+        // Return 404 to hide existence of inactive properties
+        return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
       }
     }
 
