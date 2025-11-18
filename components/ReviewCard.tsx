@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, memo } from "react"
 import { Star, ThumbsUp, ThumbsDown, Calendar, MessageCircle, Flag, MoreVertical, Trash2 } from "lucide-react"
 import Image from "next/image"
 import ReplyCard from "./ReplyCard"
@@ -52,7 +52,7 @@ interface ReviewCardProps {
   isAuthenticated?: boolean
 }
 
-export default function ReviewCard({ 
+function ReviewCard({ 
   review, 
   onVote, 
   onReply, 
@@ -466,3 +466,5 @@ export default function ReviewCard({
     </div>
   )
 }
+
+export default memo(ReviewCard)

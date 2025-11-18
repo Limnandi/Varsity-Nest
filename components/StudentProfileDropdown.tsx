@@ -47,9 +47,12 @@ export default function StudentProfileDropdown({ onClose, isMobileMenu = false }
     )
   }
 
-  // Update dropdown position when opened
+  // Update dropdown position when opened - optimized with requestAnimationFrame
   useEffect(() => {
     if (isOpen && buttonRef.current) {
+      let rafId: number | null = null
+      let ticking = false
+      
       const updatePosition = () => {
         if (buttonRef.current) {
           const rect = buttonRef.current.getBoundingClientRect()
@@ -58,15 +61,26 @@ export default function StudentProfileDropdown({ onClose, isMobileMenu = false }
             right: window.innerWidth - rect.right
           })
         }
+        ticking = false
+      }
+      
+      const throttledUpdate = () => {
+        if (!ticking) {
+          ticking = true
+          rafId = requestAnimationFrame(updatePosition)
+        }
       }
       
       updatePosition()
-      window.addEventListener('resize', updatePosition)
-      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', throttledUpdate, { passive: true })
+      window.addEventListener('scroll', throttledUpdate, { passive: true, capture: true })
       
       return () => {
-        window.removeEventListener('resize', updatePosition)
-        window.removeEventListener('scroll', updatePosition, true)
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId)
+        }
+        window.removeEventListener('resize', throttledUpdate)
+        window.removeEventListener('scroll', throttledUpdate, { capture: true })
       }
     }
     return undefined
