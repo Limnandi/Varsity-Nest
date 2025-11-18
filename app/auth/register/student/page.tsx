@@ -11,7 +11,6 @@ export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [password, setPassword] = useState("")
-  const [cellNumber, setCellNumber] = useState("")
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
   const app = useStackApp()
@@ -55,12 +54,6 @@ export default function StudentRegistrationPage() {
     checkAuthAndRedirect()
   }, [user, router])
 
-  // Handle cell number input change
-  const handleCellNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setCellNumber(value)
-  }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsPending(true)
@@ -72,6 +65,7 @@ export default function StudentRegistrationPage() {
       const email = String(form.get('email') || '')
       const password = String(form.get('password') || '')
       const confirmPassword = String(form.get('confirmPassword') || '')
+      const cellNumber = String(form.get('cellNumber') || '')
       const studentNumber = String(form.get('studentNumber') || '')
 
       if (password !== confirmPassword) {
@@ -184,74 +178,89 @@ export default function StudentRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-2xl w-full">
+    <div className="min-h-screen px-4 py-12 flex items-center justify-center relative">
+      <div className="relative border border-white/10 bg-black/30 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-blue-500/30 p-10 max-w-2xl w-full auth-card-container">
+        {/* Decorative Corner Accents */}
+        <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-blue-500/30 rounded-tl-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-purple-500/30 rounded-br-3xl"></div>
         {/* Home Button */}
         <Link 
           href="/" 
-          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-lg hover:bg-white/10 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/30 hover:border-blue-500/50 z-10"
         >
           <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
         </Link>
 
         {/* Header Section */}
-        <div className="text-center mb-10">
-          <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/50 bg-blue-500/10 rounded-full flex items-center justify-center shadow-[0_0_20px_theme(colors.blue.500/40%)]">
-            <GraduationCap className="w-12 h-12 text-blue-400" />
+        <div className="text-center mb-10 relative">
+          <div className="inline-block mb-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-xl border border-white/10 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <GraduationCap className="w-10 h-10 sm:w-12 sm:h-12 text-blue-400" />
+            </div>
           </div>
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight break-words px-2">
             Student Registration
           </h1>
-          <p className="text-neutral-300 text-base mt-1">Join Varsity Nest with your university email</p>
+          <p className="text-neutral-300 text-sm sm:text-base mt-1 break-words px-2">Join Varsity Nest with your university email</p>
         </div>
 
         {/* Messages */}
         <div className="space-y-4 mb-8">
           {state?.error && (
-            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <span className="text-red-300 text-sm leading-relaxed">{state.error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-red-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                </div>
+              </div>
+              <span className="text-red-300 text-sm leading-relaxed break-words flex-1">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-              <span className="text-green-300 text-sm leading-relaxed">{state.message}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-green-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                </div>
+              </div>
+              <span className="text-green-300 text-sm leading-relaxed break-words flex-1">{state.message}</span>
             </div>
           )}
         </div>
 
         {/* Form Section */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-neutral-200 mb-2.5">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <label htmlFor="name" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">Full Name</label>
+                <div className="relative group">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
                   <input
                     id="name"
                     type="text"
                     name="name"
                     required
                     disabled={isPending}
-                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="John Doe"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5">University Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">University Email</label>
+                <div className="relative group">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
                   <input
                     id="email"
                     type="email"
                     name="email"
                     required
                     disabled={isPending}
-                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="student@ufs4life.ac.za"
                   />
                 </div>
@@ -259,16 +268,17 @@ export default function StudentRegistrationPage() {
             </div>
             
             <div className="text-center pb-2">
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 break-words px-2">
                 Please use your university email address
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">Password</label>
+                <div className="relative group">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -278,14 +288,14 @@ export default function StudentRegistrationPage() {
                     required
                     minLength={8}
                     disabled={isPending}
-                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Min. 8 characters"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isPending}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-all duration-200 p-1.5 rounded-lg hover:bg-white/10 disabled:opacity-50 z-10"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -300,23 +310,24 @@ export default function StudentRegistrationPage() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-neutral-200 mb-2.5">Confirm Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">Confirm Password</label>
+                <div className="relative group">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     required
                     disabled={isPending}
-                    className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Confirm password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     disabled={isPending}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-all duration-200 p-1.5 rounded-lg hover:bg-white/10 disabled:opacity-50 z-10"
                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -327,17 +338,16 @@ export default function StudentRegistrationPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label htmlFor="cellNumber" className="block text-sm font-semibold text-neutral-200 mb-2.5">Cell Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <label htmlFor="cellNumber" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">Cell Number</label>
+                <div className="relative group">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
                   <input
                     id="cellNumber"
                     type="tel"
                     name="cellNumber"
-                    value={cellNumber}
-                    onChange={handleCellNumberChange}
                     disabled={isPending}
-                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="012 345 6789"
                   />
                 </div>
@@ -347,16 +357,17 @@ export default function StudentRegistrationPage() {
               </div>
 
               <div>
-                <label htmlFor="studentNumber" className="block text-sm font-semibold text-neutral-200 mb-2.5">Student Number</label>
-                <div className="relative">
-                  <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+                <label htmlFor="studentNumber" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">Student Number</label>
+                <div className="relative group">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+                  <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
                   <input
                     id="studentNumber"
                     type="text"
                     name="studentNumber"
                     required
                     disabled={isPending}
-                    className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="e.g., 2023123456"
                   />
                 </div>
@@ -365,17 +376,17 @@ export default function StudentRegistrationPage() {
 
             {/* Terms Notice */}
             <div className="pt-2 pb-4">
-              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed break-words px-2">
                 By clicking Create Account, you agree to our{" "}
-                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Terms
                 </Link>
                 ,{" "}
-                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Privacy Policy
                 </Link>
                 {" "}and{" "}
-                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Cookies Policy
                 </Link>
                 .
@@ -386,8 +397,9 @@ export default function StudentRegistrationPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
+              className="group relative w-full bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-500 hover:via-purple-500 hover:to-purple-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
             >
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
               <span className="relative z-10 flex items-center justify-center">
                 {isPending ? (
                   <>
@@ -398,20 +410,26 @@ export default function StudentRegistrationPage() {
                     Creating Account...
                   </>
                 ) : (
-                  "Create Account"
+                  <>
+                    <span className="relative">Create Account</span>
+                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      →
+                    </span>
+                  </>
                 )}
               </span>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             </button>
 
             {/* Register Link */}
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-center text-sm text-neutral-400">
+            <div className="pt-6 border-t border-white/10">
+              <p className="text-center text-sm text-neutral-400 break-words px-2">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                  className="font-semibold text-blue-400 hover:text-blue-300 transition-all duration-200 break-words hover:underline hover:underline-offset-2 inline-flex items-center gap-1 group/link"
                 >
+                  <span className="inline-block group-hover/link:-translate-x-1 transition-transform duration-200">←</span>
                   Sign in here
                 </Link>
               </p>

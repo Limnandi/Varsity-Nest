@@ -4,16 +4,13 @@ import { useState, useEffect } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Upload, X, Home } from "lucide-react"
+import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
 
 export default function ProviderRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [password, setPassword] = useState("")
-  const [isAccredited, setIsAccredited] = useState<"yes" | "no" | "">("")
-  const [accreditedBy, setAccreditedBy] = useState<string[]>([])
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [state, setState] = useState<{ error?: string; success?: boolean; message?: string }>()
   const [isPending, setIsPending] = useState(false)
   const [emailCheckMessage, setEmailCheckMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
@@ -112,11 +109,6 @@ export default function ProviderRegistrationPage() {
         throw new Error('This email is already registered. Please use a different email or log in.')
       }
 
-      // Only require documents if provider is accredited
-      if (isAccredited === "yes" && (uploadedFiles.length < 1 || uploadedFiles.length > 2)) {
-        throw new Error('Please upload 1-2 documents (PDF or images)')
-      }
-
       // Client-side sign-up with StackAuth (matches official SDK pattern)
       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       const signupResult = await app.signUpWithCredential({ 
@@ -160,7 +152,7 @@ export default function ProviderRegistrationPage() {
         throw new Error('Failed to get user ID from StackAuth. Please try again.')
       }
 
-      // Build multipart form for server registration (DB + docs)
+      // Build multipart form for server registration
       const payload = new FormData()
       payload.set('userId', stackUserId)
       payload.set('email', email)
@@ -169,7 +161,6 @@ export default function ProviderRegistrationPage() {
       payload.set('phone', phone)
       payload.set('institution', institution)
       if (referralCode) payload.set('referralCode', referralCode)
-      for (const f of uploadedFiles) payload.append('documents', f)
 
       const resp = await fetch('/api/auth/register', {
         method: 'POST',
@@ -215,89 +206,61 @@ export default function ProviderRegistrationPage() {
     }
   }
 
-  const handleAccreditationChange = (university: string, checked: boolean) => {
-    if (checked) {
-      setAccreditedBy([...accreditedBy, university])
-    } else {
-      setAccreditedBy(accreditedBy.filter((u) => u !== university))
-    }
-  }
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const validFiles = files.filter((file) => {
-      const isValidType = file.type === "application/pdf" ||
-                         file.type.startsWith("image/")
-      const isValidSize = file.size <= 5 * 1024 * 1024 // 5MB
-      
-      if (!isValidType) {
-        setState({ error: 'Only PDF and image files are allowed' })
-        return false
-      }
-      if (!isValidSize) {
-        setState({ error: 'File size must be less than 5MB' })
-        return false
-      }
-      return true
-    })
-
-    if (uploadedFiles.length + validFiles.length > 2) {
-      alert("You can only upload 1-2 files")
-      return
-    }
-    if (uploadedFiles.length + validFiles.length < 1) {
-      alert("You must upload at least 1 file")
-      return
-    }
-
-    setUploadedFiles([...uploadedFiles, ...validFiles])
-  }
-
-  const removeFile = (index: number) => {
-    setUploadedFiles(uploadedFiles.filter((_, i) => i !== index))
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-2xl w-full">
+    <div className="min-h-screen px-4 py-12 flex items-center justify-center relative">
+      <div className="relative border border-white/10 bg-black/30 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-purple-500/30 p-10 max-w-2xl w-full auth-card-container">
+        {/* Decorative Corner Accents */}
+        <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-purple-500/30 rounded-tl-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-blue-500/30 rounded-br-3xl"></div>
         {/* Home Button */}
         <Link 
           href="/" 
-          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-lg hover:bg-white/10 transition-all duration-300 hover:scale-110 hover:shadow-purple-500/30 hover:border-purple-500/50 z-10"
         >
           <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
         </Link>
 
         {/* Header Section */}
-        <div className="text-center mb-10">
-          <div className="mx-auto mb-6 w-20 h-20 border border-purple-500/50 bg-purple-500/10 rounded-full flex items-center justify-center shadow-[0_0_20px_theme(colors.purple.500/40%)]">
-            <Building className="w-12 h-12 text-purple-400" />
+        <div className="text-center mb-10 relative">
+          <div className="inline-block mb-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl border border-white/10 flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <Building className="w-10 h-10 sm:w-12 sm:h-12 text-purple-400" />
+            </div>
           </div>
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-400 via-blue-400 to-blue-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight break-words px-2">
             Provider Registration
           </h1>
-          <p className="text-neutral-300 text-base mt-1">Register as a service provider</p>
+          <p className="text-neutral-300 text-sm sm:text-base mt-1 break-words px-2">Register as a service provider</p>
         </div>
 
         {/* Messages */}
         <div className="space-y-4 mb-8">
           {state?.error && (
-            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <span className="text-red-300 text-sm leading-relaxed">{state.error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-red-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                </div>
+              </div>
+              <span className="text-red-300 text-sm leading-relaxed break-words flex-1">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-              <span className="text-green-300 text-sm leading-relaxed">{state.message}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-green-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                </div>
+              </div>
+              <span className="text-green-300 text-sm leading-relaxed break-words flex-1">{state.message}</span>
             </div>
           )}
         </div>
 
         {/* Form Section */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-semibold text-neutral-200 mb-2.5">First Name</label>
@@ -459,129 +422,19 @@ export default function ProviderRegistrationPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-neutral-200 mb-2.5">Are you accredited?</label>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
-                  <input
-                    type="radio"
-                    name="accreditation"
-                    value="yes"
-                    checked={isAccredited === "yes"}
-                    onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
-                    disabled={isPending}
-                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20 disabled:opacity-50"
-                  />
-                  <span className="text-white">Yes, I am accredited</span>
-                </label>
-                <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
-                  <input
-                    type="radio"
-                    name="accreditation"
-                    value="no"
-                    checked={isAccredited === "no"}
-                    onChange={(e) => setIsAccredited(e.target.value as "yes" | "no" | "")}
-                    disabled={isPending}
-                    className="w-4 h-4 text-blue-600 border-white/20 focus:ring-blue-500 bg-black/20 disabled:opacity-50"
-                  />
-                  <span className="text-white">No, but I&apos;m working towards accreditation</span>
-                </label>
-              </div>
-            </div>
-
-            {isAccredited === "yes" && (
-              <div>
-                <label className="block text-sm font-semibold text-neutral-200 mb-2.5">Accredited by:</label>
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
-                    <input
-                      type="checkbox"
-                      checked={accreditedBy.includes("UFS")}
-                      onChange={(e) => handleAccreditationChange("UFS", e.target.checked)}
-                      disabled={isPending}
-                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20 disabled:opacity-50"
-                    />
-                    <span className="text-white">University of the Free State (UFS)</span>
-                  </label>
-                  <label className="flex items-center space-x-4 p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ pointerEvents: isPending ? 'none' : 'auto' }}>
-                    <input
-                      type="checkbox"
-                      checked={accreditedBy.includes("CUT")}
-                      onChange={(e) => handleAccreditationChange("CUT", e.target.checked)}
-                      disabled={isPending}
-                      className="w-4 h-4 text-blue-600 border-white/20 rounded focus:ring-blue-500 bg-black/20 disabled:opacity-50"
-                    />
-                    <span className="text-white">Central University of Technology (CUT)</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {isAccredited === "yes" && (
-              <div>
-                <label className="block text-sm font-semibold text-neutral-200 mb-2.5">Upload Documents (1-2 files)</label>
-                <div className="border-2 border-dashed border-white/20 bg-black/20 backdrop-blur-xl rounded-xl p-8 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-4">
-                    <Upload className="w-8 h-8 text-blue-400" />
-                  </div>
-                  <p className="text-neutral-300 text-sm mb-4">
-                    Upload accreditation certificates, business registration, or other relevant documents
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileUpload}
-                    disabled={isPending}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className={`group relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 cursor-pointer ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    style={{ pointerEvents: isPending ? 'none' : 'auto' }}
-                  >
-                    <span className="relative z-10">Choose Files</span>
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </label>
-                  <p className="text-xs text-neutral-500 mt-3">
-                    PDF or images, max 5MB each
-                  </p>
-                </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="mt-6 space-y-3">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl">
-                        <span className="text-sm text-neutral-300 truncate flex-1 mr-3">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          disabled={isPending}
-                          className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg disabled:opacity-50 flex-shrink-0"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Terms Notice */}
             <div className="pt-2 pb-4">
-              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed break-words px-2">
                 By clicking Create Provider Account, you agree to our{" "}
-                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Terms
                 </Link>
                 ,{" "}
-                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Privacy Policy
                 </Link>
                 {" "}and{" "}
-                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Cookies Policy
                 </Link>
                 .
@@ -592,8 +445,9 @@ export default function ProviderRegistrationPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
+              className="group relative w-full bg-gradient-to-r from-purple-600 via-purple-500 to-blue-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-purple-500 hover:via-blue-500 hover:to-blue-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
             >
+              <span className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
               <span className="relative z-10 flex items-center justify-center">
                 {isPending ? (
                   <>
@@ -604,20 +458,26 @@ export default function ProviderRegistrationPage() {
                     Creating Account...
                   </>
                 ) : (
-                  "Create Provider Account"
+                  <>
+                    <span className="relative">Create Provider Account</span>
+                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      →
+                    </span>
+                  </>
                 )}
               </span>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             </button>
 
             {/* Register Link */}
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-center text-sm text-neutral-400">
+            <div className="pt-6 border-t border-white/10">
+              <p className="text-center text-sm text-neutral-400 break-words px-2">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                  className="font-semibold text-blue-400 hover:text-blue-300 transition-all duration-200 break-words hover:underline hover:underline-offset-2 inline-flex items-center gap-1 group/link"
                 >
+                  <span className="inline-block group-hover/link:-translate-x-1 transition-transform duration-200">←</span>
                   Sign in here
                 </Link>
               </p>
