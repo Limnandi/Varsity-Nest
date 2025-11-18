@@ -4,56 +4,98 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { Flag, Eye, CheckCircle, XCircle, AlertTriangle, Trash2, Ban, Clock } from "lucide-react"
-import { StudentAuthService, type ReviewReport } from "@/lib/student-auth"
+
+interface ReviewReport {
+  id: string
+  reviewId: string
+  reason: string
+  description?: string
+  status: "pending" | "reviewed" | "resolved" | "dismissed"
+  adminId?: string
+  adminNotes?: string
+  createdAt: string
+  updatedAt: string
+  review: {
+    content: string
+    rating: number
+  }
+  reporter: {
+    id: string
+    name: string
+    email: string
+  }
+  reviewAuthor: {
+    name: string
+    email: string
+  }
+}
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<ReviewReport[]>([])
-  const [filter, setFilter] = useState<"all" | "pending" | "reviewed" | "resolved">("all")
+  const [filter, setFilter] = useState<"all" | "pending" | "reviewed" | "resolved" | "dismissed">("pending")
   const [selectedReport, setSelectedReport] = useState<ReviewReport | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
     loadReports()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter])
 
-  const loadReports = () => {
+  const loadReports = async () => {
     setIsLoading(true)
-    const allReports = StudentAuthService.getReports()
-    setReports(allReports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
-    setIsLoading(false)
-  }
-
-  const filteredReports = reports.filter((report) => {
-    if (filter === "all") return true
-    return report.status === filter
-  })
-
-  const handleAction = async (reportId: string, action: ReviewReport["action"], status: ReviewReport["status"]) => {
-    const success = StudentAuthService.updateReportStatus(reportId, status, action, "Admin")
-
-    if (success) {
-      // If blocking user, also block them in the system
-      if (action === "block_user") {
-        const report = reports.find((r) => r.id === reportId)
-        if (report) {
-          // Find the student who wrote the review and block them
-          const students = await StudentAuthService.getStudents()
-          const reviewAuthor = students.find((s) => s.name === getReviewAuthor(report.reviewId))
-          if (reviewAuthor) {
-            StudentAuthService.blockStudent(reviewAuthor.id, `Reported for: ${report.reason}`)
-          }
+    try {
+      const response = await fetch(`/api/admin/reports?status=${filter}&limit=50&offset=0`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setReports(result.data)
         }
+      } else {
+        console.error('Failed to load reports:', response.statusText)
+        setReports([])
       }
-
-      loadReports()
-      setSelectedReport(null)
+    } catch (error) {
+      console.error('Error loading reports:', error)
+      setReports([])
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const getReviewAuthor = (_reviewId: number): string => {
-    // This would normally fetch from existing reviews data
-    // For demo, we'll return a placeholder
-    return "Review Author"
+  const handleAction = async (reportId: string, status: ReviewReport["status"], adminNotes?: string) => {
+    setIsUpdating(true)
+    try {
+      const response = await fetch('/api/admin/reports', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          reportId,
+          status,
+          adminNotes
+        })
+      })
+
+      if (response.ok) {
+        await loadReports()
+        setSelectedReport(null)
+      } else {
+        const error = await response.json()
+        console.error('Failed to update report:', error)
+        alert('Failed to update report. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error updating report:', error)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const getStatusColor = (status: ReviewReport["status"]) => {
@@ -144,6 +186,7 @@ export default function ReportsPage() {
             <option value="pending" className="bg-black text-white">Pending</option>
             <option value="reviewed" className="bg-black text-white">Reviewed</option>
             <option value="resolved" className="bg-black text-white">Resolved</option>
+            <option value="dismissed" className="bg-black text-white">Dismissed</option>
           </select>
         </div>
       </div>
@@ -207,7 +250,7 @@ export default function ReportsPage() {
 
       {/* Reports List */}
       <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/10 overflow-hidden">
-        {filteredReports.length === 0 ? (
+        {reports.length === 0 ? (
           <div className="p-12 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-4">
               <Flag className="w-8 h-8 text-blue-400" />
@@ -229,6 +272,9 @@ export default function ReportsPage() {
                     Reporter
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                    Review Author
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
@@ -240,7 +286,7 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody className="bg-transparent divide-y divide-white/10">
-                {filteredReports.map((report) => (
+                {reports.map((report) => (
                   <tr key={report.id} className="hover:bg-white/5 transition-all duration-300">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -250,12 +296,21 @@ export default function ReportsPage() {
                         <div>
                           <div className="text-sm font-medium text-white">{getReasonLabel(report.reason)}</div>
                           <div className="text-sm text-neutral-300">Review ID: {report.reviewId}</div>
+                          {report.review && (
+                            <div className="text-xs text-neutral-400 mt-1 max-w-xs truncate">
+                              &quot;{report.review.content}&quot;
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white">{report.reporterName}</div>
-                      <div className="text-sm text-neutral-300 capitalize">{report.reporterType}</div>
+                      <div className="text-sm text-white">{report.reporter.name}</div>
+                      <div className="text-sm text-neutral-300">{report.reporter.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-white">{report.reviewAuthor.name}</div>
+                      <div className="text-sm text-neutral-300">{report.reviewAuthor.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -316,8 +371,8 @@ export default function ReportsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-neutral-300 mb-1">Reporter</label>
-                    <p className="text-sm text-white">{selectedReport.reporterName}</p>
-                    <p className="text-xs text-neutral-300 capitalize">{selectedReport.reporterType}</p>
+                    <p className="text-sm text-white">{selectedReport.reporter.name}</p>
+                    <p className="text-xs text-neutral-300">{selectedReport.reporter.email}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-neutral-300 mb-1">Report Date</label>
@@ -355,18 +410,28 @@ export default function ReportsPage() {
                     <h3 className="text-lg font-medium text-white mb-4">Take Action</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <button
-                        onClick={() => handleAction(selectedReport.id, "none", "dismissed")}
-                        className="flex items-center justify-center px-4 py-2 border border-white/20 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all duration-300 hover:scale-105"
+                        onClick={() => handleAction(selectedReport.id, "dismissed")}
+                        disabled={isUpdating}
+                        className="flex items-center justify-center px-4 py-2 border border-white/20 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Dismiss Report
                       </button>
                       <button
-                        onClick={() => handleAction(selectedReport.id, "warning", "resolved")}
-                        className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-lg hover:from-yellow-700 hover:to-yellow-800 transition-all duration-300 hover:scale-105"
+                        onClick={() => handleAction(selectedReport.id, "resolved")}
+                        disabled={isUpdating}
+                        className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <AlertTriangle className="w-4 h-4 mr-2" />
-                        Issue Warning
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Resolve Report
+                      </button>
+                      <button
+                        onClick={() => handleAction(selectedReport.id, "reviewed")}
+                        disabled={isUpdating}
+                        className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Mark as Reviewed
                       </button>
                     </div>
                   </div>
