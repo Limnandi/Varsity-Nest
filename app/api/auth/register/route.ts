@@ -210,41 +210,9 @@ export async function POST(request: NextRequest) {
           console.log(`SUCCESS: Provider record created with userId: ${userId}`)
         }
 
-        // Upload up to 2 documents securely for providers
-        const docs = (form.getAll('documents') as unknown as File[]) || []
-        const urls: string[] = []
-        const uploadWarnings: string[] = []
-        
-        for (const d of docs.slice(0, 2)) {
-          try {
-            const { uploadDocumentSecurely } = await import('@/lib/cloudinary')
-            const result = await uploadDocumentSecurely(d, {
-              folder: 'varsity-nest/provider-documents',
-              purpose: 'accreditation',
-              userId: userId
-            })
-            
-            if (result.success && result.result?.secure_url) {
-              urls.push(result.result.secure_url)
-              if (result.warnings) {
-                uploadWarnings.push(...result.warnings)
-              }
-            } else {
-              console.error('Document upload failed:', result.error)
-            }
-          } catch (error) {
-            console.error('Document upload error:', error)
-          }
-        }
+        // Note: Documents and accreditation are handled during property creation, not registration
 
-        if (urls.length > 0) {
-          await secureDb.db
-            .update(schema.providers)
-            .set({ documents: urls, updatedAt: new Date() })
-            .where(eq(schema.providers.userId, userId))
-        }
-
-        return NextResponse.json({ success: true, providerId, documents: urls }, { status: 201 })
+        return NextResponse.json({ success: true, providerId }, { status: 201 })
       } else if (role === 'agent') {
         const existingAgent = await secureDb.db
           .select({ id: schema.agents.id })
