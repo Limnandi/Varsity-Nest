@@ -28,9 +28,9 @@ import {
 } from "lucide-react"
 import WishlistButton from "@/components/WishlistButton"
 
-async function getListing(id: string) {
+async function getListing(id: string, userRole?: string, userId?: string) {
   try {
-    const row = await fetchAccommodationByIdWithProvider(id)
+    const row = await fetchAccommodationByIdWithProvider(id, userRole, userId)
     if (!row) return null
     return row
   } catch (error) {
@@ -40,79 +40,94 @@ async function getListing(id: string) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params
-  const listing = await getListing(id)
+  try {
+    const { id } = await params
+    const listing = await getListing(id)
 
-  if (!listing) {
-    return {
-      title: "Property Not Found | Varsity Nest",
-      description: "The property you are looking for could not be found.",
+    if (!listing || !listing.name) {
+      return {
+        title: "Property Not Found | Varsity Nest",
+        description: "The property you are looking for could not be found.",
+      }
     }
-  }
 
-  const baseUrl = env.APP_URL
-  const listingUrl = `${baseUrl}/listing/${id}`
-  
-  // Get the first image or use a default placeholder
-  const images = Array.isArray(listing.images) ? listing.images : []
-  let imageUrl = images.length > 0 && images[0] ? String(images[0]) : `${baseUrl}/placeholder.jpg`
-  
-  // Ensure image URL is absolute (Cloudinary URLs are already absolute, but handle relative URLs too)
-  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`
-  }
+    const baseUrl = env.APP_URL || 'https://varsitynest.space'
+    const listingUrl = `${baseUrl}/listing/${id}`
+    
+    // Get the first image or use a default placeholder
+    const images = Array.isArray(listing.images) ? listing.images : []
+    let imageUrl = images.length > 0 && images[0] ? String(images[0]) : `${baseUrl}/placeholder.jpg`
+    
+    // Ensure image URL is absolute (Cloudinary URLs are already absolute, but handle relative URLs too)
+    if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`
+    }
 
-  // Create a clean description (truncate if too long)
-  const description = listing.description 
-    ? listing.description.substring(0, 200).replace(/\n/g, ' ').trim() + (listing.description.length > 200 ? '...' : '')
-    : `Check out ${listing.name} - ${listing.address}. R${listing.price} per month.`
+    // Create a clean description (truncate if too long)
+    const listingName = String(listing.name || 'Property')
+    const listingAddress = String(listing.address || '')
+    const listingPrice = listing.price ? String(listing.price) : '0'
+    const listingDescription = listing.description ? String(listing.description) : ''
+    
+    const description = listingDescription 
+      ? listingDescription.substring(0, 200).replace(/\n/g, ' ').trim() + (listingDescription.length > 200 ? '...' : '')
+      : `Check out ${listingName} - ${listingAddress}. R${listingPrice} per month.`
 
-  const title = `${listing.name} | Varsity Nest`
+    const title = `${listingName} | Varsity Nest`
 
-  return {
-    title,
-    description,
-    openGraph: {
+    return {
       title,
       description,
-      url: listingUrl,
-      siteName: "Varsity Nest",
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: listing.name,
-        },
-      ],
-      locale: "en_US",
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [imageUrl],
-    },
-    alternates: {
-      canonical: listingUrl,
-    },
+      openGraph: {
+        title,
+        description,
+        url: listingUrl,
+        siteName: "Varsity Nest",
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: listingName,
+          },
+        ],
+        locale: "en_US",
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [imageUrl],
+      },
+      alternates: {
+        canonical: listingUrl,
+      },
+    }
+  } catch (error) {
+    console.error('Error generating metadata:', error)
+    return {
+      title: "Property | Varsity Nest",
+      description: "View property details on Varsity Nest",
+    }
   }
 }
 
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const listing = await getListing(id)
-
-  if (!listing) {
-    notFound()
-  }
-
-  // Get current user for review deletion authorization and role checking
+  
+  // Get current user first to check permissions
   const currentUser = await getCurrentUserFromStackAuth()
   const currentUserEmail = currentUser?.email
   const currentUserRole = currentUser?.role
   const isAuthenticated = !!currentUser
+  
+  // Fetch listing with user context for permission checks
+  const listing = await getListing(id, currentUserRole, currentUser?.id)
+
+  if (!listing) {
+    notFound()
+  }
 
   const amenities = listing.amenities || []
   const isVerified = listing.is_verified || false
