@@ -127,13 +127,36 @@ export default function LoginPage() {
         return
       }
 
-      // Try StackAuth first for OAuth users
+      // For the special test provider account, skip StackAuth and authenticate directly against the secure DB.
+      const normalizedEmail = email.trim().toLowerCase()
+      const isTestProvider = normalizedEmail === 'testprovider@example.com'
+
+      if (isTestProvider) {
+        // Bypass StackAuth for this test account and use secure database authentication only.
+        const secureResponse = await fetch('/api/auth/secure-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        })
+
+        const secureData = await secureResponse.json()
+
+        if (secureResponse.ok && secureData.success) {
+          router.push('/auth/redirect')
+          return
+        } else {
+          throw new Error(secureData.error || 'Invalid email or password')
+        }
+      }
+
       try {
         const result = await app.signInWithCredential({ email, password })
         if ((result as any)?.error) {
           throw new Error((result as any).error)
         }
-        
+
         // Email verification will be checked on the redirect/session endpoint
         router.push("/auth/redirect")
         return
@@ -144,10 +167,10 @@ export default function LoginPage() {
           setIsPending(false)
           return
         }
-        
+
         // StackAuth failed, try secure database authentication
         console.log("StackAuth authentication failed, trying secure database authentication:", stackError.message)
-        
+
         const secureResponse = await fetch('/api/auth/secure-login', {
           method: 'POST',
           headers: {
