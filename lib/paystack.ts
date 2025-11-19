@@ -82,8 +82,8 @@ export function createPaystackPayment(
   console.log(`[PAYSTACK] Received customData.entityType: ${customData?.entityType}, type: ${typeof customData?.entityType}, providerId: ${customData?.providerId || 'none'}, agentId: ${customData?.agentId || 'none'}`)
   console.log(`[PAYSTACK] customData keys:`, customData ? Object.keys(customData).join(', ') : 'none')
   const entityType = customData?.entityType || (customData?.providerId ? 'provider' : 'agent')
-  // Use ngrok URL for callback (temporary for development)
-  const baseUrl = process.env.NGROK_URL || 'https://iluminada-honeylike-superstylishly.ngrok-free.dev'
+  // Use NGROK_URL if provided for development, otherwise default to production site
+  const baseUrl = process.env.NGROK_URL || 'https://varsitynest.space'
   const callbackUrl = `${baseUrl}/${entityType}/billing/success`
   
   // Log callback URL for debugging
