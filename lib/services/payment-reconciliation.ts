@@ -7,11 +7,11 @@ import { PaymentAuditService } from "./payment-audit"
 
 export class PaymentReconciliationService {
   /**
-   * Reconcile payment with PayFast records
+   * Reconcile payment with Paystack records
    */
   static async reconcilePayment(
     transactionId: string,
-    payfastData: any
+    paystackData: any
   ): Promise<PaymentReconciliation> {
     try {
       // Get the transaction from our database
@@ -26,11 +26,12 @@ export class PaymentReconciliationService {
       }
 
       const expectedAmount = Number(transaction.amount)
-      const actualAmount = Number(payfastData.amount_gross)
+      // Paystack amounts are in kobo, convert to ZAR
+      const actualAmount = paystackData.amount ? paystackData.amount / 100 : Number(paystackData.amount || 0)
       const status = this.determineReconciliationStatus(
         expectedAmount,
         actualAmount,
-        payfastData.payment_status
+        paystackData.status || paystackData.event || 'unknown'
       )
 
       const reconciliation: Omit<PaymentReconciliation, 'reconciliationDate'> = {
@@ -38,15 +39,15 @@ export class PaymentReconciliationService {
         expectedAmount,
         actualAmount,
         status,
-        notes: this.generateReconciliationNotes(expectedAmount, actualAmount, payfastData)
+        notes: this.generateReconciliationNotes(expectedAmount, actualAmount, paystackData)
       }
 
       // Log reconciliation event
       await PaymentAuditService.logAuditEvent(transactionId, 'reconciled', {
         amount: actualAmount,
         providerId: transaction.providerId,
-        reason: `Reconciled with PayFast. Status: ${status}`,
-        metadata: { payfastData }
+        reason: `Reconciled with Paystack. Status: ${status}`,
+        metadata: { paystackData }
       })
 
       return {
@@ -86,7 +87,7 @@ export class PaymentReconciliationService {
   private static generateReconciliationNotes(
     expectedAmount: number,
     actualAmount: number,
-    _payfastData: any
+    _paystackData: any
   ): string {
     const amountDiff = Math.abs(expectedAmount - actualAmount)
     
@@ -168,7 +169,7 @@ export class PaymentReconciliationService {
               newStatus: 'failed',
               amount: Number(transaction.amount),
               providerId: transaction.providerId,
-              reason: 'Transaction timeout - no response from PayFast within 24 hours'
+              reason: 'Transaction timeout - no response from Paystack within 24 hours'
             })
 
             mismatched++
@@ -222,7 +223,7 @@ export class PaymentReconciliationService {
       const totalExpectedAmount = completedTransactions.reduce((sum: number, t: typeof schema.paymentTransactions.$inferSelect) => sum + Number(t.amount), 0)
       
       // For this report, we'll assume all completed transactions are matched
-      // In a real implementation, you'd compare with PayFast records
+      // In a real implementation, you'd compare with Paystack records
       const matchedTransactions = completedTransactions.length
       const mismatchedTransactions = transactions.length - matchedTransactions
 

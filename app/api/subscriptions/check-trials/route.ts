@@ -63,12 +63,12 @@ export async function POST(request: NextRequest) {
           .limit(1)
 
         if (pendingPayment) {
-          // Payment was set up - wait for PayFast webhook to process it
+          // Payment was set up - wait for Paystack webhook to process it
           console.log(`[TRIAL CHECK] Provider ${provider.id} has pending payment - waiting for webhook`)
           results.push({
             providerId: provider.id,
             action: 'pending_payment',
-            message: 'Payment transaction pending - waiting for PayFast webhook'
+            message: 'Payment transaction pending - waiting for Paystack webhook'
           })
           continue
         }

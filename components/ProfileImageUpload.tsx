@@ -160,24 +160,28 @@ export default function ProfileImageUpload({
     <>
       <div className="flex flex-col items-center space-y-4">
         {/* Image Display with Click Menu */}
-        <div className="relative">
+        <div className="relative group">
           <div 
             ref={buttonRef}
             onClick={() => currentImageUrl && setShowMenu(!showMenu)}
-            className={`w-32 h-32 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-4xl shadow-lg ${currentImageUrl ? 'cursor-pointer hover:ring-4 hover:ring-blue-500/50 transition-all' : ''}`}
+            className={`relative w-32 h-32 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-4xl shadow-lg shadow-blue-500/30 ${currentImageUrl ? 'cursor-pointer hover:ring-4 hover:ring-blue-500/50 hover:scale-105 transition-all duration-300' : ''}`}
           >
+            {/* Shimmer effect on hover */}
+            {currentImageUrl && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+            )}
             {displayImage ? (
               <div className="relative w-full h-full">
                 <Image
                   src={displayImage}
                   alt={`${displayName}'s profile`}
                   fill
-                  className="object-cover rounded-full"
+                  className="object-cover rounded-full group-hover:scale-110 transition-transform duration-300"
                   sizes="128px"
                 />
               </div>
             ) : (
-              initial
+              <span className="relative z-10">{initial}</span>
             )}
           </div>
 
@@ -185,27 +189,32 @@ export default function ProfileImageUpload({
           {showMenu && currentImageUrl && (
             <div
               ref={menuRef}
-              className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-black/40 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl shadow-blue-500/25 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-300"
+              className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-black/50 backdrop-blur-2xl border border-white/20 rounded-xl shadow-2xl shadow-blue-500/30 z-50 overflow-hidden animate-in slide-in-from-top-2 duration-300"
             >
+              {/* Decorative corner accents */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-blue-500/30 rounded-tl-xl"></div>
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-purple-500/30 rounded-br-xl"></div>
               <button
                 onClick={() => {
                   setShowImageViewer(true)
                   setShowMenu(false)
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-blue-500/20 transition-colors"
+                className="group relative w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-blue-500/20 transition-all duration-300 hover:scale-105 overflow-hidden"
               >
-                <Eye className="w-5 h-5 text-blue-400" />
-                <span>View Image</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 transition-all duration-300"></div>
+                <Eye className="w-5 h-5 text-blue-400 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                <span className="relative z-10">View Image</span>
               </button>
               <button
                 onClick={() => {
                   setShowDeleteConfirm(true)
                   setShowMenu(false)
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-red-500/20 transition-colors border-t border-white/10"
+                className="group relative w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-red-500/20 transition-all duration-300 hover:scale-105 border-t border-white/10 overflow-hidden"
               >
-                <Trash2 className="w-5 h-5 text-red-400" />
-                <span>Remove Image</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 to-orange-500/0 group-hover:from-red-500/10 group-hover:to-orange-500/10 transition-all duration-300"></div>
+                <Trash2 className="w-5 h-5 text-red-400 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                <span className="relative z-10">Remove Image</span>
               </button>
             </div>
           )}
@@ -224,17 +233,18 @@ export default function ProfileImageUpload({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+              className="group relative flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-semibold overflow-hidden"
             >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-white/0 to-purple-500/0 group-hover:from-blue-500/20 group-hover:via-white/10 group-hover:to-purple-500/20 animate-shimmer"></div>
               {isUploading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Uploading...</span>
+                  <Loader2 className="w-5 h-5 animate-spin relative z-10" />
+                  <span className="relative z-10">Uploading...</span>
                 </>
               ) : (
                 <>
-                  <Upload className="w-5 h-5" />
-                  <span>Upload Image</span>
+                  <Upload className="w-5 h-5 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="relative z-10">Upload Image</span>
                 </>
               )}
             </button>

@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS payments (
     booking_id VARCHAR(255) REFERENCES bookings(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'ZAR',
-    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('payfast', 'card', 'eft')),
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('paystack', 'card', 'eft')),
     payment_reference VARCHAR(100) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
     gateway_response JSONB,

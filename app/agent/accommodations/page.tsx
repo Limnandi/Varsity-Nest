@@ -297,14 +297,14 @@ export default function AgentAccommodations() {
             onPaymentSuccess={handleSubscriptionSuccess}
           />
         )}
-        <div className="space-y-8 p-6 text-white">
-          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/20">
+        <div className="space-y-4 sm:space-y-8 p-4 sm:p-6 text-white overflow-x-hidden">
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-blue-500/20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
                   My Accommodations
                 </h1>
-                <p className="text-neutral-300 text-lg">Manage your property listings</p>
+                <p className="text-neutral-300 text-sm sm:text-lg break-words">Manage your property listings</p>
               </div>
             </div>
           </div>
@@ -331,15 +331,15 @@ export default function AgentAccommodations() {
               ))}
             </div>
           ) : userAccommodations.length === 0 ? (
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-12 text-center shadow-2xl shadow-blue-500/10">
-              <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/30 bg-blue-500/10 rounded-full flex items-center justify-center">
-                <Building className="w-10 h-10 text-blue-400" />
+            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 sm:p-12 text-center shadow-2xl shadow-blue-500/10">
+              <div className="mx-auto mb-4 sm:mb-6 w-16 h-16 sm:w-20 sm:h-20 border border-blue-500/30 bg-blue-500/10 rounded-full flex items-center justify-center">
+                <Building className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-3">No accommodations yet</h3>
-              <p className="text-neutral-300 mb-8 text-lg">Start by adding your first property listing</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3 break-words">No accommodations yet</h3>
+              <p className="text-neutral-300 mb-6 sm:mb-8 text-base sm:text-lg break-words">Start by adding your first property listing</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {userAccommodations.map((accommodation) => (
                 <div key={accommodation.id} className={`relative border border-white/10 rounded-xl shadow-xl overflow-hidden hover:shadow-blue-500/20 transition-all duration-300 ${
                   accommodation.is_active ? 'bg-black/20' : 'bg-black/10 grayscale opacity-70'
@@ -376,36 +376,36 @@ export default function AgentAccommodations() {
                       </div>
                     </div>
                   )}
-                  <div className="p-4 text-white relative">
-                    <h3 className="text-lg font-semibold mb-2 text-white line-clamp-1">{accommodation.name}</h3>
+                  <div className="p-3 sm:p-4 text-white relative">
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 text-white line-clamp-1 break-words min-w-0">{accommodation.name}</h3>
 
                     {accommodation.managed_by_provider_name && (
-                      <div className="flex items-center text-neutral-300 text-xs mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg px-2 py-1">
-                        <UserCheck className="w-3.5 h-3.5 mr-2 text-blue-400" />
-                        <span>Managed by {accommodation.managed_by_provider_name}</span>
+                      <div className="flex items-center text-neutral-300 text-xs mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg px-2 py-1 break-words min-w-0">
+                        <UserCheck className="w-3.5 h-3.5 mr-2 text-blue-400 flex-shrink-0" />
+                        <span className="break-words">Managed by {accommodation.managed_by_provider_name}</span>
                       </div>
                     )}
 
-                    <div className="flex items-center text-neutral-300 text-xs mb-2">
-                      <MapPin className="w-3.5 h-3.5 mr-2 text-blue-400" />
-                      <span>{accommodation.address}</span>
+                    <div className="flex items-center text-neutral-300 text-xs mb-2 min-w-0">
+                      <MapPin className="w-3.5 h-3.5 mr-2 text-blue-400 flex-shrink-0" />
+                      <span className="break-words truncate">{accommodation.address}</span>
                     </div>
 
-                    <div className="flex items-center text-neutral-300 text-xs mb-2">
-                      <Users className="w-3.5 h-3.5 mr-2 text-green-400" />
-                      <span>
+                    <div className="flex items-center text-neutral-300 text-xs mb-2 min-w-0">
+                      <Users className="w-3.5 h-3.5 mr-2 text-green-400 flex-shrink-0" />
+                      <span className="break-words">
                         {accommodation.available_rooms ?? 0}/{accommodation.total_rooms ?? 0} rooms available
                       </span>
                     </div>
 
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {accommodation.has_single_rooms && (
-                        <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] rounded-full border border-indigo-500/30">
+                        <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] rounded-full border border-indigo-500/30 break-words">
                           Single: {formatZar(Number(accommodation.single_room_price) || 0)}/month
                         </span>
                       )}
                       {accommodation.has_sharing_rooms && (
-                        <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] rounded-full border border-purple-500/30">
+                        <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] rounded-full border border-purple-500/30 break-words">
                           Sharing: {formatZar(Number(accommodation.sharing_room_price) || 0)}/month
                         </span>
                       )}
@@ -432,39 +432,39 @@ export default function AgentAccommodations() {
                       <span className="ml-2 text-xs text-neutral-400">({accommodation.review_count ?? 0} reviews)</span>
                     </div>
 
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-bold text-green-400">{formatZar(Number(accommodation.price) || 0)}</span>
-                      <span className="text-neutral-400 text-sm">/month</span>
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <span className="text-xl sm:text-2xl font-bold text-green-400 break-words">{formatZar(Number(accommodation.price) || 0)}</span>
+                      <span className="text-neutral-400 text-xs sm:text-sm break-words">/month</span>
                     </div>
 
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-2 text-sm text-neutral-300">
+                    <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <label className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-neutral-300 break-words">
                           <input 
                             type="checkbox" 
                             checked={Boolean(accommodation.featured)} 
                             onChange={(e) => handleToggleFeatured(accommodation.id, e.target.checked)}
-                            className="w-4 h-4 text-blue-600 bg-black/20 border-white/20 rounded focus:ring-blue-500"
+                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 bg-black/20 border-white/20 rounded focus:ring-blue-500 flex-shrink-0"
                           />
-                          <span>Featured</span>
+                          <span className="break-words">Featured</span>
                         </label>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-neutral-300">Rooms:</span>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <span className="text-xs sm:text-sm text-neutral-300 break-words">Rooms:</span>
                         <input 
                           type="number" 
-                          className="w-20 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                          className="w-16 sm:w-20 px-2 sm:px-3 py-1.5 sm:py-2 bg-black/20 border border-white/20 rounded-lg text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0" 
                           defaultValue={accommodation.available_rooms ?? 0} 
                           onBlur={(e) => handleUpdateRooms(accommodation.id, Number(e.target.value) || 0, Number(accommodation.total_rooms) || 0)} 
                         />
                         <span className="text-neutral-400">/</span>
                         <input 
                           type="number" 
-                          className="w-20 px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                          className="w-16 sm:w-20 px-2 sm:px-3 py-1.5 sm:py-2 bg-black/20 border border-white/20 rounded-lg text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0" 
                           defaultValue={accommodation.total_rooms ?? 0} 
                           onBlur={(e) => handleUpdateRooms(accommodation.id, Number(accommodation.available_rooms) || 0, Number(e.target.value) || 0)} 
                         />
-                        <span className="text-sm text-neutral-400">available</span>
+                        <span className="text-xs sm:text-sm text-neutral-400 break-words">available</span>
                       </div>
                     </div>
 
@@ -473,7 +473,7 @@ export default function AgentAccommodations() {
                         type="button"
                         onClick={() => handlePublishToggle(accommodation.id, accommodation.is_published)}
                         disabled={publishingId === accommodation.id}
-                        className={`w-full px-3 py-2 rounded-lg transition-all duration-300 text-center flex items-center justify-center space-x-2 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all duration-300 text-center flex items-center justify-center gap-1.5 sm:gap-2 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm break-words ${
                           accommodation.is_published
                             ? 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 shadow-lg shadow-orange-500/20 disabled:hover:from-orange-600 disabled:hover:to-red-600'
                             : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/20 disabled:hover:from-green-600 disabled:hover:to-emerald-600'
@@ -481,45 +481,45 @@ export default function AgentAccommodations() {
                       >
                         {publishingId === accommodation.id ? (
                           <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>{accommodation.is_published ? 'Unpublishing...' : 'Publishing...'}</span>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+                            <span className="break-words">{accommodation.is_published ? 'Unpublishing...' : 'Publishing...'}</span>
                           </>
                         ) : accommodation.is_published ? (
                           <>
-                            <EyeOff className="w-3.5 h-3.5" />
-                            <span>Unpublish</span>
+                            <EyeOff className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="break-words">Unpublish</span>
                           </>
                         ) : (
                           <>
-                            <Globe className="w-3.5 h-3.5" />
-                            <span>Publish</span>
+                            <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="break-words">Publish</span>
                           </>
                         )}
                       </button>
 
-                      <div className="flex space-x-2">
+                      <div className="flex flex-wrap gap-2">
                         {accommodation.is_published && (
                           <Link
                             href={`/listing/${accommodation.id}`}
-                            className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg hover:bg-white/20 transition-all duration-300 text-center flex items-center justify-center space-x-2 border border-white/20 text-sm"
+                            className="flex-1 min-w-[80px] bg-white/10 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-white/20 transition-all duration-300 text-center flex items-center justify-center gap-1.5 sm:gap-2 border border-white/20 text-xs sm:text-sm break-words"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View</span>
+                            <Eye className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="break-words">View</span>
                           </Link>
                         )}
                         <Link
                           href={`/agent/accommodations/edit/${accommodation.id}`}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/20 text-sm"
+                          className="flex-1 min-w-[80px] bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-blue-500/20 text-xs sm:text-sm break-words"
                         >
-                          <Edit className="w-3.5 h-3.5" />
-                          <span>Edit</span>
+                          <Edit className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="break-words">Edit</span>
                         </Link>
                         <button
                           onClick={() => handleDelete(accommodation.id)}
-                          className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white px-3 py-2 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg shadow-red-500/20 text-sm"
+                          className="flex-1 min-w-[80px] bg-gradient-to-r from-red-600 to-red-700 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-red-500/20 text-xs sm:text-sm break-words"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
+                          <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="break-words">Delete</span>
                         </button>
                       </div>
                     </div>

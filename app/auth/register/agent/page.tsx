@@ -195,42 +195,55 @@ export default function AgentRegistrationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-2xl w-full">
+    <div className="min-h-screen px-4 py-12 flex items-center justify-center relative">
+      <div className="relative border border-white/10 bg-black/30 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-green-500/30 p-10 max-w-2xl w-full auth-card-container">
+        {/* Decorative Corner Accents */}
+        <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-green-500/30 rounded-tl-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-emerald-500/30 rounded-br-3xl"></div>
         <Link 
           href="/" 
-          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-lg hover:bg-white/10 transition-all duration-300 hover:scale-110 hover:shadow-green-500/30 hover:border-green-500/50 z-10"
         >
           <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
         </Link>
 
-        <div className="text-center mb-10">
-          <div className="mx-auto mb-6 w-20 h-20 border border-blue-500/50 bg-blue-500/10 rounded-full flex items-center justify-center shadow-[0_0_20px_theme(colors.blue.500/40%)]">
-            <UserCheck className="w-12 h-12 text-blue-400" />
+        <div className="text-center mb-10 relative">
+          <div className="inline-block mb-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-xl border border-white/10 flex items-center justify-center shadow-lg shadow-green-500/20">
+              <UserCheck className="w-10 h-10 sm:w-12 sm:h-12 text-green-400" />
+            </div>
           </div>
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight break-words px-2">
             Agent Registration
           </h1>
-          <p className="text-neutral-300 text-base mt-1">Register as an accommodation agent</p>
+          <p className="text-neutral-300 text-sm sm:text-base mt-1 break-words px-2">Register as an accommodation agent</p>
         </div>
 
         <div className="space-y-4 mb-8">
           {state?.error && (
-            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <span className="text-red-300 text-sm leading-relaxed">{state.error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-red-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                </div>
+              </div>
+              <span className="text-red-300 text-sm leading-relaxed break-words flex-1">{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-              <span className="text-green-300 text-sm leading-relaxed">{state.message}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-green-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                </div>
+              </div>
+              <span className="text-green-300 text-sm leading-relaxed break-words flex-1">{state.message}</span>
             </div>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-semibold text-neutral-200 mb-2.5">First Name</label>
@@ -379,17 +392,17 @@ export default function AgentRegistrationPage() {
             </div>
 
             <div className="pt-2 pb-4">
-              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed break-words px-2">
                 By clicking Create Agent Account, you agree to our{" "}
-                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/terms" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Terms
                 </Link>
                 ,{" "}
-                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/privacy" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Privacy Policy
                 </Link>
                 {" "}and{" "}
-                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline">
+                <Link href="/cookies" className="text-blue-400 hover:text-blue-300 transition-colors underline break-words">
                   Cookies Policy
                 </Link>
                 .
@@ -399,8 +412,9 @@ export default function AgentRegistrationPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
+              className="group relative w-full bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-green-500 hover:via-emerald-500 hover:to-emerald-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
             >
+              <span className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
               <span className="relative z-10 flex items-center justify-center">
                 {isPending ? (
                   <>
@@ -411,19 +425,25 @@ export default function AgentRegistrationPage() {
                     Creating Account...
                   </>
                 ) : (
-                  "Create Agent Account"
+                  <>
+                    <span className="relative">Create Agent Account</span>
+                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      →
+                    </span>
+                  </>
                 )}
               </span>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             </button>
 
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-center text-sm text-neutral-400">
+            <div className="pt-6 border-t border-white/10">
+              <p className="text-center text-sm text-neutral-400 break-words px-2">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                  className="font-semibold text-blue-400 hover:text-blue-300 transition-all duration-200 break-words hover:underline hover:underline-offset-2 inline-flex items-center gap-1 group/link"
                 >
+                  <span className="inline-block group-hover/link:-translate-x-1 transition-transform duration-200">←</span>
                   Sign in here
                 </Link>
               </p>

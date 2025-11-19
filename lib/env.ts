@@ -35,10 +35,9 @@ const baseSchema = z.object({
   STACK_SECRET_SERVER_KEY: z.string().optional(),
   STACK_SECRET: z.string().optional(),
 
-  // PayFast
-  PAYFAST_MERCHANT_ID: z.string().min(1, "PAYFAST_MERCHANT_ID is required"),
-  PAYFAST_MERCHANT_KEY: z.string().min(1, "PAYFAST_MERCHANT_KEY is required"),
-  PAYFAST_PASSPHRASE: z.string().min(1, "PAYFAST_PASSPHRASE is required"),
+  // Paystack
+  PAYSTACK_SECRET_KEY: z.string().min(1, "PAYSTACK_SECRET_KEY is required"),
+  PAYSTACK_PUBLIC_KEY: z.string().min(1, "PAYSTACK_PUBLIC_KEY is required"),
 
   // Sentry
   SENTRY_DSN: z.string().url().optional(),
@@ -112,10 +111,9 @@ export const env = {
   NEXTAUTH_SECRET: envRaw.NEXTAUTH_SECRET,
   STACK_SECRET_SERVER_KEY: envRaw.STACK_SECRET_SERVER_KEY || envRaw.STACK_SECRET,
 
-  // PayFast
-  PAYFAST_MERCHANT_ID: envRaw.PAYFAST_MERCHANT_ID,
-  PAYFAST_MERCHANT_KEY: envRaw.PAYFAST_MERCHANT_KEY,
-  PAYFAST_PASSPHRASE: envRaw.PAYFAST_PASSPHRASE,
+  // Paystack
+  PAYSTACK_SECRET_KEY: envRaw.PAYSTACK_SECRET_KEY,
+  PAYSTACK_PUBLIC_KEY: envRaw.PAYSTACK_PUBLIC_KEY,
 
   // Sentry
   SENTRY_DSN: envRaw.SENTRY_DSN,

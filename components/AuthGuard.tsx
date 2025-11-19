@@ -31,6 +31,9 @@ interface UserSession {
   emergencyContactPhone?: string
 }
 
+// Track redirects to prevent multiple redirects
+let redirectInProgress = false
+
 export default function AuthGuard({ 
   children, 
   requiredRole, 
@@ -42,19 +45,38 @@ export default function AuthGuard({
   const router = useRouter()
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = async (retryCount = 0) => {
+      // Prevent multiple simultaneous redirects
+      if (redirectInProgress) {
+        return
+      }
+      
       try {
-        // Get user session from secure API
-        const response = await fetch('/api/auth/session')
+        // Get user session from secure API with credentials included
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
         
         if (response.ok) {
           const result = await response.json()
           
           // Check if response has the expected structure
           if (!result.success || !result.data) {
-            setAuthorized(false)
-            setIsLoading(false)
-            router.push('/auth/login')
+            // Retry once if we get an unexpected response (might be a timing issue)
+            if (retryCount < 1) {
+              setTimeout(() => checkAuth(retryCount + 1), 500)
+              return
+            }
+            if (!redirectInProgress) {
+              redirectInProgress = true
+              setAuthorized(false)
+              setIsLoading(false)
+              router.push('/auth/login')
+            }
             return
           }
           
@@ -71,23 +93,46 @@ export default function AuthGuard({
           
           // Check role permissions
           if (requiredRole && userSession.role !== requiredRole) {
-            setAuthorized(false)
-            setIsLoading(false)
-            router.push('/unauthorized')
+            if (!redirectInProgress) {
+              redirectInProgress = true
+              setAuthorized(false)
+              setIsLoading(false)
+              router.push('/unauthorized')
+            }
             return
           }
           
           setAuthorized(true)
+          setIsLoading(false)
+          redirectInProgress = false // Reset on success
         } else {
-          setAuthorized(false)
-          router.push('/auth/login')
+          // If session check fails, retry once (might be a timing issue after redirect)
+          if (retryCount < 1 && response.status === 401) {
+            setTimeout(() => checkAuth(retryCount + 1), 1000)
+            return
+          }
+          
+          // If session check fails, try to get error details
+          await response.json().catch(() => ({}))
+          if (!redirectInProgress) {
+            redirectInProgress = true
+            setAuthorized(false)
+            setIsLoading(false)
+            router.push('/auth/login')
+          }
         }
       } catch (error) {
-        console.error('Auth check failed:', error)
-        setAuthorized(false)
-        router.push('/auth/login')
-      } finally {
-        setIsLoading(false)
+        // Retry once on network errors
+        if (retryCount < 1) {
+          setTimeout(() => checkAuth(retryCount + 1), 1000)
+          return
+        }
+        if (!redirectInProgress) {
+          redirectInProgress = true
+          setAuthorized(false)
+          setIsLoading(false)
+          router.push('/auth/login')
+        }
       }
     }
 

@@ -11,7 +11,7 @@ export default function PaymentCancelPage() {
   const searchParams = useSearchParams()
 
   // Extract cancellation details from URL parameters (guard against null)
-  const paymentId = searchParams?.get("pf_payment_id") || undefined
+  const paymentId = searchParams?.get("reference") || searchParams?.get("trxref") || undefined
   const reason = searchParams?.get("reason") || "Payment was cancelled by the user"
 
   return (

@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
 //import { OAuthButton } from "@stackframe/stack" //Temporal disable - SSO disabled
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
-import ReCAPTCHA from "react-google-recaptcha"
-import { publicEnv } from "@/lib/env.client"
 import EmailVerificationModal from "@/components/EmailVerificationModal"
 import ForgotPasswordModal from "@/components/ForgotPasswordModal"
 
@@ -27,7 +25,6 @@ export default function LoginPage() {
   } | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const recaptchaRef = useRef<ReCAPTCHA>(null)
   const app = useStackApp()
   const user = useUser()
 
@@ -111,12 +108,6 @@ export default function LoginPage() {
       return
     }
 
-    const recaptchaToken = recaptchaRef.current?.getValue()
-    if (!recaptchaToken) {
-      setError("Please complete the reCAPTCHA verification")
-      return
-    }
-
     setIsPending(true)
     setError("")
 
@@ -133,17 +124,39 @@ export default function LoginPage() {
         })
         setShowVerificationModal(true)
         setIsPending(false)
-        recaptchaRef.current?.reset()
         return
       }
 
-      // Try StackAuth first for OAuth users
+      // For the special test provider account, skip StackAuth and authenticate directly against the secure DB.
+      const normalizedEmail = email.trim().toLowerCase()
+      const isTestProvider = normalizedEmail === 'testprovider@example.com'
+
+      if (isTestProvider) {
+        // Bypass StackAuth for this test account and use secure database authentication only.
+        const secureResponse = await fetch('/api/auth/secure-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        })
+
+        const secureData = await secureResponse.json()
+
+        if (secureResponse.ok && secureData.success) {
+          router.push('/auth/redirect')
+          return
+        } else {
+          throw new Error(secureData.error || 'Invalid email or password')
+        }
+      }
+
       try {
         const result = await app.signInWithCredential({ email, password })
         if ((result as any)?.error) {
           throw new Error((result as any).error)
         }
-        
+
         // Email verification will be checked on the redirect/session endpoint
         router.push("/auth/redirect")
         return
@@ -151,14 +164,13 @@ export default function LoginPage() {
         // Check if error is due to email not verified
         if (stackError.message?.includes('email') && stackError.message?.includes('verif')) {
           setError("Please verify your email before signing in. Check your inbox for the verification link.")
-          recaptchaRef.current?.reset()
           setIsPending(false)
           return
         }
-        
+
         // StackAuth failed, try secure database authentication
         console.log("StackAuth authentication failed, trying secure database authentication:", stackError.message)
-        
+
         const secureResponse = await fetch('/api/auth/secure-login', {
           method: 'POST',
           headers: {
@@ -180,7 +192,6 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       setError(error.message || "Login failed. Please try again.")
-      recaptchaRef.current?.reset()
     } finally {
       setIsPending(false)
     }
@@ -201,41 +212,58 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] px-4 py-12 flex items-center justify-center">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/20 p-10 max-w-lg w-full">
+    <div className="min-h-screen px-4 py-12 flex items-center justify-center relative">
+      <div className="relative border border-white/10 bg-black/30 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-blue-500/30 p-10 max-w-lg w-full auth-card-container">
+        {/* Decorative Corner Accents */}
+        <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-blue-500/30 rounded-tl-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-purple-500/30 rounded-br-3xl"></div>
+
         {/* Home Button */}
         <Link 
           href="/" 
-          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-lg hover:bg-white/5 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20"
+          className="absolute top-5 right-5 group p-2.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-lg hover:bg-white/10 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/30 hover:border-blue-500/50 z-10"
         >
           <Home className="w-5 h-5 text-neutral-400 group-hover:text-white transition-colors" />
         </Link>
 
         {/* Header Section */}
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+        <div className="text-center mb-10 relative">
+          <div className="inline-block mb-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-xl border border-white/10 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Lock className="w-8 h-8 text-blue-400" />
+            </div>
+          </div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-purple-500 bg-clip-text text-transparent drop-shadow-2xl tracking-tight break-words">
             Welcome Back
           </h1>
-          <p className="text-neutral-300 text-base mt-1">Sign in to access your Varsity Nest dashboard</p>
+          <p className="text-neutral-300 text-sm sm:text-base mt-1 break-words px-2">Sign in to access your Varsity Nest dashboard</p>
         </div>
 
         {/* Messages */}
         <div className="space-y-4 mb-8">
           {successMessage && (
-            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-              <span className="text-green-300 text-sm leading-relaxed">{successMessage}</span>
+            <div className="p-4 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl flex items-start space-x-3 shadow-lg shadow-green-500/10">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                </div>
+              </div>
+              <span className="text-green-300 text-sm leading-relaxed break-words flex-1">{successMessage}</span>
             </div>
           )}
 
           {error && (
-            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex flex-col space-y-2">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <span className="text-red-300 text-sm leading-relaxed">{error}</span>
+            <div className="p-4 border border-red-500/50 bg-red-500/10 backdrop-blur-xl rounded-xl flex flex-col space-y-2 shadow-lg shadow-red-500/10">
+              <div className="flex items-start space-x-3 min-w-0">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                  </div>
+                </div>
+                <span className="text-red-300 text-sm leading-relaxed break-words flex-1">{error}</span>
               </div>
               {error.includes('verify your email') && (
-                <Link href="/auth/check-email" className="text-xs text-blue-400 hover:text-blue-300 underline ml-8 mt-1">
+                <Link href="/auth/check-email" className="text-xs text-blue-400 hover:text-blue-300 underline ml-11 mt-1 break-words transition-colors hover:underline-offset-2">
                   Resend verification email →
                 </Link>
               )}
@@ -244,14 +272,15 @@ export default function LoginPage() {
         </div>
 
         {/* Form Section */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email Field */}
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5">
+            <label htmlFor="email" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">
               Email Address
             </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+            <div className="relative group">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
               <input
                 id="email"
                 name="email"
@@ -261,7 +290,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isPending}
-                className="w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative w-full pl-12 pr-4 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="you@varsitynest.space"
               />
             </div>
@@ -269,11 +298,12 @@ export default function LoginPage() {
 
           {/* Password Field */}
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5">
+            <label htmlFor="password" className="block text-sm font-semibold text-neutral-200 mb-2.5 transition-colors">
               Password
             </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none" />
+            <div className="relative group">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300"></div>
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5 pointer-events-none transition-colors group-focus-within:text-blue-400 z-10" />
               <input
                 id="password"
                 name="password"
@@ -283,12 +313,12 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isPending}
-                className="w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative w-full pl-12 pr-14 py-3.5 border border-white/20 bg-black/30 backdrop-blur-xl rounded-xl text-white text-base placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:bg-black/40 focus:shadow-lg focus:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="Enter your password"
               />
               <button
                 type="button"
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-colors p-1 disabled:opacity-50"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-white transition-all duration-200 p-1.5 rounded-lg hover:bg-white/10 disabled:opacity-50 z-10"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isPending}
                 aria-label={showPassword ? "Hide password" : "Show password"}
@@ -302,20 +332,13 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* ReCAPTCHA */}
-          <div className="flex justify-center py-2">
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={publicEnv.RECAPTCHA_SITE_KEY}
-            />
-          </div>
-
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isPending}
-            className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99]"
+            className="group relative w-full bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:from-blue-500 hover:via-purple-500 hover:to-purple-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
           >
+            <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
             <span className="relative z-10 flex items-center justify-center">
               {isPending ? (
                 <>
@@ -323,10 +346,15 @@ export default function LoginPage() {
                   <span>Signing in...</span>
                 </>
               ) : (
-                "Sign In"
+                <>
+                  <span className="relative">Sign In</span>
+                  <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    →
+                  </span>
+                </>
               )}
             </span>
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
           </button>
 
           {/* OAuth Button */}
@@ -345,26 +373,27 @@ export default function LoginPage() {
           </div>
           */}
           {/* Forgot Password Link */}
-          <div className="flex justify-end pt-1">
+          <div className="flex justify-end pt-2">
             <button
               type="button"
               onClick={handleForgotPassword}
               disabled={isPending}
-              className="text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium disabled:opacity-50"
+              className="text-sm text-blue-400 hover:text-blue-300 transition-all duration-200 font-medium disabled:opacity-50 hover:underline hover:underline-offset-2"
             >
               Forgot password?
             </button>
           </div>
 
           {/* Register Link */}
-          <div className="pt-4 border-t border-white/10">
-            <p className="text-center text-sm text-neutral-400">
+          <div className="pt-6 border-t border-white/10">
+            <p className="text-center text-sm text-neutral-400 break-words px-2">
               Don&apos;t have an account?{" "}
               <Link
                 href="/auth/register"
-                className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                className="font-semibold text-blue-400 hover:text-blue-300 transition-all duration-200 break-words hover:underline hover:underline-offset-2 inline-flex items-center gap-1 group/link"
               >
                 Register here
+                <span className="inline-block group-hover/link:translate-x-1 transition-transform duration-200">→</span>
               </Link>
             </p>
           </div>

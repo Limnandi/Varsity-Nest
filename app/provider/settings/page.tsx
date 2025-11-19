@@ -269,17 +269,17 @@ export default function ProviderSettings() {
   return (
     <AuthGuard requiredRole="provider">
       <DashboardLayout userRole="provider">
-        <div className="space-y-8 p-6 text-white">
+        <div className="space-y-4 sm:space-y-8 p-4 sm:p-6 text-white overflow-x-hidden">
           {/* Header */}
-          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/20">
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-blue-500/20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
                   Settings
                 </h1>
-                <p className="text-neutral-300 text-lg">Manage your account and accommodation preferences</p>
+                <p className="text-neutral-300 text-sm sm:text-lg break-words">Manage your account and accommodation preferences</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {saveStatus === 'success' && (
                   <div className="flex items-center gap-2 text-green-400">
                     <CheckCircle className="w-5 h-5" />
@@ -295,10 +295,10 @@ export default function ProviderSettings() {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-50 text-sm sm:text-base break-words"
                 >
-                  <Save className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  <Save className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${isSaving ? 'animate-spin' : ''}`} />
+                  <span className="break-words">{isSaving ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </div>
@@ -317,12 +317,12 @@ export default function ProviderSettings() {
           )}
 
           {/* Accommodation Management */}
-          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-indigo-500/10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 border border-indigo-500/50 bg-indigo-500/10 rounded-xl">
-                  <Settings className="w-6 h-6 text-indigo-400" />
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-indigo-500/10">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <div className="p-2 sm:p-3 border border-indigo-500/50 bg-indigo-500/10 rounded-xl flex-shrink-0">
+                  <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
                 </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent break-words">
                   Accommodation Management
                 </h2>
               </div>
@@ -349,11 +349,11 @@ export default function ProviderSettings() {
               ) : (
                 <div className="space-y-4">
                   {accommodations.map((accommodation) => (
-                    <div key={accommodation.id} className="border border-white/10 bg-black/20 rounded-xl p-6 hover:bg-black/30 transition-all duration-300">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-white">{accommodation.name}</h3>
+                    <div key={accommodation.id} className="border border-white/10 bg-black/20 rounded-xl p-4 sm:p-6 hover:bg-black/30 transition-all duration-300">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0 w-full sm:w-auto">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-white break-words">{accommodation.name}</h3>
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                               accommodation.is_active 
                                 ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
@@ -369,13 +369,13 @@ export default function ProviderSettings() {
                               {accommodation.is_published ? 'Published' : 'Draft'}
                             </span>
                           </div>
-                          <p className="text-neutral-400 text-sm mb-2">{accommodation.address}</p>
-                          <div className="flex items-center gap-4 text-sm text-neutral-300">
-                            <span>Status: {accommodation.accreditation_status?.replace('_', ' ')}</span>
-                            <span>Rooms: {accommodation.available_rooms || 0}/{accommodation.total_rooms || 0}</span>
+                          <p className="text-neutral-400 text-xs sm:text-sm mb-2 break-words">{accommodation.address}</p>
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-neutral-300">
+                            <span className="break-words">Status: {accommodation.accreditation_status?.replace('_', ' ')}</span>
+                            <span className="break-words">Rooms: {accommodation.available_rooms || 0}/{accommodation.total_rooms || 0}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                           <button
                             onClick={() => handleToggleAccommodationStatus(accommodation.id, accommodation.is_active)}
                             className={`p-2 rounded-lg transition-all duration-300 ${

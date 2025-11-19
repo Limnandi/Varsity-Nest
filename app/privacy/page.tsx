@@ -81,7 +81,7 @@ export default function PrivacyPage() {
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 mt-5">
                   <h3 className="text-lg font-semibold text-yellow-400 mb-3">Third-Party Services:</h3>
                   <p className="text-neutral-300 text-base">
-                    We integrate with StackAuth for authentication and PayFast for payments. These services have their own privacy policies, and we encourage you to review them.
+                    We integrate with StackAuth for authentication and Paystack for payments. These services have their own privacy policies, and we encourage you to review them.
                   </p>
                 </div>
               </section>

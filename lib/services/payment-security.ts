@@ -1,169 +1,64 @@
 import crypto from "crypto"
-import { PayFastWebhook, PaymentSecurity } from "@/lib/schemas/payment"
+import { PaymentSecurity } from "@/lib/schemas/payment"
 import { captureException, captureMessage } from '@/lib/logging/config'
 import { env } from "@/lib/env"
 
 export class PaymentSecurityService {
   /**
-   * Official PayFast IP address ranges for webhook validation
-   * Source: https://developers.payfast.co.za/documentation/#ports-and-ip-addresses
-   * These ranges must be whitelisted in PayFast merchant portal for recurring billing API
+   * Validate Paystack webhook signature using HMAC SHA512
+   * Paystack signs webhooks with HMAC SHA512 using the secret key
+   * The signature is in the x-paystack-signature header
    */
-  private static readonly PAYFAST_IP_RANGES = [
-    '197.97.102.0/24', // Primary PayFast IP range
-    '41.74.179.0/24',
-    '41.74.180.0/24', 
-    '41.74.181.0/24',
-    '41.74.182.0/24',
-    '41.74.183.0/24',
-    '41.74.184.0/24',
-    '41.74.185.0/24',
-    '41.74.186.0/24',
-    '41.74.187.0/24',
-    '41.74.188.0/24',
-    '41.74.189.0/24',
-    '41.74.190.0/24',
-    '41.74.191.0/24',
-    '41.74.192.0/24',
-    '41.74.193.0/24',
-    '41.74.194.0/24',
-    '41.74.195.0/24',
-    '41.74.196.0/24',
-    '41.74.197.0/24',
-    '41.74.198.0/24',
-    '41.74.199.0/24',
-    '41.74.200.0/24',
-    '41.74.201.0/24',
-    '41.74.202.0/24',
-    '41.74.203.0/24',
-    '41.74.204.0/24',
-    '41.74.205.0/24',
-    '41.74.206.0/24',
-    '41.74.207.0/24',
-    '41.74.208.0/24',
-    '41.74.209.0/24',
-    '41.74.210.0/24',
-    '41.74.211.0/24',
-    '41.74.212.0/24',
-    '41.74.213.0/24',
-    '41.74.214.0/24',
-    '41.74.215.0/24',
-    '41.74.216.0/24',
-    '41.74.217.0/24',
-    '41.74.218.0/24',
-    '41.74.219.0/24',
-    '41.74.220.0/24',
-    '41.74.221.0/24',
-    '41.74.222.0/24',
-    '41.74.223.0/24',
-    '41.74.224.0/24',
-    '41.74.225.0/24',
-    '41.74.226.0/24',
-    '41.74.227.0/24',
-    '41.74.228.0/24',
-    '41.74.229.0/24',
-    '41.74.230.0/24',
-    '41.74.231.0/24',
-    '41.74.232.0/24',
-    '41.74.233.0/24',
-    '41.74.234.0/24',
-    '41.74.235.0/24',
-    '41.74.236.0/24',
-    '41.74.237.0/24',
-    '41.74.238.0/24',
-    '41.74.239.0/24',
-    '41.74.240.0/24',
-    '41.74.241.0/24',
-    '41.74.242.0/24',
-    '41.74.243.0/24',
-    '41.74.244.0/24',
-    '41.74.245.0/24',
-    '41.74.246.0/24',
-    '41.74.247.0/24',
-    '41.74.248.0/24',
-    '41.74.249.0/24',
-    '41.74.250.0/24',
-    '41.74.251.0/24',
-    '41.74.252.0/24',
-    '41.74.253.0/24',
-    '41.74.254.0/24',
-    '41.74.255.0/24'
-  ]
-
-  /**
-   * Validate PayFast webhook signature with enhanced security
-   * Generic version that works with any PayFast webhook type (ITN, RRN, PFN)
-   */
-  static verifyPayFastSignature(data: PayFastWebhook | Record<string, any>, signature: string): boolean {
+  static verifyPaystackSignature(payload: string, signature: string): boolean {
     try {
-      // Convert to Record<string, any> for safe indexing
-      const webhookData: Record<string, any> = data as Record<string, any>
+      if (!signature || !payload) {
+        return false
+      }
       
-      // Create parameter string with sorted keys (PayFast requirement)
-      let paramString = ""
-      const sortedKeys = Object.keys(webhookData).sort()
-
-      for (const key of sortedKeys) {
-        const value = webhookData[key]
-        // Only include non-empty values and exclude signature field
-        if (value !== undefined && value !== "" && value !== null && key !== "signature") {
-          paramString += `${key}=${encodeURIComponent(String(value))}&`
-        }
-      }
-
-      // Remove trailing &
-      paramString = paramString.slice(0, -1)
-
-      // Add passphrase for enhanced security
-      const passphrase = env.PAYFAST_PASSPHRASE
-      if (passphrase) {
-        paramString += `&passphrase=${encodeURIComponent(passphrase)}`
-      }
-
-      // Generate MD5 hash (PayFast standard)
-      const generatedSignature = crypto.createHash("md5").update(paramString).digest("hex")
+      const hash = crypto
+        .createHmac('sha512', env.PAYSTACK_SECRET_KEY)
+        .update(payload)
+        .digest('hex')
       
       // Use timing-safe comparison to prevent timing attacks
-      return crypto.timingSafeEqual(
-        Buffer.from(generatedSignature, 'hex'),
-        Buffer.from(signature, 'hex')
-      )
+      // Both must be same length for timingSafeEqual to work
+      const hashBuffer = Buffer.from(hash, 'hex')
+      const signatureBuffer = Buffer.from(signature, 'hex')
+      
+      if (hashBuffer.length !== signatureBuffer.length) {
+        return false
+      }
+      
+      return crypto.timingSafeEqual(hashBuffer, signatureBuffer)
     } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'signature-verification', component: 'payment-security' })
+      captureException(error instanceof Error ? error : new Error(String(error)), { 
+        action: 'paystack-signature-verification', 
+        component: 'payment-security' 
+      })
       return false
     }
   }
 
   /**
-   * Validate PayFast webhook IP address
+   * Validate Paystack webhook IP address
+   * Paystack sends webhooks from these IP addresses:
+   * - 52.31.139.75
+   * - 52.49.173.169
+   * - 52.214.14.220
    */
-  static validatePayFastIP(ipAddress: string): boolean {
-    try {
-      // Check if IP is in PayFast ranges
-      return this.PAYFAST_IP_RANGES.some(range => this.isIPInRange(ipAddress, range))
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), { action: 'ip-validation', component: 'payment-security', ipAddress })
-      return false
-    }
+  static validatePaystackIP(clientIP: string): boolean {
+    const allowedIPs = [
+      '52.31.139.75',
+      '52.49.173.169',
+      '52.214.14.220'
+    ]
+    
+    // Extract IP from x-forwarded-for (first IP in chain)
+    const ip = clientIP.split(',')[0]?.trim() || clientIP
+    
+    return allowedIPs.includes(ip)
   }
 
-  /**
-   * Check if IP is in CIDR range
-   */
-  private static isIPInRange(ip: string, cidr: string): boolean {
-    const [range, bits] = cidr.split('/')
-    const mask = -1 << (32 - parseInt(bits))
-    const ipNum = this.ipToNumber(ip)
-    const rangeNum = this.ipToNumber(range)
-    return (ipNum & mask) === (rangeNum & mask)
-  }
-
-  /**
-   * Convert IP address to number
-   */
-  private static ipToNumber(ip: string): number {
-    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet), 0) >>> 0
-  }
 
   /**
    * Validate payment security context
@@ -181,9 +76,10 @@ export class PaymentSecurityService {
         return false
       }
 
-      // Validate merchant ID
-      if (security.merchantId !== env.PAYFAST_MERCHANT_ID) {
-        captureMessage('Invalid merchant ID in payment request', { level: 'error', component: 'payment-security', merchantId: security.merchantId, ipAddress: security.ipAddress })
+      // Validate merchant ID (if provided - Paystack uses secret key instead)
+      // This is kept for backward compatibility
+      if (security.merchantId && !env.PAYSTACK_SECRET_KEY) {
+        captureMessage('Payment gateway not configured', { level: 'error', component: 'payment-security', ipAddress: security.ipAddress })
         return false
       }
 

@@ -1,8 +1,9 @@
 /**
  * Pause Subscription Endpoint
  * 
- * Allows providers and agents to pause their PayFast recurring subscriptions
- * Documentation: https://developers.payfast.co.za/documentation/#recurring-billing
+ * Allows providers and agents to pause their Paystack recurring subscriptions
+ * Note: Paystack doesn't have a direct pause method. We disable the subscription instead.
+ * Documentation: https://paystack.com/docs/api/#subscription
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -10,7 +11,7 @@ import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/au
 import { secureDb } from "@/lib/database-secure"
 import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
-import { PayFastAPIClient } from "@/lib/payfast-api-client"
+import { PaystackAPIClient } from "@/lib/paystack-api-client"
 import { captureException, captureMessage } from "@/lib/logging/config"
 
 export async function PUT(
@@ -40,7 +41,7 @@ export async function PUT(
 
     // Verify subscription belongs to user
     const entityType = user.role
-    let subscription: any = null
+    let entityRecord: { id: string } | null = null
 
     if (entityType === 'provider') {
       const [provider] = await secureDb.db
@@ -53,7 +54,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Subscription not found or access denied' }, { status: 404 })
       }
 
-      subscription = provider
+      entityRecord = provider
     } else { // agent
       const [agent] = await secureDb.db
         .select({ id: schema.agents.id, subscriptionToken: schema.agents.subscriptionToken })
@@ -65,24 +66,32 @@ export async function PUT(
         return NextResponse.json({ error: 'Subscription not found or access denied' }, { status: 404 })
       }
 
-      subscription = agent
+      entityRecord = agent
     }
 
-    // Parse request body for optional cycles parameter
-    const body = await request.json().catch(() => ({}))
-    const cycles = body.cycles || 0 // 0 = indefinite pause
+    // Get subscription to retrieve email token
+    const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
+    const emailToken = subscription.email_token
 
-    // Pause subscription via PayFast API
-    const updatedSubscription = await PayFastAPIClient.pauseSubscription(subscriptionToken, cycles)
+    if (!emailToken) {
+      return NextResponse.json({ error: 'Email token not found for subscription' }, { status: 404 })
+    }
+
+    // Disable subscription via Paystack API (Paystack doesn't have pause, so we disable)
+    // Note: This will prevent future charges but won't cancel immediately
+    await PaystackAPIClient.disableSubscription(subscriptionToken, emailToken)
+    
+    // Get updated subscription details
+    const updatedSubscription = await PaystackAPIClient.getSubscription(subscriptionToken)
 
     // Update database
-    if (entityType === 'provider') {
+    if (entityType === 'provider' && entityRecord) {
       await secureDb.db
         .update(schema.providers)
         .set({
           subscriptionStatus: 'inactive' // Paused subscriptions are considered inactive
         })
-        .where(eq(schema.providers.id, subscription.id))
+        .where(eq(schema.providers.id, entityRecord.id))
     } else {
       // For agents, we can add subscription status tracking if needed
     }
@@ -91,8 +100,7 @@ export async function PUT(
       level: 'info',
       component: 'subscription-management',
       subscriptionToken,
-      entityType,
-      cycles
+      entityType
     })
 
     return NextResponse.json({

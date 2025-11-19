@@ -32,7 +32,7 @@ export async function POST(_request: NextRequest) {
     const providerId = provider.id
 
     // Find the most recent payment transaction (pending or completed)
-    // If user was redirected from Payfast success page, payment is likely successful but webhook hasn't been called yet
+    // If user was redirected from Paystack success page, payment is likely successful but webhook hasn't been called yet
     const [latestPayment] = await secureDb.db
       .select({
         id: schema.paymentTransactions.id,
@@ -57,7 +57,7 @@ export async function POST(_request: NextRequest) {
       }, { status: 404 })
     }
 
-    // If payment is still pending but user was redirected from Payfast success page, mark it as completed
+    // If payment is still pending but user was redirected from Paystack success page, mark it as completed
     // This handles the case where webhook hasn't been called yet
     if (latestPayment.status === 'pending') {
       const paymentDate = latestPayment.paymentDate || latestPayment.createdAt || new Date()

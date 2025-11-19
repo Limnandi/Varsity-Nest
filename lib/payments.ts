@@ -26,8 +26,7 @@ export interface Subscription {
   interval: "month" | "year"
 }
 
-// Removed mock PaymentService in favor of production PayFast flow handled via
-// server endpoints and lib/payfast.ts. Retained pricing helpers below.
+
 
 // Pricing helpers for provider subscription
 export interface ProviderPricingInput {

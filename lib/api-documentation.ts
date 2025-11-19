@@ -440,7 +440,7 @@ export class ApiDocumentation {
       .register()
 
     // Payment endpoints
-    this.createEndpointDoc('POST', '/api/payfast/initiate', 'v1', 'Initiate PayFast payment')
+    this.createEndpointDoc('POST', '/api/paystack/initiate', 'v1', 'Initiate Paystack payment')
       .setAuthentication(true, ['provider'])
       .setRequestBody({
         contentType: 'application/json',
@@ -456,7 +456,7 @@ export class ApiDocumentation {
       .addResponse({ status: 500, description: 'Payment system not configured or internal error', schema: { type: 'object' } })
       .register()
 
-    this.createEndpointDoc('POST', '/api/payfast/notify', 'v1', 'PayFast webhook notification')
+    this.createEndpointDoc('POST', '/api/paystack/webhook', 'v1', 'Paystack webhook notification')
       .addResponse({ status: 200, description: 'Webhook processed successfully', schema: { type: 'string' } })
       .addResponse({ status: 400, description: 'Invalid webhook data or missing required fields', schema: { type: 'object' } })
       .addResponse({ status: 403, description: 'Unauthorized webhook source', schema: { type: 'string' } })

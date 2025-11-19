@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import PayFastPaymentForm from "@/components/PayFastPaymentForm"
+import PaystackPaymentForm from "@/components/PaystackPaymentForm"
 import { ArrowLeft, CreditCard, Shield, CheckCircle, AlertCircle, RefreshCw, Clock, Calendar } from "lucide-react"
 import Link from "next/link"
 
@@ -60,8 +60,7 @@ export default function PaymentPage() {
   }, [])
 
   const handlePaymentSuccess = () => {
-    // Payment form will handle the redirect to PayFast
-    console.log("Payment initiated successfully")
+    // Payment form will handle the redirect to PayStack
   }
 
   const handlePaymentError = (error: string) => {
@@ -190,12 +189,13 @@ export default function PaymentPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                        <span>No credit card required to start</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                         <span>Cancel anytime during trial - no charges</span>
                       </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <p className="text-xs text-blue-200">
+                        <span className="font-semibold">Note:</span> A R1.00 card verification charge will be processed to verify your payment method. This amount will be <span className="font-semibold">refunded immediately</span> after verification.
+                      </p>
                     </div>
                   </div>
                   
@@ -222,7 +222,7 @@ export default function PaymentPage() {
             {/* Payment Form */}
             <div className="lg:col-span-2">
               <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/10">
-                <PayFastPaymentForm
+                <PaystackPaymentForm
                   amount={provider.billingInfo.monthlyFee}
                   userEmail={provider.email}
                   userName={provider.contactPerson}
@@ -366,7 +366,7 @@ export default function PaymentPage() {
                 <p>• Debit Cards</p>
                 <p>• EFT (Electronic Funds Transfer)</p>
                 <p>• Instant EFT</p>
-                <p>• PayFast Wallet</p>
+                <p>• Bank Transfer</p>
               </div>
             </div>
 
@@ -390,3 +390,4 @@ export default function PaymentPage() {
     </AuthGuard>
   )
 }
+

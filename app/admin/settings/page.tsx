@@ -74,16 +74,16 @@ export default function AdminSettings() {
   return (
     <AuthGuard requiredRole="admin">
       <DashboardLayout userRole="admin">
-        <div className="space-y-6 p-6">
+        <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 overflow-x-hidden">
           {/* Header */}
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/20">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 border border-blue-500/50 bg-blue-500/10 rounded-lg">
-                <Settings className="w-8 h-8 text-blue-400" />
+          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-blue-500/20">
+            <div className="flex items-center space-x-3 min-w-0">
+              <div className="p-2 border border-blue-500/50 bg-blue-500/10 rounded-lg flex-shrink-0">
+                <Settings className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Admin Settings</h1>
-                <p className="text-neutral-300">Control platform visibility and features</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">Admin Settings</h1>
+                <p className="text-neutral-300 text-sm sm:text-base break-words">Control platform visibility and features</p>
               </div>
             </div>
           </div>

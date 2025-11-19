@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { Shield, CreditCard, AlertCircle, User, Mail, CheckCircle } from "lucide-react"
 import { generateIdempotencyKey } from "@/lib/utils/idempotency"
 
-interface PayFastPaymentFormProps {
+interface PaystackPaymentFormProps {
   amount: number
   userEmail: string
   userName: string
@@ -16,7 +16,7 @@ interface PayFastPaymentFormProps {
   isInTrial?: boolean
 }
 
-export default function PayFastPaymentForm({
+export default function PaystackPaymentForm({
   amount,
   userEmail,
   userName,
@@ -26,7 +26,7 @@ export default function PayFastPaymentForm({
   onError,
   isEligibleForTrial = false,
   isInTrial = false
-}: PayFastPaymentFormProps) {
+}: PaystackPaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const idempotencyKeyRef = useRef<string | null>(null)
@@ -42,15 +42,13 @@ export default function PayFastPaymentForm({
         idempotencyKeyRef.current = generateIdempotencyKey(userId)
       }
 
-      // Request server to create signed PayFast payload (secrets stay server-side)
-      const resp = await fetch("/api/payfast/initiate", {
+      // Request server to initialize Paystack payment (secrets stay server-side)
+      const resp = await fetch("/api/paystack/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           amount, 
-          userEmail, 
-          userName, 
-          itemName, 
+          itemName,
           idempotencyKey: idempotencyKeyRef.current,
           customData 
         })
@@ -62,98 +60,41 @@ export default function PayFastPaymentForm({
       }
 
       const responseData = await resp.json()
-      const { paymentData, idempotent, trialActivated, trialPaymentSetup } = responseData
+      const { authorizationUrl, idempotent, trialActivated, trialPaymentSetup } = responseData
 
-      // Handle trial activation with PayFast redirect
-      if (trialActivated && trialPaymentSetup && paymentData) {
-        console.log('Trial subscription activated, redirecting to PayFast for payment setup:', responseData)
-        // Create form and submit to PayFast to set up recurring payment
-        // User will add payment details, but won't be charged until after trial ends
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = process.env.NODE_ENV === 'production' 
-          ? 'https://www.payfast.co.za/eng/process' 
-          : 'https://sandbox.payfast.co.za/eng/process'
-
-        // Add all payment data as hidden fields
-        Object.entries(paymentData).forEach(([key, value]) => {
-          if (value != null && String(value) !== '') {
-            const input = document.createElement('input')
-            input.type = 'hidden'
-            input.name = key
-            input.value = String(value)
-            form.appendChild(input)
-          }
-        })
-
-        // Submit form to redirect to PayFast
-        document.body.appendChild(form)
-        form.submit()
-        document.body.removeChild(form)
-
+      // Handle trial activation with Paystack redirect
+      if (trialActivated && trialPaymentSetup && authorizationUrl) {
+        console.log('Trial subscription activated, redirecting to Paystack for payment setup:', responseData)
+        // Redirect to Paystack checkout
+        window.location.href = authorizationUrl
         onSuccess?.()
         return
       }
 
       // Handle trial payment setup (payment scheduled for after trial ends)
-      if (trialPaymentSetup && paymentData) {
-        // Create form and submit to PayFast to set up recurring payment
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = process.env.NODE_ENV === 'production' 
-          ? 'https://www.payfast.co.za/eng/process' 
-          : 'https://sandbox.payfast.co.za/eng/process'
-
-        // Add all payment data as hidden fields
-        Object.entries(paymentData).forEach(([key, value]) => {
-          if (value != null && String(value) !== '') {
-            const input = document.createElement('input')
-            input.type = 'hidden'
-            input.name = key
-            input.value = String(value)
-            form.appendChild(input)
-          }
-        })
-
-        // Submit form
-        document.body.appendChild(form)
-        form.submit()
-        document.body.removeChild(form)
-
+      if (trialPaymentSetup && authorizationUrl) {
+        // Redirect to Paystack to set up recurring payment
+        window.location.href = authorizationUrl
         onSuccess?.()
         return
       }
 
-      // If idempotent response, use existing payment data
-      if (idempotent && paymentData) {
+      // If idempotent response, use existing authorization URL
+      if (idempotent && authorizationUrl) {
         // Reuse existing idempotency key for subsequent attempts
         console.log('Idempotent payment request - using existing transaction')
+        window.location.href = authorizationUrl
+        onSuccess?.()
+        return
       }
 
-      // Create form and submit to PayFast
-      const form = document.createElement('form')
-      form.method = 'POST'
-      form.action = process.env.NODE_ENV === 'production' 
-        ? 'https://www.payfast.co.za/eng/process' 
-        : 'https://sandbox.payfast.co.za/eng/process'
-
-      // Add all payment data as hidden fields
-      Object.entries(paymentData).forEach(([key, value]) => {
-        if (value != null && String(value) !== '') {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = key
-          input.value = String(value)
-          form.appendChild(input)
-        }
-      })
-
-      // Submit form
-      document.body.appendChild(form)
-      form.submit()
-      document.body.removeChild(form)
-
-      onSuccess?.()
+      // Redirect to Paystack checkout
+      if (authorizationUrl) {
+        window.location.href = authorizationUrl
+        onSuccess?.()
+      } else {
+        throw new Error("No authorization URL received from server")
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Payment initialization failed'
       setError(errorMessage)
@@ -177,7 +118,7 @@ export default function PayFastPaymentForm({
             <h3 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
               Secure Payment
             </h3>
-            <p className="text-sm text-neutral-400">Complete your payment securely through PayFast</p>
+            <p className="text-sm text-neutral-400">Complete your payment securely through Paystack</p>
           </div>
         </div>
       </div>
@@ -187,12 +128,12 @@ export default function PayFastPaymentForm({
         <div className="text-center">
           <p className="text-sm text-neutral-300 mb-2">Total Amount</p>
           <p className="text-5xl font-bold text-green-400 mb-1">
-            R {(isEligibleForTrial || isInTrial) ? '0.00' : amount.toFixed(2)}
+            R {(isEligibleForTrial || isInTrial) ? '1.00' : amount.toFixed(2)}
           </p>
           <p className="text-xs text-neutral-400">
             {(isEligibleForTrial || isInTrial) 
-              ? 'Free trial - No payment required' 
-              : 'Secure payment via PayFast'}
+              ? 'Card verification charge (will be credited back)' 
+              : 'Secure payment via Paystack'}
           </p>
         </div>
       </div>
@@ -227,7 +168,7 @@ export default function PayFastPaymentForm({
         <div>
           <p className="text-sm font-medium text-blue-300 mb-1">Secure Payment Processing</p>
           <p className="text-xs text-blue-200">
-            Your payment will be processed securely by PayFast. We never store your payment details.
+            Your payment will be processed securely by Paystack. We never store your payment details.
           </p>
         </div>
       </div>
@@ -259,22 +200,23 @@ export default function PayFastPaymentForm({
             <CreditCard className="w-5 h-5" />
             <span>
               {isEligibleForTrial 
-                ? 'Activate R0 Trial Subscription' 
+                ? 'Start Trial' 
                 : isInTrial 
                   ? `Set Up Payment (R ${amount.toFixed(2)} after trial)`
-                  : `Pay R ${amount.toFixed(2)} with PayFast`}
+                  : `Pay R ${amount.toFixed(2)} with Paystack`}
             </span>
           </>
         )}
       </button>
 
-      {/* PayFast Branding */}
+      {/* Paystack Branding */}
       <div className="text-center">
         <p className="text-xs text-neutral-500 flex items-center justify-center gap-2">
           <CheckCircle className="w-3 h-3" />
-          Powered by PayFast - Secure Payment Gateway
+          Powered by Paystack - Secure Payment Gateway
         </p>
       </div>
     </div>
   )
 }
+
