@@ -1,13 +1,19 @@
 import { NextRequest } from "next/server"
-import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
+import { getCurrentUserFromStackAuth, getCurrentUserFromRequest } from "@/lib/auth-server"
 import { ApiMiddleware } from "@/lib/api-middleware"
 import { ApiErrorResponseBuilder } from "@/lib/api-error-response"
 
 export const GET = ApiMiddleware.withMiddleware(
   async (request: NextRequest) => {
     try {
-      // Always query fresh data from database via StackAuth to ensure profile updates are reflected
-      const user = await getCurrentUserFromStackAuth()
+      // First check for secure server session (HTTP-only cookie or Authorization header)
+      // This allows users authenticated via /api/auth/secure-login (DB-backed sessions) to be recognized.
+      let user = await getCurrentUserFromRequest(request)
+      
+      // Fallback to StackAuth if no secure session found (OAuth users)
+      if (!user) {
+        user = await getCurrentUserFromStackAuth()
+      }
       
       if (!user) {
         return await ApiErrorResponseBuilder.createAuthErrorResponse(
