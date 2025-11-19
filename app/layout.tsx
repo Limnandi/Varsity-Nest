@@ -12,7 +12,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { initializeLogging } from "@/lib/logging/config"
 import { performanceMonitor } from "@/lib/monitoring/performance"
-// import ConsoleSecurityWarning from "@/components/ConsoleSecurityWarning" // Disabled for debugging
+import ConsoleSecurityWarning from "@/components/ConsoleSecurityWarning"
+import CookieBanner from "@/components/CookieBanner"
 import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -64,7 +65,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="overflow-x-hidden w-full max-w-full">
       <body className={`${inter.className} overflow-x-hidden w-full max-w-full`}>
-        {/* <ConsoleSecurityWarning /> */} {/* Disabled for debugging */}
+        <ConsoleSecurityWarning />
+        <CookieBanner />
         <ErrorBoundary component="root_layout">
           <StackProvider app={getStackServerApp() as any}>
             <ReactQueryProvider>
