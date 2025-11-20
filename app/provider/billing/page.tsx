@@ -14,7 +14,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Pause,
   Play,
   X,
   Info,
@@ -152,62 +151,6 @@ export default function ProviderBilling() {
   const handleRefresh = () => {
     setIsRefreshing(true)
     fetchProviderData()
-  }
-
-  const handlePauseSubscription = async () => {
-    if (!provider?.subscriptionToken) return
-
-    try {
-      setIsManagingSubscription(true)
-      setSubscriptionError(null)
-      const response = await fetch(`/api/subscriptions/${provider.subscriptionToken}/pause`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cycles: 0 }) // 0 = indefinite pause
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || 'Failed to pause subscription')
-      }
-
-      // Refresh subscription details
-      await fetchSubscriptionDetails(provider.subscriptionToken)
-      await fetchProviderData() // Refresh billing data
-    } catch (err) {
-      console.error('Pause subscription error:', err)
-      setSubscriptionError(err instanceof Error ? err.message : 'Failed to pause subscription')
-    } finally {
-      setIsManagingSubscription(false)
-    }
-  }
-
-  const handleUnpauseSubscription = async () => {
-    if (!provider?.subscriptionToken) return
-
-    try {
-      setIsManagingSubscription(true)
-      setSubscriptionError(null)
-      const response = await fetch(`/api/subscriptions/${provider.subscriptionToken}/unpause`, {
-        method: 'PUT',
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || 'Failed to unpause subscription')
-      }
-
-      // Refresh subscription details
-      await fetchSubscriptionDetails(provider.subscriptionToken)
-      await fetchProviderData() // Refresh billing data
-    } catch (err) {
-      console.error('Unpause subscription error:', err)
-      setSubscriptionError(err instanceof Error ? err.message : 'Failed to unpause subscription')
-    } finally {
-      setIsManagingSubscription(false)
-    }
   }
 
   const handleCancelSubscription = async () => {
@@ -765,28 +708,9 @@ export default function ProviderBilling() {
                       title="Open Paystack management page to change card or cancel subscription"
                     >
                       <Settings className="w-4 h-4" />
-                      {isGeneratingManagementLink ? 'Opening...' : 'Manage Subscription'}
+                      {isGeneratingManagementLink ? 'Opening...' : 'Change card details'}
                     </button>
-                    {subscriptionDetails.status === 'active' && (
-                      <button
-                        onClick={handlePauseSubscription}
-                        disabled={isManagingSubscription}
-                        className="flex items-center gap-2 px-6 py-3 border border-yellow-500/50 bg-yellow-500/10 backdrop-blur-xl rounded-xl text-yellow-300 hover:bg-yellow-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Pause className="w-4 h-4" />
-                        {isManagingSubscription ? 'Pausing...' : 'Pause Subscription'}
-                      </button>
-                    )}
-                    {subscriptionDetails.status === 'paused' && (
-                      <button
-                        onClick={handleUnpauseSubscription}
-                        disabled={isManagingSubscription}
-                        className="flex items-center gap-2 px-6 py-3 border border-green-500/50 bg-green-500/10 backdrop-blur-xl rounded-xl text-green-300 hover:bg-green-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Play className="w-4 h-4" />
-                        {isManagingSubscription ? 'Resuming...' : 'Resume Subscription'}
-                      </button>
-                    )}
+
                     {subscriptionDetails.status !== 'cancelled' && (
                       <button
                         onClick={handleCancelSubscription}
@@ -815,7 +739,7 @@ export default function ProviderBilling() {
                         title="Open Paystack management page to change card or cancel subscription"
                       >
                         <Settings className="w-4 h-4" />
-                        {isGeneratingManagementLink ? 'Opening...' : 'Manage Subscription'}
+                        {isGeneratingManagementLink ? 'Opening...' : 'Change card details'}
                       </button>
                     </div>
                   )}
