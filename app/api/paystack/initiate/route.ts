@@ -125,21 +125,14 @@ export async function POST(request: Request) {
         const nextPaymentDate = new Date(trialEndDate.getTime()) // First payment due after trial ends
         const billingDate = trialEndDate.toISOString() // ISO 8601 format for Paystack
 
-        // Activate trial in database
-        await secureDb.db
-          .update(schema.providers)
-          .set({
-            subscriptionStatus: 'trial',
-            trialStartDate: trialStartDate,
-            trialEndDate: trialEndDate,
-            nextPaymentDate: nextPaymentDate
-          })
-          .where(eq(schema.providers.id, providerId!))
-
-        captureMessage('Trial subscription activated, setting up Paystack payment', { 
-          level: 'info', 
-          component: 'payment-initiation', 
-          providerId, 
+        // NOTE: Do NOT persist trial state to the providers table here. The provider record
+        // should be updated only after we receive and verify Paystack webhooks (charge.success
+        // and/or subscription.create). Persisting trial state at initiation leads to premature
+        // state changes if the user abandons checkout or the webhook fails.
+        captureMessage('Trial subscription scheduled (not activated) - will be applied after webhook confirmation', {
+          level: 'info',
+          component: 'payment-initiation',
+          providerId,
           trialStartDate: trialStartDate.toISOString(),
           trialEndDate: trialEndDate.toISOString(),
           billingDate
@@ -289,7 +282,10 @@ export async function POST(request: Request) {
               isTokenization: true, // Flag as tokenization
               tokenizationAmount: tokenizationAmount,
               recurringAmount: calculatedAmount, // Amount that will be charged after trial
-              billingDate: billingDate
+              billingDate: billingDate,
+              trialStartDate: trialStartDate.toISOString(),
+              trialEndDate: trialEndDate.toISOString(),
+              nextPaymentDate: nextPaymentDate.toISOString()
             },
             createdAt: new Date()
           })
@@ -317,7 +313,7 @@ export async function POST(request: Request) {
           trialStartDate: trialStartDate.toISOString(),
           trialEndDate: trialEndDate.toISOString(),
           planCode,
-          message: `Trial activated. A R${tokenizationAmount.toFixed(2)} charge is required to verify your card. This amount will be credited back to your account. Your subscription will start after your 14-day trial ends.`
+          message: `Trial scheduled. A R${tokenizationAmount.toFixed(2)} charge is required to verify your card. This amount will be credited back to your account. Your subscription will start after your 14-day trial ends.`
         })
       }
 
