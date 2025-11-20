@@ -102,31 +102,67 @@ export async function POST(_request: NextRequest) {
       })
     }
 
-    // Activate subscription based on completed payment
-    const paymentDate = completedPayment.paymentDate || completedPayment.createdAt
-    const nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
-    
-    const [updatedProvider] = await secureDb.db
-      .update(schema.providers)
-      .set({
-        subscriptionStatus: 'active',
-        lastPaymentDate: paymentDate,
-        nextPaymentDate: nextPaymentDate,
-      })
-      .where(eq(schema.providers.id, providerId))
-      .returning({ 
-        id: schema.providers.id,
-        subscriptionStatus: schema.providers.subscriptionStatus,
-        nextPaymentDate: schema.providers.nextPaymentDate,
-        lastPaymentDate: schema.providers.lastPaymentDate
-      })
+    // Fetch stored gatewayResponse for this payment to determine if this was a tokenization (trial) flow
+    const [txnRow] = await secureDb.db
+      .select({ gatewayResponse: schema.paymentTransactions.gatewayResponse })
+      .from(schema.paymentTransactions)
+      .where(eq(schema.paymentTransactions.id, latestPayment.id))
+      .limit(1)
+
+    const gw = (txnRow?.gatewayResponse || {}) as Record<string, any>
+    const isTokenization = gw.isTokenization === true || gw.is_tokenization === true || gw.trialPaymentSetup === true || gw.trialActivated === true
+    const trialEndISO = gw.trialEndDate || gw.trial_end_date || gw.trialEnd || gw.trialEndDate || null
+
+    // Determine update behavior: if tokenization/trial flow, set provider to 'trial' and schedule nextPaymentDate; otherwise activate subscription as paid
+    let updatedProvider
+    if (isTokenization && trialEndISO) {
+      // Persist trial dates and keep subscription status as 'trial'
+      const trialStart = gw.trialStartDate ? new Date(gw.trialStartDate) : new Date()
+      const trialEnd = new Date(trialEndISO)
+      const subscriptionTokenFromGateway = gw.subscriptionCreation?.response?.subscription_code || gw.subscriptionCreation?.response?.subscriptionCode || gw.authorization_code || gw.authorization?.authorization_code || gw.subscriptionCode || undefined
+
+      ;[updatedProvider] = await secureDb.db
+        .update(schema.providers)
+        .set({
+          subscriptionStatus: 'trial',
+          trialStartDate: trialStart,
+          trialEndDate: trialEnd,
+          nextPaymentDate: trialEnd,
+          subscriptionToken: subscriptionTokenFromGateway || undefined
+        })
+        .where(eq(schema.providers.id, providerId))
+        .returning({ 
+          id: schema.providers.id,
+          subscriptionStatus: schema.providers.subscriptionStatus,
+          nextPaymentDate: schema.providers.nextPaymentDate,
+          lastPaymentDate: schema.providers.lastPaymentDate
+        })
+    } else {
+      // Activate subscription based on completed payment (paid customer)
+      const paymentDate = completedPayment.paymentDate || completedPayment.createdAt
+      const nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
+      ;[updatedProvider] = await secureDb.db
+        .update(schema.providers)
+        .set({
+          subscriptionStatus: 'active',
+          lastPaymentDate: paymentDate,
+          nextPaymentDate: nextPaymentDate,
+        })
+        .where(eq(schema.providers.id, providerId))
+        .returning({ 
+          id: schema.providers.id,
+          subscriptionStatus: schema.providers.subscriptionStatus,
+          nextPaymentDate: schema.providers.nextPaymentDate,
+          lastPaymentDate: schema.providers.lastPaymentDate
+        })
+    }
 
     if (!updatedProvider) {
       return NextResponse.json({ error: "Failed to activate subscription" }, { status: 500 })
     }
 
     return NextResponse.json({ 
-      message: "Subscription activated successfully",
+      message: isTokenization ? "Subscription scheduled as trial" : "Subscription activated successfully",
       subscriptionStatus: updatedProvider.subscriptionStatus,
       nextPaymentDate: updatedProvider.nextPaymentDate?.toISOString(),
       lastPaymentDate: updatedProvider.lastPaymentDate?.toISOString()
