@@ -207,6 +207,17 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
+    // Log full error and capture for Sentry/monitoring
+    console.error('[PROVIDER BILLING] Fatal error fetching billing data:', error instanceof Error ? error.stack || error.message : String(error))
+    try {
+      const { captureException } = await import('@/lib/logging/config')
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'provider-billing' })
+    } catch (e) {
+      // ignore logging errors
+      console.warn('[PROVIDER BILLING] Failed to capture exception to logging service', String(e))
+    }
+
+    // Return generic error to client
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch billing data" },
       { status: 500 }
