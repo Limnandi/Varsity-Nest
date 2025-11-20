@@ -5,7 +5,7 @@ import { PaymentAuditService } from "@/lib/services/payment-audit"
 import { PaymentReconciliationService } from "@/lib/services/payment-reconciliation"
 import { captureMessage, captureException } from '@/lib/logging/config'
 import { secureDb } from "@/lib/database-secure"
-import { eq, count } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { convertFromKobo } from "@/lib/paystack"
 import { PaystackAPIClient } from "@/lib/paystack-api-client"
@@ -378,7 +378,6 @@ async function handleChargeSuccess(data: any) {
     const reference = chargeData.reference
     const amount = convertFromKobo(chargeData.amount)
     const transactionId = chargeData.id?.toString() || chargeData.reference
-    // Use paid_at if available, otherwise created_at, otherwise current date
     const paymentDate = chargeData.paid_at
       ? new Date(chargeData.paid_at)
       : (chargeData.paidAt
@@ -387,12 +386,11 @@ async function handleChargeSuccess(data: any) {
           ? new Date(chargeData.created_at)
           : new Date()))
 
-    // Extract metadata (can be object, number, or string)
     const metadata = typeof chargeData.metadata === 'object' && chargeData.metadata !== null && !Array.isArray(chargeData.metadata)
       ? chargeData.metadata as Record<string, any>
       : {}
     const entityId = metadata.entity_id || metadata.custom_fields?.find((f: any) => f.variable_name === 'entity_id')?.value
-    const entityType = metadata.entity_type || (entityId ? 'provider' : 'agent') // Default to provider if entityId exists
+    const entityType = metadata.entity_type || (entityId ? 'provider' : 'agent')
 
     // Find transaction by reference
     const [pending] = await secureDb.db
@@ -417,26 +415,19 @@ async function handleChargeSuccess(data: any) {
       return
     }
 
-    // Use both stored gatewayResponse/metadata and incoming chargeData to determine tokenization
-    const gatewayResponse = pending.gatewayResponse as Record<string, any> | null
-    const incomingIsTokenization = metadata?.is_tokenization === "true" || metadata?.is_tokenization === true
-    const storedIsTokenization = gatewayResponse?.isTokenization === true
-    const planCode = gatewayResponse?.planCode || metadata.plan_code || gatewayResponse?.plan_code || metadata?.planCode
+    // Preserve and merge stored gatewayResponse (don't overwrite scheduled trial metadata)
+    const storedGateway = (pending.gatewayResponse || {}) as Record<string, any>
 
-    // More robust tokenization detection: small amount + explicit flag or plan code present
-    const isTokenization = (amount === 1.00 && (storedIsTokenization || incomingIsTokenization || !!planCode))
+    // Determine planCode and trial metadata from stored gatewayResponse or incoming metadata
+    const planCode = storedGateway.planCode || storedGateway.plan_code || metadata.plan_code || metadata.planCode || storedGateway.planCode
+    const trialEndISO = storedGateway.trialEndDate || storedGateway.trial_end_date || storedGateway.trialEnd || storedGateway.trialEndDate
+    const storedIsTokenization = storedGateway.isTokenization === true || storedGateway.is_tokenization === true || metadata?.is_tokenization === 'true' || metadata?.is_tokenization === true
 
-    // Validate amount (allow R1.00 for tokenization, or exact match for regular payments)
-    if (isTokenization && amount !== 1.00) {
-      // amount mismatch on tokenization — log and continue cautiously
-      captureMessage('Tokenization amount mismatch in charge.success', {
-        level: 'warning',
-        component: 'paystack-webhook',
-        expected: 1.00,
-        received: amount,
-        reference
-      })
-    } else if (!isTokenization && !PaymentSecurityService.validatePaymentAmount(amount, Number(pending.amount))) {
+    // Robust tokenization detection
+    const isTokenization = (amount === 1.00 && (storedIsTokenization || !!planCode || storedGateway.trialActivated === true)) || (storedGateway.isTokenization === true && amount === 1.00)
+
+    // Validate normal payment amounts (allow tokenization R1.00)
+    if (!isTokenization && !PaymentSecurityService.validatePaymentAmount(amount, Number(pending.amount))) {
       captureMessage('Amount mismatch in charge.success', {
         level: 'error',
         component: 'paystack-webhook',
@@ -452,7 +443,16 @@ async function handleChargeSuccess(data: any) {
       return
     }
 
-    // Update transaction to completed and persist incoming gateway response
+    // Merge incoming Paystack charge data into gatewayResponse rather than overwrite
+    const mergedGateway: Record<string, any> = {
+      ...storedGateway,
+      // keep a copy of incoming charge under `charge` to avoid clobbering existing fields
+      charge: chargeData,
+      // keep top-level commonly used fields for quick inspection
+      lastSeen: new Date().toISOString()
+    }
+
+    // Persist transaction as completed and attach merged gateway (we will update gateway again below after subscription/refund attempts)
     await secureDb.db
       .update(schema.paymentTransactions)
       .set({
@@ -460,219 +460,148 @@ async function handleChargeSuccess(data: any) {
         status: 'completed',
         paymentDate: paymentDate,
         subscriptionToken: chargeData.authorization?.authorization_code || undefined,
-        gatewayResponse: chargeData
+        gatewayResponse: mergedGateway
       })
       .where(eq(schema.paymentTransactions.id, pending.id))
 
-    // Update provider or agent subscription status
+    // Determine actual entity
     const actualEntityId = pending.providerId || pending.agentId || entityId
     const actualEntityType = pending.providerId ? 'provider' : (pending.agentId ? 'agent' : entityType)
 
-    if (actualEntityType === 'provider' && actualEntityId) {
-      const [providerBeforeUpdate] = await secureDb.db
-        .select({
-          subscriptionStatus: schema.providers.subscriptionStatus,
-          trialEndDate: schema.providers.trialEndDate,
-          contactEmail: schema.providers.contactEmail
+    // Variables to persist about subscription creation
+    let subscriptionCode: string | undefined = undefined
+    const subscriptionCreationMeta: any = { attempted: false }
+    const refundMeta: any = { attempted: false }
+
+    // If tokenization for a scheduled trial (we rely on the stored gatewayResponse for plan & trial info), attempt subscription creation
+    if (isTokenization && planCode && trialEndISO && chargeData.authorization?.authorization_code) {
+      subscriptionCreationMeta.attempted = true
+      try {
+        const authCode = chargeData.authorization.authorization_code
+        // Format start date as YYYY-MM-DD
+        const trialStartDateObj = new Date(trialEndISO)
+        const startDate = trialStartDateObj.toISOString().split('T')[0]
+
+        console.log('[WEBHOOK] Attempting to create subscription from tokenization using stored transaction metadata', { pendingId: pending.id, planCode, startDate, authCode })
+        captureMessage('Attempting to create subscription from tokenization', {
+          level: 'info',
+          component: 'paystack-webhook',
+          paymentTransactionId: pending.id,
+          planCode,
+          startDate
         })
-        .from(schema.providers)
-        .where(eq(schema.providers.id, actualEntityId))
-        .limit(1)
 
-      const isTrialToPaidTransition = providerBeforeUpdate?.subscriptionStatus === 'trial' && amount > 1.00 // More than tokenization
-      const isTrialTokenization = providerBeforeUpdate?.subscriptionStatus === 'trial' && isTokenization && amount === 1.00 && !!planCode
+        const customerEmail = storedGateway.customerEmail || chargeData.customer?.email || storedGateway.contactEmail || undefined
 
-      let subscriptionCode: string | undefined = undefined
-      let subscriptionCreationMeta: any = { attempted: false }
+        const subscription = await PaystackAPIClient.createSubscription(
+          customerEmail || '',
+          planCode,
+          authCode,
+          startDate
+        )
 
-      // If this is a trial tokenization charge, try to create subscription with start_date = trial end date
-      if (isTrialTokenization && planCode && chargeData.authorization?.authorization_code && providerBeforeUpdate?.trialEndDate) {
+        subscriptionCreationMeta.response = subscription
+        subscriptionCreationMeta.success = !!subscription?.subscription_code
+        subscriptionCode = subscription?.subscription_code
+
+        captureMessage('Subscription.create API response', {
+          level: 'info',
+          component: 'paystack-webhook',
+          paymentTransactionId: pending.id,
+          subscriptionResponse: subscription
+        })
+
+        // Attempt refund of tokenization charge
         try {
-          subscriptionCreationMeta.attempted = true
-          const trialEndDate = new Date(providerBeforeUpdate.trialEndDate)
-          const startDate = trialEndDate.toISOString().split('T')[0] // Format: YYYY-MM-DD
-
-          console.log('[WEBHOOK] Attempting to create trial subscription:', {
-            providerId: actualEntityId,
-            planCode,
-            authorizationCode: chargeData.authorization.authorization_code,
-            startDate,
-            customerEmail: providerBeforeUpdate.contactEmail || chargeData.customer?.email || ''
-          })
-          captureMessage('Attempting to create trial subscription', {
-            level: 'info',
-            component: 'paystack-webhook',
-            providerId: actualEntityId,
-            planCode,
-            authorizationCode: chargeData.authorization.authorization_code,
-            startDate,
-            customerEmail: providerBeforeUpdate.contactEmail || chargeData.customer?.email || ''
-          })
-
-          const subscription = await PaystackAPIClient.createSubscription(
-            providerBeforeUpdate.contactEmail || chargeData.customer?.email || '',
-            planCode,
-            chargeData.authorization.authorization_code,
-            startDate
+          refundMeta.attempted = true
+          const refundResponse = await PaystackAPIClient.createRefund(
+            reference,
+            1.00,
+            'ZAR',
+            'Refund of tokenization charge for free trial setup',
+            `Tokenization refund for transaction ${reference}`
           )
 
-          subscriptionCreationMeta.response = subscription
-          subscriptionCreationMeta.success = !!subscription?.subscription_code
+          refundMeta.response = refundResponse
+          refundMeta.success = true
 
-          console.log('[WEBHOOK] Subscription creation response received:', {
-            providerId: actualEntityId,
-            hasSubscriptionCode: !!subscription?.subscription_code,
-            subscriptionCodeValue: subscription?.subscription_code || 'NOT_FOUND'
-          })
-          captureMessage('Subscription creation response received', {
+          captureMessage('Tokenization refund created', {
             level: 'info',
             component: 'paystack-webhook',
-            providerId: actualEntityId,
-            subscriptionResponse: subscription,
-            hasSubscriptionCode: !!subscription?.subscription_code,
-            subscriptionCodeValue: subscription?.subscription_code || 'NOT_FOUND'
+            paymentTransactionId: pending.id,
+            refundId: refundResponse.id,
+            refundStatus: refundResponse.status
           })
-
-          subscriptionCode = subscription.subscription_code
-
-          // Refund the R1.00 tokenization charge as per Paystack trial workaround
-          try {
-            const refundResponse = await PaystackAPIClient.createRefund(
-              reference, // Transaction reference
-              1.00, // R1.00 tokenization amount
-              "ZAR",
-              "Refund of tokenization charge for free trial setup",
-              `Tokenization refund for provider ${actualEntityId} - trial subscription setup`
-            )
-
-            subscriptionCreationMeta.refund = { id: refundResponse.id, status: refundResponse.status }
-
-            captureMessage('Tokenization charge refunded successfully', {
-              level: 'info',
-              component: 'paystack-webhook',
-              providerId: actualEntityId,
-              refundId: refundResponse.id,
-              refundStatus: refundResponse.status,
-              transactionReference: reference
-            })
-          } catch (refundError) {
-            // Log refund error but don't fail the webhook - subscription is already created
-            subscriptionCreationMeta.refundError = String(refundError)
-            captureException(refundError instanceof Error ? refundError : new Error(String(refundError)), {
-              component: 'paystack-webhook',
-              action: 'refundTokenizationCharge',
-              providerId: actualEntityId,
-              transactionReference: reference,
-              note: 'Refund failed but subscription was created successfully'
-            })
-          }
-
-        } catch (subError) {
-          // On failure, capture error details and persist them to the transaction gatewayResponse for later retries
-          subscriptionCreationMeta.attempted = true
-          subscriptionCreationMeta.error = {
-            message: subError instanceof Error ? subError.message : String(subError),
-            stack: subError instanceof Error ? subError.stack : undefined
-          }
-
-          console.error('[WEBHOOK] Failed to create trial subscription:', {
-            providerId: actualEntityId,
-            planCode,
-            authorizationCode: chargeData.authorization?.authorization_code,
-            error: subscriptionCreationMeta.error.message
-          })
-          captureException(subError instanceof Error ? subError : new Error(String(subError)), {
+        } catch (rErr) {
+          refundMeta.success = false
+          refundMeta.error = String(rErr)
+          captureException(rErr instanceof Error ? rErr : new Error(String(rErr)), {
             component: 'paystack-webhook',
-            action: 'createTrialSubscription',
-            providerId: actualEntityId,
-            planCode,
-            authorizationCode: chargeData.authorization?.authorization_code
+            action: 'refundTokenizationCharge',
+            paymentTransactionId: pending.id,
+            reference
           })
-
-          // Do not flip provider out of 'trial' state on subscription creation failure.
-          // We'll persist the authorization code so a retry job can attempt to create the subscription again.
-        }
-      }
-
-      // Persist subscription creation attempt details back into the payment transaction gatewayResponse
-      try {
-        const updatedGateway = {
-          ...((chargeData as any) || {}),
-          subscriptionCreation: subscriptionCreationMeta
         }
 
-        await secureDb.db
-          .update(schema.paymentTransactions)
-          .set({ gatewayResponse: updatedGateway })
-          .where(eq(schema.paymentTransactions.id, pending.id))
-      } catch (persistErr) {
-        captureException(persistErr instanceof Error ? persistErr : new Error(String(persistErr)), {
+      } catch (subErr) {
+        subscriptionCreationMeta.attempted = true
+        subscriptionCreationMeta.error = {
+          message: subErr instanceof Error ? subErr.message : String(subErr),
+          stack: subErr instanceof Error ? subErr.stack : undefined
+        }
+
+        captureException(subErr instanceof Error ? subErr : new Error(String(subErr)), {
           component: 'paystack-webhook',
-          action: 'persistSubscriptionCreationMeta',
-          paymentTransactionId: pending.id
+          action: 'createTrialSubscription',
+          paymentTransactionId: pending.id,
+          planCode
         })
+
+        // Do not flip provider state; persist authorization_code for later retry
       }
+    }
 
-      // Calculate next payment date - for tokenization keep trial end, otherwise 30 days
-      const nextPaymentDate = isTrialTokenization
-        ? new Date(providerBeforeUpdate?.trialEndDate || paymentDate)
-        : new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
+    // Attach subscription/refund metadata to mergedGateway and persist
+    mergedGateway.subscriptionCreation = subscriptionCreationMeta
+    mergedGateway.refund = refundMeta
 
-      // Use subscription code when available, otherwise keep authorization_code for retry attempts
+    try {
+      await secureDb.db
+        .update(schema.paymentTransactions)
+        .set({ gatewayResponse: mergedGateway })
+        .where(eq(schema.paymentTransactions.id, pending.id))
+    } catch (persistErr) {
+      captureException(persistErr instanceof Error ? persistErr : new Error(String(persistErr)), {
+        component: 'paystack-webhook',
+        action: 'persistSubscriptionMeta',
+        paymentTransactionId: pending.id
+      })
+    }
+
+    // Update provider/agent records conservatively
+    if (actualEntityType === 'provider' && actualEntityId) {
+      // Read current provider row
+      
+      // Final token to persist: prefer subscriptionCode from createSubscription, otherwise authorization_code
       const finalSubscriptionToken = subscriptionCode || chargeData.authorization?.authorization_code || undefined
 
-      // Ensure we do not mark trial tokenization as 'active' unless subscription was actually created
-      const finalSubscriptionStatus = isTrialTokenization
-        ? (subscriptionCode ? 'trial' : 'trial') // keep trial, subscriptionCode will be applied once created
-        : 'active'
+      // If we created a subscription (subscriptionCode), set subscriptionToken to subscriptionCode and set subscriptionStatus to 'trial' (subscription starts at trialEndDate)
+      // If subscription not created but we have an authorization_code, persist it so a reconciliation job can retry
+      const updates: any = {
+        subscriptionToken: finalSubscriptionToken
+      }
 
-      console.log('[WEBHOOK] Setting subscriptionToken in database:', {
-        providerId: actualEntityId,
-        subscriptionToken: finalSubscriptionToken || 'NULL',
-        subscriptionCode: subscriptionCode || 'NULL',
-        isTrialTokenization: !!isTrialTokenization,
-        authorizationCode: chargeData.authorization?.authorization_code || 'NULL',
-        subscriptionStatus: finalSubscriptionStatus
-      })
-      captureMessage('Setting subscriptionToken in database', {
-        level: 'info',
-        component: 'paystack-webhook',
-        providerId: actualEntityId,
-        subscriptionToken: finalSubscriptionToken || 'NULL',
-        subscriptionCode: subscriptionCode || 'NULL',
-        isTrialTokenization: !!isTrialTokenization,
-        authorizationCode: chargeData.authorization?.authorization_code || 'NULL',
-        subscriptionStatus: finalSubscriptionStatus
-      })
+      if (subscriptionCode) {
+        updates.subscriptionStatus = 'trial'
+        updates.nextPaymentDate = new Date(trialEndISO)
+      }
 
       await secureDb.db
         .update(schema.providers)
-        .set({
-          subscriptionStatus: finalSubscriptionStatus,
-          lastPaymentDate: isTrialTokenization ? null : paymentDate, // Don't set lastPaymentDate for tokenization
-          nextPaymentDate: nextPaymentDate,
-          subscriptionToken: finalSubscriptionToken,
-          ...(isTrialToPaidTransition ? {
-            trialStartDate: null,
-            trialEndDate: null
-          } : {})
-        })
+        .set(updates)
         .where(eq(schema.providers.id, actualEntityId))
 
-      console.log('[WEBHOOK] Provider subscriptionToken updated in database:', {
-        providerId: actualEntityId,
-        subscriptionToken: finalSubscriptionToken || 'NULL',
-        subscriptionStatus: finalSubscriptionStatus
-      })
-      captureMessage('Provider subscriptionToken updated in database', {
-        level: 'info',
-        component: 'paystack-webhook',
-        providerId: actualEntityId,
-        subscriptionToken: finalSubscriptionToken || 'NULL',
-        subscriptionStatus: finalSubscriptionStatus
-      })
-
-      // Read back provider and log persisted values to terminal for debugging
+      // Read back provider and log persisted values
       try {
         const [refreshedProvider] = await secureDb.db
           .select({ id: schema.providers.id, subscriptionToken: schema.providers.subscriptionToken, subscriptionStatus: schema.providers.subscriptionStatus })
@@ -689,28 +618,11 @@ async function handleChargeSuccess(data: any) {
         console.warn('[WEBHOOK] Could not read back provider after setting subscription:', String(readErr))
       }
 
-      // Handle featured status if requested
-      const wantsFeatured = metadata.wants_featured === "true" || metadata.custom_fields?.find((f: any) => f.variable_name === 'wants_featured')?.value === "true"
-      if (wantsFeatured) {
-        const [featuredResult] = await secureDb.db
-          .select({ count: count(schema.providers.id) })
-          .from(schema.providers)
-          .where(eq(schema.providers.isFeatured, true))
-
-        const featuredCount = Number(featuredResult?.count || 0)
-        if (featuredCount < 5) {
-          await secureDb.db
-            .update(schema.providers)
-            .set({ isFeatured: true })
-            .where(eq(schema.providers.id, actualEntityId))
-        }
-      }
     } else if (actualEntityType === 'agent' && actualEntityId) {
+      // For agents we only persist authorization_code or subscription_code
       await secureDb.db
         .update(schema.agents)
-        .set({
-          subscriptionToken: chargeData.authorization?.authorization_code || undefined
-        })
+        .set({ subscriptionToken: chargeData.authorization?.authorization_code || undefined })
         .where(eq(schema.agents.id, actualEntityId))
     }
 
