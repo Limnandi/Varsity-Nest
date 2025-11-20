@@ -63,9 +63,47 @@ export async function GET(
       }
     }
 
+    // Defensive: ensure the token we have is a Paystack subscription code
+    // If the stored token is an authorization code (AUTH_...), the subscription hasn't been created yet
+    if (!subscriptionToken || typeof subscriptionToken !== 'string') {
+      return NextResponse.json({ error: 'Subscription token required' }, { status: 400 })
+    }
+
+    if (subscriptionToken.startsWith('AUTH_')) {
+      console.debug('[SUBSCRIPTION] Found authorization_code instead of subscription code for token:', subscriptionToken)
+      return NextResponse.json({
+        error: 'Subscription not created yet',
+        details: 'Found authorization code (tokenization) instead of a subscription code. Subscription creation may be pending. Check payment_transactions.gatewayResponse for subscriptionCreation status.'
+      }, { status: 404 })
+    }
+
     // Get subscription details from Paystack API
     try {
-      const subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
+      let subscription
+      try {
+        subscription = await PaystackAPIClient.getSubscription(subscriptionToken)
+      } catch (paystackError) {
+        // Log and capture full error for debugging
+        console.error('[SUBSCRIPTION] Error calling Paystack.getSubscription:', paystackError instanceof Error ? paystackError.stack || paystackError.message : String(paystackError))
+        captureException(paystackError instanceof Error ? paystackError : new Error(String(paystackError)), { component: 'subscription-management', action: 'getSubscription' })
+
+        const errorMessage = paystackError instanceof Error ? (paystackError.message || '') : String(paystackError)
+
+        // Normalize common "not found" cases from Paystack and return 404 to client
+        if (errorMessage.toLowerCase().includes('not found') || errorMessage.includes('404') || errorMessage.toLowerCase().includes('does not exist') || errorMessage.toLowerCase().includes('no subscription')) {
+          return NextResponse.json(
+            { 
+              error: 'Subscription not found in Paystack', 
+              details: 'The subscription may not be available yet. Please try again in a few moments.',
+              subscriptionToken 
+            },
+            { status: 404 }
+          )
+        }
+
+        // Upstream error from Paystack (gateway), return 502 with message for debugging
+        return NextResponse.json({ error: 'Upstream Paystack error', details: errorMessage }, { status: 502 })
+      }
 
       if (!subscription) {
         return NextResponse.json(
@@ -78,28 +116,51 @@ export async function GET(
         )
       }
 
+      // Normalize subscription dates to avoid 'Invalid Date' in the UI
+      const normalizeDate = (val: any): string | null => {
+        if (!val && val !== 0) return null
+        // If timestamp (seconds) provided as number
+        if (typeof val === 'number') {
+          const d = new Date(val * 1000)
+          if (!isNaN(d.getTime())) return d.toISOString()
+          return null
+        }
+        // If string, try to parse
+        if (typeof val === 'string') {
+          const d = new Date(val)
+          if (!isNaN(d.getTime())) return d.toISOString()
+          // Try numeric string (unix seconds)
+          const n = Number(val)
+          if (!isNaN(n)) {
+            const d2 = new Date(n * 1000)
+            if (!isNaN(d2.getTime())) return d2.toISOString()
+          }
+          return null
+        }
+
+        return null
+      }
+
+      // Paystack may provide different fields depending on SDK/version
+      const rawNextRun = (subscription as any).next_run_date ?? (subscription as any).next_payment_date ?? (subscription as any).next_charge_date ?? null
+      const rawStartDate = (subscription as any).start_date ?? (subscription as any).billing_date ?? null
+
+      const normalizedSubscription = {
+        ...subscription,
+        // keep original keys but ensure canonical ISO strings or null
+        next_run_date: normalizeDate(rawNextRun) ?? normalizeDate(rawStartDate) ?? null,
+        start_date: normalizeDate(rawStartDate) ?? null
+      }
+
       return NextResponse.json({
         success: true,
-        subscription
+        subscription: normalizedSubscription
       })
-    } catch (paystackError) {
-      // If subscription doesn't exist in Paystack yet (e.g., just created), return a more helpful error
-      const errorMessage = paystackError instanceof Error ? paystackError.message : String(paystackError)
-      
-      // Check if it's a 404 or "not found" error
-      if (errorMessage.includes('not found') || errorMessage.includes('404') || errorMessage.includes('does not exist') || errorMessage.includes('No subscription')) {
-        return NextResponse.json(
-          { 
-            error: 'Subscription not found in Paystack', 
-            details: 'The subscription may not be available yet. Please try again in a few moments.',
-            subscriptionToken 
-          },
-          { status: 404 }
-        )
-      }
-      
-      // Re-throw other errors to be caught by outer catch
-      throw paystackError
+    } catch (err) {
+      // This should be rare - log and escalate
+      console.error('[SUBSCRIPTION] Unexpected error while fetching subscription:', err instanceof Error ? err.stack || err.message : String(err))
+      captureException(err instanceof Error ? err : new Error(String(err)), { component: 'subscription-management', action: 'get' })
+      return NextResponse.json({ error: 'Failed to get subscription details', details: err instanceof Error ? err.message : String(err) }, { status: 500 })
     }
   } catch (error) {
     captureException(

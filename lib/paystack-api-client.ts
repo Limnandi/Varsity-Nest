@@ -270,6 +270,7 @@ export class PaystackAPIClient {
    */
   static async getSubscription(subscriptionCode: string) {
     try {
+      // Try using SDK first
       const response = await paystack.subscription.fetch(subscriptionCode)
 
       if (!response.status) {
@@ -278,12 +279,42 @@ export class PaystackAPIClient {
 
       return response.data
     } catch (error) {
+      // Capture the original SDK error for observability
+      const origMsg = error instanceof Error ? error.message : String(error)
       captureException(error instanceof Error ? error : new Error(String(error)), {
         component: "paystack-api-client",
         action: "getSubscription",
         subscriptionCode
       })
-      throw error
+
+      // Fallback: call Paystack REST API directly (handles SDK signature differences)
+      try {
+        const resp = await fetch(`https://api.paystack.co/subscription/${encodeURIComponent(subscriptionCode)}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const data = await resp.json()
+
+        if (!data || data.status === false) {
+          throw new Error(data?.message || 'Failed to fetch subscription via Paystack API')
+        }
+
+        return data.data
+      } catch (fallbackError) {
+        // Capture fallback error and throw combined error for upstream handling
+        const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+        captureException(fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)), {
+          component: "paystack-api-client",
+          action: "getSubscriptionFallback",
+          subscriptionCode
+        })
+
+        throw new Error(`getSubscription SDK error: ${origMsg}; fallback error: ${fbMsg}`)
+      }
     }
   }
 
