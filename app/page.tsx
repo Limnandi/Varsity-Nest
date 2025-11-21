@@ -1,10 +1,10 @@
 import AccommodationCard from "@/components/AccommodationCard"
 import HeroSection from "@/components/HeroSection"
-import { fetchFeaturedAccommodations } from "@/lib/repos/accommodations"
+import { fetchFeaturedAccommodationsCached } from "@/lib/repos/accommodations"
 import Link from "next/link"
 
 export default async function Home() {
-  const featuredAccommodations = await fetchFeaturedAccommodations(9)
+  const featuredAccommodations = await fetchFeaturedAccommodationsCached(9)
 
   return (
     <>
