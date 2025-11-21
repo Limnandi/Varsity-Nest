@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
@@ -14,7 +14,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Play,
   X,
   Info,
   Settings
@@ -24,6 +23,8 @@ import jsPDF from "jspdf"
 import "jspdf-autotable"
 
 // TypeScript interfaces for type safety
+import type { SubscriptionPlanId } from "@/lib/subscription-plans"
+
 interface BillingInfo {
   monthlyFee: number
   nextPaymentDate: string
@@ -33,6 +34,15 @@ interface BillingInfo {
   trialEndDate?: string | null
   isInTrial?: boolean
   isFirstTimeUser?: boolean
+  planId: SubscriptionPlanId
+  planName: string
+  planDescription: string
+  planPrice: number
+  planLimit: number | null
+  publishedCount?: number
+  totalProperties?: number
+  canCreateMore?: boolean
+  canPublishMore?: boolean
 }
 
 interface Invoice {
@@ -53,6 +63,51 @@ interface ProviderData {
   billingInfo: BillingInfo
 }
 
+interface SubscriptionPlan {
+  id: SubscriptionPlanId
+  name: string
+  description: string
+  price: number
+  maxProperties: number | null
+  hasTrial: boolean
+}
+
+interface ProviderBillingResponse {
+  provider: ProviderData
+  invoices: Invoice[]
+  plans: SubscriptionPlan[]
+  subscriptionSummary: {
+    plan: SubscriptionPlan | null
+    status: 'inactive' | 'trial' | 'active'
+    isInTrial: boolean
+    isEligibleForTrial: boolean
+    publishedCount: number
+    totalCount: number
+    canCreateMore: boolean
+    canPublishMore: boolean
+    nextPlan: SubscriptionPlan
+    limit: number | null
+  }
+}
+
+const PLAN_FEATURES: Record<SubscriptionPlanId, string[]> = {
+  starter: [
+    "Up to 5 published properties",
+    "14-day free trial",
+    "Basic analytics dashboard",
+  ],
+  growth: [
+    "Up to 9 published properties",
+    "Advanced analytics & insights",
+    "Priority email support",
+  ],
+  scale: [
+    "Unlimited published properties",
+    "Premium analytics suite",
+    "Dedicated account manager",
+  ],
+}
+
 interface SubscriptionDetails {
   token: string
   status: 'active' | 'paused' | 'cancelled'
@@ -71,6 +126,8 @@ export default function ProviderBilling() {
   const router = useRouter()
   const [provider, setProvider] = useState<ProviderData | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+  const [subscriptionSummary, setSubscriptionSummary] = useState<ProviderBillingResponse["subscriptionSummary"] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -81,6 +138,9 @@ export default function ProviderBilling() {
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
   const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false)
   const [isGeneratingManagementLink, setIsGeneratingManagementLink] = useState(false)
+  const handlePlanSelect = useCallback((planId: SubscriptionPlanId) => {
+    router.push(`/provider/billing/payment?planId=${planId}`)
+  }, [router])
 
   const fetchSubscriptionDetails = useCallback(async (token: string) => {
     try {
@@ -127,11 +187,12 @@ export default function ProviderBilling() {
         throw new Error(errorData.error || `Failed to fetch billing data (${response.status})`)
       }
 
-      const data = await response.json()
+      const data: ProviderBillingResponse = await response.json()
       setProvider(data.provider)
       setInvoices(data.invoices || [])
+      setPlans(data.plans || [])
+      setSubscriptionSummary(data.subscriptionSummary || null)
       
-      // Fetch subscription details if token exists
       if (data.provider.subscriptionToken) {
         fetchSubscriptionDetails(data.provider.subscriptionToken)
       }
@@ -364,6 +425,25 @@ export default function ProviderBilling() {
     }
   }
 
+  const currentPlanId = provider?.billingInfo.planId ?? null
+  const currentPlan = useMemo(() => {
+    if (!currentPlanId) {
+      return subscriptionSummary?.plan ?? null
+    }
+    return plans.find((plan) => plan.id === currentPlanId) || subscriptionSummary?.plan || null
+  }, [currentPlanId, plans, subscriptionSummary])
+
+  const planLimit = provider?.billingInfo.planLimit ?? currentPlan?.maxProperties ?? null
+  const publishedCount = provider?.billingInfo.publishedCount ?? subscriptionSummary?.publishedCount ?? 0
+  const totalProperties = provider?.billingInfo.totalProperties ?? subscriptionSummary?.totalCount ?? publishedCount
+  const planUsagePercent = planLimit ? Math.min(100, Math.round((publishedCount / planLimit) * 100)) : 100
+  const slotsRemaining = planLimit === null ? null : Math.max(planLimit - publishedCount, 0)
+  const nextPlan = subscriptionSummary?.nextPlan && subscriptionSummary.nextPlan.id !== currentPlanId
+    ? subscriptionSummary.nextPlan
+    : null
+  const isAtLimit = planLimit !== null && publishedCount >= planLimit
+  const recommendedPlanId = nextPlan?.id ?? null
+
   // Loading state
   if (isLoading) {
     return (
@@ -418,7 +498,7 @@ export default function ProviderBilling() {
   // Pending amount should be the monthly fee (based on accommodations) if subscription is not active
   // NOT the sum of all payment attempts
   const hasActiveSubscription = provider.billingInfo.subscriptionStatus === 'active'
-  const pendingAmount = hasActiveSubscription ? 0 : provider.billingInfo.monthlyFee
+  const pendingAmount = hasActiveSubscription ? 0 : provider.billingInfo.planPrice
 
   return (
     <AuthGuard requiredRole="provider">
@@ -444,90 +524,119 @@ export default function ProviderBilling() {
             </div>
           </div>
 
-          {/* First-Time User Trial Offer */}
-          {provider.billingInfo.isFirstTimeUser && (
-            <div className="relative border border-green-500/30 bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-green-600/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-green-500/30 overflow-hidden">
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-400/20 to-transparent rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
-              
-              <div className="relative z-10">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-4 border border-green-500/50 bg-green-500/20 rounded-2xl shadow-lg">
-                      <CheckCircle className="w-8 h-8 text-green-300" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent mb-1">
-                        Start Your Free Trial
-                      </h2>
-                      <p className="text-sm text-green-200/80">14 days free, then R{provider.billingInfo.monthlyFee.toFixed(2)}/month</p>
-                    </div>
-                  </div>
-                  <span className="px-4 py-2 bg-green-500/30 border border-green-400/50 rounded-full text-sm font-semibold text-green-200">
-                    NEW USER
-                  </span>
+          {/* Compare Plans Grid - Moved to top position */}
+          {plans.length > 0 && (
+            <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-purple-500/10">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                    Compare Plans
+                  </h2>
+                  <p className="text-sm text-neutral-400">Pick the plan that matches your property portfolio.</p>
                 </div>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-lg font-semibold text-white">Trial Period</p>
-                      <p className="text-3xl font-bold text-green-300">FREE</p>
-                    </div>
-                    <div className="space-y-2 text-sm text-neutral-300">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                        <span>14 days of full access - completely free</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                        <span>Cancel anytime during trial - no charges</span>
-                      </div>
-                    </div>
-                    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                      <p className="text-xs text-blue-200">
-                        <span className="font-semibold">Note:</span> A R1.00 card verification charge will be processed to verify your payment method. This amount will be <span className="font-semibold">refunded immediately</span> after verification.
-                      </p>
-                    </div>
-                  </div>
+                {nextPlan && (
+                  <button
+                    onClick={() => handlePlanSelect(nextPlan.id)}
+                    className="px-4 py-2 rounded-xl border border-purple-500/50 text-sm font-semibold bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-300"
+                  >
+                    Upgrade to {nextPlan.name}
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                {plans.map((plan) => {
+                  const isCurrent = plan.id === currentPlanId
+                  const isRecommended = recommendedPlanId === plan.id
+                  const exceedsPlan = plan.maxProperties !== null && totalProperties > plan.maxProperties
+                  const trialBadge = plan.hasTrial && subscriptionSummary?.isEligibleForTrial
+                  const featureList = PLAN_FEATURES[plan.id] ?? []
+                  const hasActiveSubscription = provider.billingInfo.subscriptionStatus === 'active' || provider.billingInfo.subscriptionStatus === 'trial'
+                  const showStartTrialButton = plan.id === 'starter' && !hasActiveSubscription && subscriptionSummary?.isEligibleForTrial
                   
-                  <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-lg font-semibold text-white">After Trial Ends</p>
-                      <p className="text-2xl font-bold text-blue-300">R{provider.billingInfo.monthlyFee.toFixed(2)}<span className="text-base font-medium text-neutral-400">/month</span></p>
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`relative border rounded-2xl p-5 flex flex-col h-full ${
+                        isCurrent ? 'border-blue-500/60 bg-blue-500/10 shadow-blue-500/20' : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-neutral-400">Plan</p>
+                          <p className="text-xl font-semibold text-white">{plan.name}</p>
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          {isCurrent && (
+                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/20 border border-blue-400/40 text-blue-100">
+                              Current
+                            </span>
+                          )}
+                          {isRecommended && (
+                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-100">
+                              Recommended
+                            </span>
+                          )}
+                          {trialBadge && (
+                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-500/20 border border-green-400/40 text-green-100">
+                              Trial available
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-neutral-400 mt-2">{plan.description}</p>
+                      <div className="mt-4 mb-4">
+                        <p className="text-3xl font-bold text-white">R{plan.price.toFixed(2)}</p>
+                        <p className="text-sm text-neutral-400">per month</p>
+                      </div>
+                      <p className="text-sm text-neutral-300 mb-4">
+                        {plan.maxProperties === null
+                          ? 'Unlimited properties'
+                          : `Up to ${plan.maxProperties} properties`}
+                      </p>
+                      <ul className="space-y-3 text-sm text-neutral-200 mb-6">
+                        {featureList.map((feature) => (
+                          <li key={`${plan.id}-${feature}`} className="flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-auto">
+                        {showStartTrialButton ? (
+                          <button
+                            onClick={() => handlePlanSelect(plan.id)}
+                            className="w-full py-3 rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
+                          >
+                            Start Free Trial
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handlePlanSelect(plan.id)}
+                            disabled={isCurrent || exceedsPlan}
+                            className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 ${
+                              isCurrent
+                                ? 'bg-white/10 text-white cursor-default'
+                                : exceedsPlan
+                                  ? 'bg-white/5 text-neutral-400 cursor-not-allowed'
+                                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/20'
+                            }`}
+                          >
+                            {isCurrent
+                              ? 'Current plan'
+                              : exceedsPlan
+                                ? 'Reduce properties to downgrade'
+                                : `Choose ${plan.name}`}
+                          </button>
+                        )}
+                        {exceedsPlan && (
+                          <p className="text-xs text-red-300 mt-2">
+                            You have {totalProperties} properties. This plan allows {plan.maxProperties} max.
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-neutral-300">
-                      Your subscription will automatically start after the 14-day trial period ends. 
-                      You can set up payment details now, and billing will begin only after your trial expires.
-                    </p>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={() => {
-                    setIsNavigatingToPayment(true)
-                    router.push("/provider/billing/payment")
-                  }}
-                  disabled={isNavigatingToPayment}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                >
-                  {isNavigatingToPayment ? (
-                    <>
-                      <RefreshCw className="w-5 h-5 animate-spin" />
-                      <span>Starting Trial...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5" />
-                      <span>Start Free 14-Day Trial</span>
-                    </>
-                  )}
-                </button>
-                
-                <p className="text-xs text-center text-green-200/70 mt-4">
-                  By starting the trial, you agree that billing will begin automatically after 14 days
-                </p>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -572,7 +681,7 @@ export default function ProviderBilling() {
                     </div>
                     <div className="mt-3 pt-3 border-t border-white/10">
                       <p className="text-xs text-neutral-400">
-                        After trial ends, monthly subscription: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
+                        After trial ends, monthly subscription: R{provider.billingInfo.planPrice.toFixed(2)}/month
                       </p>
                       <p className="text-xs text-blue-300 mt-1 font-medium">
                         Billing will start automatically after trial period ends
@@ -583,8 +692,8 @@ export default function ProviderBilling() {
                   <>
                     <p className="text-sm text-neutral-300">Subscription Amount</p>
                     <p className="text-4xl font-bold">
-                      R{provider.billingInfo.monthlyFee.toFixed(2)}
-                      <span className="text-lg font-medium text-neutral-400">/30 days</span>
+                      R{provider.billingInfo.planPrice.toFixed(2)}
+                      <span className="text-lg font-medium text-neutral-400">/month</span>
                     </p>
                     <div className="flex items-center gap-2 text-sm text-neutral-400">
                       <Calendar className="w-4 h-4" />
@@ -634,8 +743,99 @@ export default function ProviderBilling() {
             </div>
           </div>
 
+        {subscriptionSummary && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/10">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-neutral-300">Plan usage</p>
+                  <p className="text-2xl font-bold text-white">{provider.billingInfo.planName}</p>
+                </div>
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${
+                  isAtLimit
+                    ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                    : planLimit === null
+                      ? 'border-green-500/50 bg-green-500/10 text-green-300'
+                      : 'border-blue-500/50 bg-blue-500/10 text-blue-300'
+                }`}>
+                  {planLimit === null ? 'Unlimited' : isAtLimit ? 'Limit reached' : `${slotsRemaining} slots left`}
+                </span>
+              </div>
+              <p className="text-sm text-neutral-400 mt-2">{provider.billingInfo.planDescription}</p>
+
+              {planLimit === null ? (
+                <p className="mt-4 text-sm text-green-300">You can publish unlimited properties on this plan.</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-xs text-neutral-400 mt-4">
+                    <span>{publishedCount} published</span>
+                    <span>{planLimit} limit</span>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${isAtLimit ? 'bg-red-500' : 'bg-blue-500'}`}
+                      style={{ width: `${Math.min(planUsagePercent, 100)}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-2 ${isAtLimit ? 'text-red-300' : 'text-neutral-400'}`}>
+                    {isAtLimit
+                      ? 'Upgrade required to publish more properties.'
+                      : `${slotsRemaining} publication slot${slotsRemaining === 1 ? '' : 's'} remaining.`}
+                  </p>
+                </>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 text-sm text-neutral-300 mt-4">
+                <div>
+                  <p className="text-xs text-neutral-500">Published properties</p>
+                  <p className="font-semibold">{publishedCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500">Total properties</p>
+                  <p className="font-semibold">{totalProperties}</p>
+                </div>
+              </div>
+            </div>
+
+            {nextPlan && (
+              <div className="group relative border border-blue-500/30 bg-gradient-to-br from-blue-500/20 via-purple-600/20 to-blue-600/10 backdrop-blur-xl rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/20">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-neutral-200">Recommended upgrade</p>
+                    <p className="text-2xl font-bold">{nextPlan.name}</p>
+                  </div>
+                  <span className="px-3 py-1 text-xs font-semibold border border-white/30 rounded-full bg-white/10">
+                    Next plan
+                  </span>
+                </div>
+                <p className="text-sm text-neutral-200 mb-4">{nextPlan.description}</p>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-3xl font-bold">R{nextPlan.price.toFixed(2)}</span>
+                  <span className="text-sm text-neutral-200">/month</span>
+                </div>
+                <p className="text-sm text-neutral-200 mb-6">
+                  {nextPlan.maxProperties === null
+                    ? 'Unlimited properties'
+                    : `Up to ${nextPlan.maxProperties} properties`}
+                </p>
+                <button
+                  onClick={() => handlePlanSelect(nextPlan.id)}
+                  className="w-full bg-white/20 hover:bg-white/30 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/30"
+                >
+                  Upgrade to {nextPlan.name}
+                </button>
+                <p className="text-xs text-neutral-200 mt-3">
+                  {planLimit === null
+                    ? 'Already on the highest plan.'
+                    : `Currently limited to ${planLimit} published properties.`}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
           {/* Subscription Management */}
-          {(provider.subscriptionToken || subscriptionDetails || provider.billingInfo.isInTrial || provider.billingInfo.subscriptionStatus === 'trial') && (
+          {(provider.subscriptionToken || subscriptionDetails || provider.billingInfo.isInTrial || provider.billingInfo.subscriptionStatus === 'trial') && subscriptionSummary && (
             <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-blue-500/10">
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
                 Subscription Management

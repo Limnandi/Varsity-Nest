@@ -1,11 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import PaystackPaymentForm from "@/components/PaystackPaymentForm"
 import { ArrowLeft, CreditCard, Shield, CheckCircle, AlertCircle, RefreshCw, Clock, Calendar } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { SubscriptionPlanId } from "@/lib/subscription-plans"
+
+interface SubscriptionPlan {
+  id: SubscriptionPlanId
+  name: string
+  description: string
+  price: number
+  maxProperties: number | null
+  hasTrial: boolean
+}
+
+interface BillingSubscriptionSummary {
+  plan: SubscriptionPlan | null
+  status: 'inactive' | 'trial' | 'active'
+  isInTrial: boolean
+  isEligibleForTrial: boolean
+  publishedCount: number
+  totalCount: number
+  canCreateMore: boolean
+  canPublishMore: boolean
+  nextPlan: SubscriptionPlan
+  limit: number | null
+}
 
 interface BillingData {
   provider: {
@@ -23,15 +47,23 @@ interface BillingData {
       trialEndDate?: string | null
       isInTrial?: boolean
       isFirstTimeUser?: boolean
+      planId: SubscriptionPlanId
+      planName: string
+      planDescription: string
+      planPrice: number
+      planLimit: number | null
     }
   }
   invoices: any[]
+  plans: SubscriptionPlan[]
+  subscriptionSummary: BillingSubscriptionSummary
 }
 
 export default function PaymentPage() {
   const [billingData, setBillingData] = useState<BillingData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const fetchBillingData = async () => {
@@ -67,6 +99,29 @@ export default function PaymentPage() {
     console.error("Payment error:", error)
     setError(error)
   }
+
+  const plans = useMemo(() => billingData?.plans || [], [billingData?.plans])
+  const subscriptionSummary = billingData?.subscriptionSummary
+  const selectedPlanIdFromQuery = (searchParams.get("planId") as SubscriptionPlanId | null) ?? null
+
+  const selectedPlan = useMemo(() => {
+    if (plans.length === 0) return null
+    if (selectedPlanIdFromQuery) {
+      const match = plans.find((plan) => plan.id === selectedPlanIdFromQuery)
+      if (match) {
+        return match
+      }
+    }
+    if (subscriptionSummary?.plan) {
+      const summaryPlan = plans.find((plan) => plan.id === subscriptionSummary.plan!.id)
+      if (summaryPlan) {
+        return summaryPlan
+      }
+      return subscriptionSummary.plan
+    }
+    const fallbackPlanId = billingData?.provider?.billingInfo?.planId
+    return plans.find((plan) => plan.id === fallbackPlanId) || plans[0]
+  }, [plans, selectedPlanIdFromQuery, subscriptionSummary, billingData?.provider?.billingInfo?.planId])
 
   if (isLoading) {
     return (
@@ -120,6 +175,17 @@ export default function PaymentPage() {
 
   const provider = billingData.provider
 
+  const planIdForPayment = selectedPlan?.id ?? provider.billingInfo.planId
+  const planName = selectedPlan?.name ?? provider.billingInfo.planName
+  const planPrice = selectedPlan?.price ?? provider.billingInfo.planPrice ?? provider.billingInfo.monthlyFee
+  const planLimitLabel = selectedPlan
+    ? selectedPlan.maxProperties === null
+      ? "Unlimited properties"
+      : `Up to ${selectedPlan.maxProperties} properties`
+    : provider.billingInfo.planDescription
+  const isEligibleForTrial = Boolean(subscriptionSummary?.isEligibleForTrial && selectedPlan?.hasTrial)
+  const isInTrial = Boolean(subscriptionSummary?.isInTrial || provider.billingInfo.isInTrial)
+
   return (
     <AuthGuard requiredRole="provider">
       <DashboardLayout userRole="provider">
@@ -141,6 +207,20 @@ export default function PaymentPage() {
             </p>
           </div>
 
+          <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 shadow-2xl shadow-purple-500/10">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-neutral-400">Selected Plan</p>
+                <p className="text-2xl font-bold text-white">{planName}</p>
+                <p className="text-sm text-neutral-400">{planLimitLabel}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-white">R{planPrice.toFixed(2)}</p>
+                <p className="text-sm text-neutral-400">per month</p>
+              </div>
+            </div>
+          </div>
+
           {error && (
             <div className="border border-red-500/50 bg-red-500/10 rounded-xl p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -152,7 +232,7 @@ export default function PaymentPage() {
           )}
 
           {/* First-Time User Trial Offer */}
-          {provider.billingInfo.isFirstTimeUser && (
+          {isEligibleForTrial && (
             <div className="relative border border-green-500/30 bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-green-600/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-green-500/30 overflow-hidden">
               {/* Decorative elements */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-400/20 to-transparent rounded-full blur-3xl"></div>
@@ -168,7 +248,7 @@ export default function PaymentPage() {
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent mb-1">
                         Start Your Free Trial
                       </h2>
-                      <p className="text-sm text-green-200/80">14 days free, then R{provider.billingInfo.monthlyFee.toFixed(2)}/month</p>
+                      <p className="text-sm text-green-200/80">14 days free, then R{planPrice.toFixed(2)}/month</p>
                     </div>
                   </div>
                   <span className="px-4 py-2 bg-green-500/30 border border-green-400/50 rounded-full text-sm font-semibold text-green-200">
@@ -202,7 +282,7 @@ export default function PaymentPage() {
                   <div className="bg-black/20 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-lg font-semibold text-white">After Trial Ends</p>
-                      <p className="text-2xl font-bold text-blue-300">R{provider.billingInfo.monthlyFee.toFixed(2)}<span className="text-base font-medium text-neutral-400">/month</span></p>
+                      <p className="text-2xl font-bold text-blue-300">R{planPrice.toFixed(2)}<span className="text-base font-medium text-neutral-400">/month</span></p>
                     </div>
                     <p className="text-sm text-neutral-300">
                       Your subscription will automatically start after the 14-day trial period ends. 
@@ -223,16 +303,18 @@ export default function PaymentPage() {
             <div className="lg:col-span-2">
               <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 shadow-2xl shadow-blue-500/10">
                 <PaystackPaymentForm
-                  amount={provider.billingInfo.monthlyFee}
+                  amount={planPrice}
                   userEmail={provider.email}
                   userName={provider.contactPerson}
-                  itemName={`Varsity Nest Subscription - ${provider.businessName}`}
+                  itemName={`Varsity Nest ${planName} Subscription - ${provider.businessName}`}
                   customData={{
                     providerId: provider.id,
-                    subscriptionType: "monthly"
+                    subscriptionType: "monthly",
+                    planId: planIdForPayment,
                   }}
-                  isEligibleForTrial={provider.billingInfo.isFirstTimeUser === true}
-                  isInTrial={provider.billingInfo.isInTrial === true}
+                  planId={planIdForPayment}
+                  isEligibleForTrial={isEligibleForTrial}
+                  isInTrial={isInTrial}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
                 />
@@ -247,7 +329,7 @@ export default function PaymentPage() {
                   Payment Summary
                 </h2>
                 <div className="space-y-4">
-                  {provider.billingInfo.isInTrial && provider.billingInfo.trialEndDate ? (
+                  {isInTrial && provider.billingInfo.trialEndDate ? (
                     <>
                       <div>
                         <p className="text-sm text-neutral-300 mb-2">Trial Period</p>
@@ -276,14 +358,14 @@ export default function PaymentPage() {
                       </div>
                       <div className="pt-3 border-t border-white/10">
                         <p className="text-xs text-neutral-400 mb-1">
-                          After trial ends, monthly subscription: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
+                        After trial ends, monthly subscription: R{planPrice.toFixed(2)}/month
                         </p>
                         <p className="text-xs text-blue-300 font-medium">
                           Billing will start automatically after trial period ends
                         </p>
                   </div>
                     </>
-                  ) : provider.billingInfo.isFirstTimeUser ? (
+                  ) : isEligibleForTrial ? (
                     <>
                       <div>
                         <p className="text-sm text-neutral-300 mb-2">Starting Trial</p>
@@ -299,7 +381,7 @@ export default function PaymentPage() {
                       </div>
                       <div className="pt-3 border-t border-white/10">
                         <p className="text-xs text-neutral-400 mb-1">
-                          After trial ends: R{provider.billingInfo.monthlyFee.toFixed(2)}/month
+                        After trial ends: R{planPrice.toFixed(2)}/month
                         </p>
                         <p className="text-xs text-blue-300 font-medium">
                           Billing will start automatically after 14 days
@@ -311,7 +393,7 @@ export default function PaymentPage() {
                       <div>
                         <p className="text-sm text-neutral-300 mb-2">Subscription Amount</p>
                         <p className="text-4xl font-bold">
-                          R{provider.billingInfo.monthlyFee.toFixed(2)}
+                          R{planPrice.toFixed(2)}
                           <span className="text-lg font-medium text-neutral-400">/30 days</span>
                         </p>
                       </div>
