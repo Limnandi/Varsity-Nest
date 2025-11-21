@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
-import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 import { PaystackAPIClient } from "@/lib/paystack-api-client"
 import { secureDb } from "@/lib/database-secure"
 import * as schema from "@/lib/schema"
 import { eq } from "drizzle-orm"
+import { SUBSCRIPTION_PLANS } from "@/lib/subscription-plans"
+import { getAgentSubscriptionSummary } from "@/lib/subscription"
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Fetch agent details including subscription token and trial dates
     const agentResult = await query`
       SELECT 
         a.id,
@@ -43,6 +45,11 @@ export async function GET(request: NextRequest) {
         a.contact_person,
         a.contact_email,
         a.subscription_token,
+        a.subscription_status,
+        a.trial_start_date,
+        a.trial_end_date,
+        a.last_payment_date,
+        a.next_payment_date,
         u.email,
         a.created_at
       FROM agents a
@@ -60,24 +67,22 @@ export async function GET(request: NextRequest) {
 
     const agentData = agentResult.rows[0]
     
+    // Calculate billing info
     const subscriptionStartDate = new Date(agentData.created_at)
-    const nextPaymentDate = new Date()
-    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
+    const nextPaymentDate = agentData.next_payment_date 
+      ? new Date(agentData.next_payment_date)
+      : new Date()
     
-    // Calculate monthly fee based on active accommodations count
-    const accommodationsResult = await query`
-      SELECT COUNT(id) as count
-      FROM accommodations
-      WHERE agent_id = ${agentData.id} AND is_active = true
-    `
-    const accommodationsCount = Number(accommodationsResult.rows[0]?.count || 0)
+    // Check trial status
+    const trialStartDate = agentData.trial_start_date ? new Date(agentData.trial_start_date) : null
+    const trialEndDate = agentData.trial_end_date ? new Date(agentData.trial_end_date) : null
     
-    // Calculate monthly fee using pricing function
-    const monthlyFee = calculateProviderSubscriptionPrice({
-      accommodationsCount: accommodationsCount || 1, // Default to 1 if no accommodations
-      wantsFeatured: false
-    })
+    const subscriptionSummary = await getAgentSubscriptionSummary(agentData.id)
+    const activePlan = subscriptionSummary.plan ?? subscriptionSummary.nextPlan
 
+    // Fetch payment history from payment_transactions table
+    // Only show completed payments and the most recent pending payment (if any)
+    // Filter out failed/cancelled attempts to avoid confusion
     const paymentsResult = await query`
       SELECT 
         pt.id, 
@@ -129,27 +134,56 @@ export async function GET(request: NextRequest) {
         }
       }
     }
-
-    const invoices = paymentsResult.rows.map((payment: any) => ({
+    
+    // Transform payments to invoices
+    // Only include completed payments and the most recent pending payment
+    const completedPayments = paymentsResult.rows.filter((p: any) => p.status === 'completed')
+    const stillPendingPayments = paymentsResult.rows.filter((p: any) => p.status === 'pending')
+    const mostRecentPending = stillPendingPayments.length > 0 ? [stillPendingPayments[0]] : []
+    
+    const allRelevantPayments = [...completedPayments, ...mostRecentPending]
+    
+    const invoices = allRelevantPayments.map((payment: any) => ({
       id: payment.pf_payment_id || payment.m_payment_id || payment.id,
       date: payment.created_at,
       amount: Number(payment.amount),
-      status: payment.status === 'completed' ? 'paid' : 
-              payment.status === 'failed' ? 'failed' :
-              payment.status === 'cancelled' ? 'refunded' : 'pending',
+      status: payment.status === 'completed' ? 'paid' : 'pending',
       description: `Varsity Nest Monthly Subscription - ${new Date(payment.created_at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })}`,
-      paymentMethod: 'paystack'
+      paymentMethod: 'paystack' // Paystack payment gateway
     }))
-
-    const hasRecentPayment = invoices.some((inv: any) => {
-      const paymentDate = new Date(inv.date)
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      return inv.status === 'paid' && paymentDate > thirtyDaysAgo
-    })
-
-    const subscriptionStatus = hasRecentPayment ? 'active' : 
-                               invoices.length === 0 ? 'trial' : 'inactive'
+    
+    for (const pendingPayment of pendingPayments) {
+      const reference = pendingPayment.m_payment_id || pendingPayment.pf_payment_id
+      if (reference) {
+        try {
+          // Verify transaction with Paystack
+          const verifiedTransaction = await PaystackAPIClient.verifyTransaction(reference)
+          
+          // If transaction is successful, update status in database
+          if (verifiedTransaction.status === 'success') {
+            const paymentDate = verifiedTransaction.paid_at ? new Date(verifiedTransaction.paid_at) : new Date()
+            
+            // Update transaction status
+            await secureDb.db
+              .update(schema.paymentTransactions)
+              .set({
+                status: 'completed',
+                paymentDate: paymentDate,
+                pfPaymentId: verifiedTransaction.id?.toString() || reference,
+                gatewayResponse: verifiedTransaction
+              })
+              .where(eq(schema.paymentTransactions.id, pendingPayment.id))
+            
+            // Update the payment object for this iteration
+            pendingPayment.status = 'completed'
+            pendingPayment.paymentDate = paymentDate
+          }
+        } catch (verifyError) {
+          // If verification fails, transaction might still be pending or failed
+          // Keep it as pending - webhook will eventually process it
+        }
+      }
+    }
 
     const agent = {
       id: agentData.id,
@@ -158,19 +192,45 @@ export async function GET(request: NextRequest) {
       contactPerson: agentData.contact_person,
       subscriptionToken: agentData.subscription_token || null,
       billingInfo: {
-        monthlyFee,
-        nextPaymentDate: nextPaymentDate.toISOString(),
-        subscriptionStatus,
-        subscriptionStartDate: subscriptionStartDate.toISOString()
+        planId: activePlan.id,
+        planName: activePlan.name,
+        planDescription: activePlan.description,
+        planPrice: activePlan.price,
+        planLimit: activePlan.maxProperties,
+        monthlyFee: activePlan.price,
+        nextPaymentDate: agentData.next_payment_date ? new Date(agentData.next_payment_date).toISOString() : nextPaymentDate.toISOString(),
+        subscriptionStatus: subscriptionSummary.status,
+        subscriptionStartDate: subscriptionStartDate.toISOString(),
+        trialStartDate: trialStartDate ? trialStartDate.toISOString() : null,
+        trialEndDate: trialEndDate ? trialEndDate.toISOString() : null,
+        isInTrial: subscriptionSummary.isInTrial,
+        isFirstTimeUser: subscriptionSummary.isEligibleForTrial,
+        publishedCount: subscriptionSummary.publishedCount,
+        totalProperties: subscriptionSummary.totalCount,
+        canCreateMore: subscriptionSummary.canCreateMore,
+        canPublishMore: subscriptionSummary.canPublishMore,
       }
     }
 
     return NextResponse.json({
       agent,
-      invoices
+      invoices,
+      plans: Object.values(SUBSCRIPTION_PLANS),
+      subscriptionSummary: subscriptionSummary
     })
 
   } catch (error) {
+    // Log full error and capture for Sentry/monitoring
+    console.error('[AGENT BILLING] Fatal error fetching billing data:', error instanceof Error ? error.stack || error.message : String(error))
+    try {
+      const { captureException } = await import('@/lib/logging/config')
+      captureException(error instanceof Error ? error : new Error(String(error)), { component: 'agent-billing' })
+    } catch (e) {
+      // ignore logging errors
+      console.warn('[AGENT BILLING] Failed to capture exception to logging service', String(e))
+    }
+
+    // Return generic error to client
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch billing data" },
       { status: 500 }

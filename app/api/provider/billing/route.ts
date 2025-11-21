@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
-import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 import { PaystackAPIClient } from "@/lib/paystack-api-client"
 import { secureDb } from "@/lib/database-secure"
 import * as schema from "@/lib/schema"
 import { eq } from "drizzle-orm"
+import { SUBSCRIPTION_PLANS } from "@/lib/subscription-plans"
+import { getProviderSubscriptionSummary } from "@/lib/subscription"
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,21 +78,9 @@ export async function GET(request: NextRequest) {
     // Check trial status
     const trialStartDate = providerData.trial_start_date ? new Date(providerData.trial_start_date) : null
     const trialEndDate = providerData.trial_end_date ? new Date(providerData.trial_end_date) : null
-    const isInTrial = providerData.subscription_status === 'trial' && trialEndDate && trialEndDate > new Date()
     
-    // Calculate monthly fee based on active accommodations count
-    const accommodationsResult = await query`
-      SELECT COUNT(id) as count
-      FROM accommodations
-      WHERE provider_id = ${providerData.id} AND is_active = true
-    `
-    const accommodationsCount = Number(accommodationsResult.rows[0]?.count || 0)
-    
-    // Calculate monthly fee using pricing function
-    const monthlyFee = calculateProviderSubscriptionPrice({
-      accommodationsCount: accommodationsCount || 1, // Default to 1 if no accommodations
-      wantsFeatured: false
-    })
+    const subscriptionSummary = await getProviderSubscriptionSummary(providerData.id)
+    const activePlan = subscriptionSummary.plan ?? subscriptionSummary.nextPlan
 
     // Fetch payment history from payment_transactions table
     // Only show completed payments and the most recent pending payment (if any)
@@ -156,11 +145,6 @@ export async function GET(request: NextRequest) {
     
     const allRelevantPayments = [...completedPayments, ...mostRecentPending]
     
-    // Check if provider is a first-time user (never had trial or payment)
-    const hasNeverHadTrial = !providerData.trial_start_date && !providerData.trial_end_date
-    const hasNeverHadPayment = !providerData.last_payment_date && completedPayments.length === 0
-    const isFirstTimeUser = hasNeverHadTrial && hasNeverHadPayment && providerData.subscription_status === 'inactive'
-    
     const invoices = allRelevantPayments.map((payment: any) => ({
       id: payment.pf_payment_id || payment.m_payment_id || payment.id,
       date: payment.created_at,
@@ -170,19 +154,6 @@ export async function GET(request: NextRequest) {
       paymentMethod: 'paystack' // Paystack payment gateway
     }))
 
-    // Determine subscription status (use database status if available, otherwise calculate)
-    const hasRecentPayment = invoices.some((inv: any) => {
-      const paymentDate = new Date(inv.date)
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      return inv.status === 'paid' && paymentDate > thirtyDaysAgo
-    })
-
-    // Use database subscription_status if available, otherwise calculate
-    const subscriptionStatus = providerData.subscription_status || 
-                               (hasRecentPayment ? 'active' : 
-                               (invoices.length === 0 && !providerData.trial_start_date ? 'trial' : 'inactive'))
-
     const provider = {
       id: providerData.id,
       email: providerData.email,
@@ -190,20 +161,31 @@ export async function GET(request: NextRequest) {
       contactPerson: providerData.contact_person,
       subscriptionToken: providerData.subscription_token || null,
       billingInfo: {
-        monthlyFee,
+        planId: activePlan.id,
+        planName: activePlan.name,
+        planDescription: activePlan.description,
+        planPrice: activePlan.price,
+        planLimit: activePlan.maxProperties,
+        monthlyFee: activePlan.price,
         nextPaymentDate: providerData.next_payment_date ? new Date(providerData.next_payment_date).toISOString() : nextPaymentDate.toISOString(),
-        subscriptionStatus: subscriptionStatus,
+        subscriptionStatus: subscriptionSummary.status,
         subscriptionStartDate: subscriptionStartDate.toISOString(),
         trialStartDate: trialStartDate ? trialStartDate.toISOString() : null,
         trialEndDate: trialEndDate ? trialEndDate.toISOString() : null,
-        isInTrial: isInTrial,
-        isFirstTimeUser: isFirstTimeUser
+        isInTrial: subscriptionSummary.isInTrial,
+        isFirstTimeUser: subscriptionSummary.isEligibleForTrial,
+        publishedCount: subscriptionSummary.publishedCount,
+        totalProperties: subscriptionSummary.totalCount,
+        canCreateMore: subscriptionSummary.canCreateMore,
+        canPublishMore: subscriptionSummary.canPublishMore,
       }
     }
 
     return NextResponse.json({
       provider,
-      invoices
+      invoices,
+      plans: Object.values(SUBSCRIPTION_PLANS),
+      subscriptionSummary: subscriptionSummary
     })
 
   } catch (error) {
