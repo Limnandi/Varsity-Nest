@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import * as schema from '@/lib/schema'
 import { accommodationUpdateSchema, validateRequest } from '@/lib/validation-schemas'
 import { deleteImages } from '@/lib/cloudinary'
+import { invalidateAccommodationsCache } from '@/lib/cache/accommodations-cache'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -158,6 +159,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .set(updateData)
       .where(eq(schema.accommodations.id, id))
       .returning()
+
+    await invalidateAccommodationsCache()
     
     return NextResponse.json(updated || null)
   } catch (error) {
@@ -212,6 +215,9 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     await secureDb.db
       .delete(schema.accommodations)
       .where(eq(schema.accommodations.id, id))
+    
+    await invalidateAccommodationsCache()
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete accommodation error:', error)

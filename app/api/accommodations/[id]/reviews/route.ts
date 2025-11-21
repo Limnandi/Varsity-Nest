@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
+import { redis } from "@/lib/redis"
+
+export const revalidate = 120
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    
-    // Optimized: Fetch reviews with student information AND calculate stats in a single query using window functions
-    const result = await query`
-      WITH review_data AS (
+    const { searchParams } = new URL(request.url)
+    const limitParam = Number.parseInt(searchParams.get("limit") || "50", 10)
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10)
+    const limit = Number.isNaN(limitParam) ? 50 : Math.min(Math.max(limitParam, 1), 100)
+    const page = Number.isNaN(pageParam) ? 1 : Math.max(pageParam, 1)
+    const offset = (page - 1) * limit
+
+    const reviewsResult = await query`
       SELECT 
         r.id,
         r.rating,
@@ -24,38 +31,30 @@ export async function GET(
         u.last_name,
         u.email,
         u.profile_image_url,
-          s.university,
-          COALESCE(sp.show_email, true) as show_email,
-          AVG(r.rating) OVER() as average_rating,
-          COUNT(*) OVER() as total_reviews
+        s.university,
+        COALESCE(sp.show_email, true) as show_email
       FROM reviews r
       JOIN students s ON r.student_id = s.id
       JOIN users u ON s.user_id = u.id
       LEFT JOIN student_preferences sp ON sp.student_id = s.id
       WHERE r.accommodation_id = ${id}
-      )
-      SELECT 
-        id,
-        rating,
-        comment,
-        is_verified,
-        helpful_votes,
-        total_votes,
-        created_at,
-        first_name,
-        last_name,
-        email,
-        profile_image_url,
-        university,
-        show_email,
-        average_rating,
-        total_reviews
-      FROM review_data
-      ORDER BY created_at DESC
-      LIMIT 50
+      ORDER BY r.created_at DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
     `
 
-    const reviews = result.rows.map((row: any) => ({
+    const statsResult = await query`
+      SELECT 
+        COALESCE(ROUND(AVG(rating)::numeric, 1), 0) as average_rating,
+        COUNT(*) as total_reviews
+      FROM reviews 
+      WHERE accommodation_id = ${id}
+    `
+
+    const totalReviews = Number(statsResult.rows[0]?.total_reviews || 0)
+    const avgRatingRaw = Number(statsResult.rows[0]?.average_rating || 0)
+
+    const reviews = reviewsResult.rows.map((row: any) => ({
       id: row.id,
       rating: row.rating,
       comment: row.comment,
@@ -71,18 +70,23 @@ export async function GET(
       show_email: row.show_email ?? true
     }))
 
-    // Get stats from first row (all rows have same values due to window function)
-    const avgRating = result.rows[0]?.average_rating || 0
-    const totalReviews = result.rows[0]?.total_reviews || 0
+    const hasMore = offset + reviews.length < totalReviews
 
-    // Ensure avgRating is a number before calling toFixed
-    const numericAvgRating = typeof avgRating === 'number' ? avgRating : parseFloat(avgRating) || 0
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       reviews,
-      averageRating: parseFloat(numericAvgRating.toFixed(1)),
-      totalReviews: parseInt(totalReviews)
+      averageRating: Number(avgRatingRaw.toFixed(1)),
+      totalReviews,
+      pagination: {
+        page,
+        limit,
+        hasMore,
+      }
     })
+    response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=60')
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=120')
+    response.headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=120, stale-while-revalidate=60')
+
+    return response
 
   } catch (error) {
     console.error("Reviews fetch error:", error)
@@ -162,6 +166,24 @@ export async function POST(
       )
     }
 
+    // Rate limit reviews per student to prevent abuse (5 reviews/hour)
+    try {
+      const rateLimitKey = `reviews:rate:${user.id}`
+      const currentCount = await redis.incr(rateLimitKey)
+      if (currentCount === 1) {
+        await redis.expire(rateLimitKey, 60 * 60)
+      }
+      const MAX_REVIEWS_PER_HOUR = 5
+      if (currentCount > MAX_REVIEWS_PER_HOUR) {
+        return NextResponse.json(
+          { error: "Review rate limit exceeded. Please try again later." },
+          { status: 429 }
+        )
+      }
+    } catch (rateError) {
+      console.warn("Review rate limit check failed:", rateError)
+    }
+
     // Insert new review
     const reviewResult = await query`
       INSERT INTO reviews (student_id, accommodation_id, rating, comment, is_verified)
@@ -173,26 +195,21 @@ export async function POST(
 
     // Update accommodation's rating and review_count
     try {
-      const statsResult = await query`
-        SELECT 
-          ROUND(AVG(rating)::numeric, 0) as avg_rating,
-          COUNT(*) as total_reviews
-        FROM reviews 
-        WHERE accommodation_id = ${id}
-      `
-
-      const avgRating = statsResult.rows[0]?.avg_rating || 0
-      const totalReviews = statsResult.rows[0]?.total_reviews || 0
-
-      console.log(`[REVIEWS] Calculated stats for accommodation ${id}: rating=${avgRating}, count=${totalReviews}`)
-
       const updateResult = await query`
+        WITH stats AS (
+          SELECT 
+            ROUND(COALESCE(AVG(rating), 0)::numeric, 0) as avg_rating,
+            COUNT(*) as total_reviews
+          FROM reviews 
+          WHERE accommodation_id = ${id}
+        )
         UPDATE accommodations 
         SET 
-          rating = ${avgRating},
-          review_count = ${totalReviews},
+          rating = stats.avg_rating::int,
+          review_count = stats.total_reviews,
           updated_at = NOW()
-        WHERE id = ${id}
+        FROM stats
+        WHERE accommodations.id = ${id}
       `
 
       console.log(`[REVIEWS] Accommodation ${id} updated successfully. Rows affected: ${updateResult.rowCount}`)

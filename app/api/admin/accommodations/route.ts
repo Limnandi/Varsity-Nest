@@ -3,6 +3,7 @@ import { getCurrentUserFromRequest } from '@/lib/auth-server'
 import { secureDb } from '@/lib/database-secure'
 import * as schema from '@/lib/schema'
 import { sql } from 'drizzle-orm'
+import { invalidateAccommodationsCache } from '@/lib/cache/accommodations-cache'
 
 export async function GET(request: NextRequest) {
   let user = await getCurrentUserFromRequest(request)
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
       }
       const updatedRow = Array.isArray(update) ? (update as any)[0] : (update as any).rows?.[0]
+      await invalidateAccommodationsCache()
       return NextResponse.json({ accommodation: updatedRow }, { status: 200 })
     }
 
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
       }
       const updatedRow = Array.isArray(update) ? (update as any)[0] : (update as any).rows?.[0]
+      await invalidateAccommodationsCache()
       return NextResponse.json({ accommodation: updatedRow }, { status: 200 })
     }
 

@@ -6,6 +6,10 @@ import { OptimizedAccommodationRepository } from '@/lib/database-optimized'
 import { searchSchema, accommodationCreateSchema, validateRequest } from '@/lib/validation-schemas'
 import { ApiErrorResponseBuilder } from '@/lib/api-error-response'
 import { ApiMiddleware } from '@/lib/api-middleware'
+import { getProviderSubscriptionSummary } from '@/lib/subscription'
+import { invalidateAccommodationsCache } from '@/lib/cache/accommodations-cache'
+
+export const revalidate = 300
 
 export const GET = ApiMiddleware.withMiddleware(
   async (request: NextRequest) => {
@@ -49,10 +53,14 @@ export const GET = ApiMiddleware.withMiddleware(
         accommodations = await OptimizedAccommodationRepository.getPublishedAccommodations(limit || 24, offset || 0)
       }
 
-      return ApiMiddleware.createResponse(
+      const response = ApiMiddleware.createResponse(
         accommodations,
         "Accommodations retrieved successfully"
       )
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60')
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300')
+      response.headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60')
+      return response
     } catch (error) {
       return await ApiErrorResponseBuilder.createDatabaseErrorResponse(
         error instanceof Error ? error : new Error(String(error)),
@@ -273,6 +281,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
     }
 
+    const providerId = providerIdResult.rows[0].id
+    const subscriptionSummary = await getProviderSubscriptionSummary(providerId)
+
+    if (!subscriptionSummary.plan) {
+      return NextResponse.json(
+        {
+          error: 'SUBSCRIPTION_REQUIRED',
+          message: 'An active subscription is required before adding properties.',
+          requiredPlanId: subscriptionSummary.nextPlan.id,
+          requiredPlanLimit: subscriptionSummary.nextPlan.maxProperties,
+          requiredPlanAmount: subscriptionSummary.nextPlan.price,
+        },
+        { status: 402 }
+      )
+    }
+
+    if (!subscriptionSummary.canCreateMore) {
+      return NextResponse.json(
+        {
+          error: 'SUBSCRIPTION_PLAN_LIMIT',
+          message: `Your current plan allows up to ${subscriptionSummary.limit ?? 'unlimited'} properties.`,
+          planId: subscriptionSummary.plan.id,
+          planLimit: subscriptionSummary.limit,
+          requiredPlanId: subscriptionSummary.nextPlan.id,
+          requiredPlanLimit: subscriptionSummary.nextPlan.maxProperties,
+          requiredPlanAmount: subscriptionSummary.nextPlan.price,
+          totalProperties: subscriptionSummary.totalCount,
+        },
+        { status: 402 }
+      )
+    }
+
     const record = await insertAccommodation({
       name: payload.name,
       description: payload.description,
@@ -281,7 +321,7 @@ export async function POST(request: NextRequest) {
       amenities: payload.amenities || [],
       images: uploadedImages,
       accreditation_status: (payload.accreditation_status as string)?.replace('-', '_') || 'accredited',
-      provider_id: providerIdResult.rows[0].id,
+      provider_id: providerId,
       area: payload.area || null,
       distance: payload.distance || null,
       featured: Boolean(payload.featured),
@@ -318,6 +358,8 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       console.warn('[ACCOM POST] Unable to set card_image_url (column may not exist):', e)
     }
+
+    await invalidateAccommodationsCache()
 
     return NextResponse.json(record, { status: 201 })
   } catch (error) {

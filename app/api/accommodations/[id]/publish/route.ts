@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from '@/lib/auth-server'
 import { query } from '@/lib/database'
+import { getProviderSubscriptionSummary } from '@/lib/subscription'
 
 export async function PATCH(
   request: NextRequest,
@@ -85,58 +86,36 @@ export async function PATCH(
 
     // Check subscription status before allowing publish
     if (publishStatus === true) {
-      // Check for active subscription - must have completed payment AND active status AND not expired
-      let hasActiveSubscription = false
-      
       if (entityType === 'provider') {
-        // Check subscription status directly from providers table
-        // The webhook sets subscription_status = 'active' and next_payment_date when payment succeeds
-        const subscriptionCheck = await query`
-          SELECT 
-            p.subscription_status,
-            p.trial_start_date,
-            p.trial_end_date,
-            p.next_payment_date,
-            p.last_payment_date
-          FROM providers p
-          WHERE p.id = ${entityId}
-          LIMIT 1
-        `
-        
-        if (subscriptionCheck.rows.length > 0) {
-          const row = subscriptionCheck.rows[0]
-          const subscriptionStatus = row.subscription_status
-          const trialEndDate = row.trial_end_date ? new Date(row.trial_end_date) : null
-          const nextPaymentDate = row.next_payment_date ? new Date(row.next_payment_date) : null
-          const lastPaymentDate = row.last_payment_date ? new Date(row.last_payment_date) : null
-          
-          // Check if in trial period
-          const isInTrial = subscriptionStatus === 'trial' && trialEndDate && trialEndDate > new Date()
-          
-          // Subscription is active if:
-          // 1. In trial period (trial status and trial hasn't ended), OR
-          // 2. subscription_status = 'active' with next_payment_date in the future and payment was made
-          const isNotExpired = !nextPaymentDate || nextPaymentDate > new Date()
-          const hasPayment = !!lastPaymentDate
-          
-          hasActiveSubscription = isInTrial || 
-                                  (subscriptionStatus === 'active' && 
-                                  isNotExpired && 
-                                  hasPayment)
-          
-          console.log(`[PUBLISH] Subscription check for provider ${entityId}:`, {
-            subscriptionStatus,
-            isInTrial,
-            trialEndDate: trialEndDate?.toISOString(),
-            nextPaymentDate: nextPaymentDate?.toISOString(),
-            lastPaymentDate: lastPaymentDate?.toISOString(),
-            isNotExpired,
-            hasPayment,
-            hasActiveSubscription
-          })
+        const summary = await getProviderSubscriptionSummary(entityId)
+        const isCurrentlyPublished = Boolean(accommodationResult.rows[0].is_published)
+        const projectedPublishedCount = summary.publishedCount + (isCurrentlyPublished ? 0 : 1)
+        const hasActiveSubscription = summary.status === 'active' || summary.isInTrial
+
+        if (!summary.plan || !hasActiveSubscription) {
+          return NextResponse.json({
+            error: 'SUBSCRIPTION_REQUIRED',
+            message: 'An active subscription is required to publish properties.',
+            accommodationCount: projectedPublishedCount,
+            requiredPlanId: summary.nextPlan.id,
+            requiredPlanLimit: summary.nextPlan.maxProperties,
+            requiredPlanAmount: summary.nextPlan.price,
+          }, { status: 402 })
+        }
+
+        if (summary.plan.maxProperties !== null && projectedPublishedCount > summary.plan.maxProperties) {
+          return NextResponse.json({
+            error: 'SUBSCRIPTION_PLAN_LIMIT',
+            message: `Your current plan allows up to ${summary.plan.maxProperties} published properties.`,
+            planId: summary.plan.id,
+            planLimit: summary.plan.maxProperties,
+            requiredPlanId: summary.nextPlan.id,
+            requiredPlanLimit: summary.nextPlan.maxProperties,
+            requiredPlanAmount: summary.nextPlan.price,
+            currentPublishedCount: summary.publishedCount,
+          }, { status: 402 })
         }
       } else {
-        // For agents, check for completed payment
         const paymentCheck = await query`
           SELECT 
             pt.id,
@@ -148,39 +127,26 @@ export async function PATCH(
           ORDER BY pt.created_at DESC
           LIMIT 1
         `
-        hasActiveSubscription = paymentCheck.rows.length > 0
-      }
+        const hasActiveSubscription = paymentCheck.rows.length > 0
 
-      if (!hasActiveSubscription) {
-        // Count only PUBLISHED accommodations (excluding the one being published)
-        // This ensures accurate pricing - we only count what's already published
-        const accommodationCountResult = entityType === 'provider'
-          ? await query`
-              SELECT COUNT(*) as count
-              FROM accommodations
-              WHERE provider_id = ${entityId}
-                AND is_active = true
-                AND is_published = true
-                AND id != ${id}
-            `
-          : await query`
-              SELECT COUNT(*) as count
-              FROM accommodations
-              WHERE agent_id = ${entityId}
-                AND is_active = true
-                AND is_published = true
-                AND id != ${id}
-            `
-        const publishedCount = Number(accommodationCountResult.rows[0]?.count || 0)
-        
-        // Add 1 for the current accommodation being published
-        const totalAccommodationCount = publishedCount + 1
-        
-        return NextResponse.json({ 
-          error: 'SUBSCRIPTION_REQUIRED',
-          message: 'An active subscription is required to publish properties',
-          accommodationCount: totalAccommodationCount
-        }, { status: 402 })
+        if (!hasActiveSubscription) {
+          const accommodationCountResult = await query`
+            SELECT COUNT(*) as count
+            FROM accommodations
+            WHERE agent_id = ${entityId}
+              AND is_active = true
+              AND is_published = true
+              AND id != ${id}
+          `
+          const publishedCount = Number(accommodationCountResult.rows[0]?.count || 0)
+          const totalAccommodationCount = publishedCount + 1
+          
+          return NextResponse.json({ 
+            error: 'SUBSCRIPTION_REQUIRED',
+            message: 'An active subscription is required to publish properties',
+            accommodationCount: totalAccommodationCount
+          }, { status: 402 })
+        }
       }
     }
 
