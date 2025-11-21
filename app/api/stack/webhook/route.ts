@@ -59,23 +59,22 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          // Determine role based on email domain and admin emails
-          let role = 'student' // default for student domains
+          // Role assignment logic:
+          // - Only set 'admin' if email is in admin list
+          // - For all others, set temporary 'provider' role (required field)
+          // - Registration endpoints (/api/auth/register or /api/auth/ensure-user) will set the correct role
+          //   based on which registration page was used (agent, provider, or student)
+          let role: 'admin' | 'provider' | 'student' | 'agent' = 'provider'
           
           // Check if it's an admin email
           const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
           if (adminEmails.includes(primaryEmail.toLowerCase())) {
             role = 'admin'
             console.log(` Admin user created: ${primaryEmail}`)
-          }
-          // Check if it's a provider email (non-student domain)
-          else if (!primaryEmail.includes('@ufs4life.ac.za') && !primaryEmail.includes('@cut.ac.za')) {
+          } else {
+            // Temporary role - will be overridden by registration endpoint based on which page was used
             role = 'provider'
-            console.log(` Provider user created: ${primaryEmail}`)
-          }
-          // Student domains (@ufs4life.ac.za, @cut.ac.za) get 'student' role by default
-          else {
-            console.log(` Student user created: ${primaryEmail}`)
+            console.log(` User created (temporary role, will be set by registration endpoint): ${primaryEmail}`)
           }
           
           // Check if user exists by email with different ID

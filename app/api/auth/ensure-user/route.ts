@@ -5,18 +5,6 @@ import { eq, and, ne } from "drizzle-orm"
 import { getStackServerApp } from "@/lib/stack"
 import { DomainValidationService } from "@/lib/domain-validation"
 
-async function inferRoleFromEmail(email: string): Promise<'student' | 'provider' | 'admin'> {
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
-  const lower = email.toLowerCase()
-  if (adminEmails.includes(lower)) return 'admin'
-  
-  // Check if email domain is whitelisted for students
-  const domainValidation = await DomainValidationService.isEmailWhitelisted(lower)
-  if (domainValidation.isValid) return 'student'
-  
-  return 'provider'
-}
-
 function splitFullName(fullName?: string): { firstName: string; lastName: string } {
   const safe = (fullName || '').trim().replace(/\s+/g, ' ')
   if (!safe) return { firstName: '', lastName: '' }
@@ -53,12 +41,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
     
-    // Validate required fields for students
-    if (!studentNumber || !university) {
-      return NextResponse.json({ 
-        error: 'studentNumber and university are required for student registration' 
-      }, { status: 400 })
-    }
     const app = getStackServerApp()
 
     const stackUser = await app.getUser(userId)
@@ -66,21 +48,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found in StackAuth' }, { status: 404 })
     }
 
-    const role = await inferRoleFromEmail(stackUser.primaryEmail)
+    // Role assignment logic:
+    // - This endpoint is called from student registration page
+    // - If studentNumber and university are provided, it's a student registration → set role to 'student'
+    // - Otherwise, this shouldn't happen (ensure-user is only for students), but we'll preserve existing role
+    let role: 'student' | 'provider' | 'admin' | 'agent' = 'provider'
     
-    // Additional validation: Ensure student registrations use whitelisted domains
     if (studentNumber && university) {
+      // This is a student registration - validate domain and set role to student
       const domainValidation = await DomainValidationService.isEmailWhitelisted(stackUser.primaryEmail)
       if (!domainValidation.isValid) {
         return NextResponse.json({ 
           error: 'Email domain not whitelisted for student registration. Please use a valid university email address.' 
         }, { status: 403 })
       }
-      // Ensure role is student if they're registering as student
-      if (role !== 'student') {
-        return NextResponse.json({ 
-          error: 'Email domain not whitelisted for student registration.' 
-        }, { status: 403 })
+      role = 'student'
+    } else {
+      // Not a student registration - this endpoint shouldn't be called for non-students
+      // But if it is, preserve existing role or check for admin
+      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+      if (adminEmails.includes(stackUser.primaryEmail.toLowerCase())) {
+        role = 'admin'
+      } else {
+        // Preserve existing role if user exists, otherwise default to 'provider'
+        // This should rarely happen since ensure-user is only for students
+        role = 'provider'
       }
     }
     
@@ -121,23 +113,27 @@ export async function POST(request: NextRequest) {
     }
     
     // Upsert into users table
-    const existing = await secureDb.db
-      .select({ id: schema.users.id })
+    const [existingUser] = await secureDb.db
+      .select({ id: schema.users.id, role: schema.users.role })
       .from(schema.users)
       .where(eq(schema.users.id, stackUser.id))
       .limit(1)
 
-    if (existing && existing.length > 0) {
+    if (existingUser) {
+      // If user exists, preserve admin role, otherwise update to determined role
+      // This handles temporary 'provider' role set by webhook → update to 'student'
+      const finalRole = existingUser.role === 'admin' ? 'admin' : role
+      
       await secureDb.db
         .update(schema.users)
         .set({
           email: stackUser.primaryEmail,
           firstName: firstName,
           lastName: lastName,
-          role: role as any,
+          role: finalRole as any,
           phone: cellNumber,
-          studentNumber: studentNumber,
-          institution: university,
+          studentNumber: finalRole === 'student' ? studentNumber : null,
+          institution: finalRole === 'student' ? university : null,
           updatedAt: new Date(),
         })
         .where(eq(schema.users.id, stackUser.id))
@@ -152,8 +148,8 @@ export async function POST(request: NextRequest) {
           lastName: lastName,
           role: role as any,
           phone: cellNumber,
-          studentNumber: studentNumber,
-          institution: university,
+          studentNumber: role === 'student' ? studentNumber : null,
+          institution: role === 'student' ? university : null,
           emailVerified: !!stackUser.primaryEmailVerified,
           isActive: true,
           createdAt: new Date(),

@@ -3,7 +3,7 @@ import { DomainValidationService } from "@/lib/domain-validation"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const { email, role } = await request.json()
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json(
@@ -24,10 +24,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if email domain is whitelisted in database
-    const validationResult = await DomainValidationService.isEmailWhitelisted(email)
-
-    return NextResponse.json(validationResult)
+    // Only validate domain whitelisting for students
+    // Agents and providers can use any email domain
+    if (role === 'student') {
+      // Check if email domain is whitelisted in database
+      const validationResult = await DomainValidationService.isEmailWhitelisted(email)
+      return NextResponse.json(validationResult)
+    } else {
+      // For agents and providers, always return valid (no domain restriction)
+      return NextResponse.json({
+        isValid: true,
+        university: undefined
+      })
+    }
   } catch (error) {
     console.error('Domain validation error:', error)
     return NextResponse.json(

@@ -110,12 +110,39 @@ export async function POST(request: NextRequest) {
       
       const role = String(form.get('role') || 'provider')
       
-      // If user exists and is already registered with the same role, reject duplicate registration
+      // Role assignment logic:
+      // - If user exists with same role, reject duplicate registration
+      // - If user exists with temporary 'provider' role (set by webhook), allow update to actual role
+      // - If user exists with 'student' role, allow change to agent/provider (edge case)
+      // - If user exists with different non-temporary role, reject
       if (user && user.role === role) {
         console.warn(`Duplicate ${role} registration attempt: ${email} (ID: ${userId})`)
         return NextResponse.json({ 
           error: `Email already registered as a ${role}`,
           details: `This email is already associated with a ${role} account. Please log in instead.`
+        }, { status: 409 }) // 409 Conflict
+      }
+      
+      // Allow role updates from temporary 'provider' role set by webhook
+      // Webhook sets temporary 'provider' role for all non-admin users
+      // Registration endpoint sets the correct role based on which registration page was used
+      const isTemporaryRole = user && user.role === 'provider' && (role === 'agent' || role === 'provider')
+      const isStudentToAgentProvider = user && user.role === 'student' && (role === 'agent' || role === 'provider')
+      const isDifferentNonTemporaryRole = user && user.role !== role && user.role !== 'provider' && user.role !== 'admin'
+      
+      if (isTemporaryRole) {
+        console.log(`Updating temporary 'provider' role to actual '${role}' for ${email} (ID: ${userId})`)
+        // Continue with registration to update role
+      } else if (isStudentToAgentProvider) {
+        // Allow role change from student to agent/provider (edge case)
+        console.log(`Allowing role change from 'student' to '${role}' for ${email} (ID: ${userId})`)
+        // Continue with registration to update role
+      } else if (isDifferentNonTemporaryRole) {
+        // User exists with a different non-temporary role, reject
+        console.warn(`User ${email} (ID: ${userId}) already registered as ${user.role}, cannot change to ${role}.`)
+        return NextResponse.json({ 
+          error: `Email already registered as a ${user.role}`,
+          details: `This email is already associated with a ${user.role} account. Please log in instead.`
         }, { status: 409 }) // 409 Conflict
       }
       
