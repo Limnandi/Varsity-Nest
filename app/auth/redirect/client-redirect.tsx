@@ -35,6 +35,9 @@ export default function ClientRedirect() {
             case 'provider':
               router.push('/provider/dashboard')
               return
+            case 'agent':
+              router.push('/agent/dashboard')
+              return
             case 'student':
             default:
               router.push('/student/dashboard')

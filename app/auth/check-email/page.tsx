@@ -2,11 +2,24 @@
 
 import { useEffect } from "react"
 import { useUser } from "@stackframe/stack"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Mail, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default function CheckEmailPage() {
   const user = useUser()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // If verification code is present in URL, redirect to verify page
+  useEffect(() => {
+    const code = searchParams?.get('code')
+    if (code) {
+      // Redirect to verify page which will process the code and redirect to email-verified
+      router.replace(`/auth/verify?code=${encodeURIComponent(code)}`)
+      return
+    }
+  }, [searchParams, router])
 
   // Check if user is already verified
   useEffect(() => {

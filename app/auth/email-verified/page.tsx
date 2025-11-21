@@ -55,6 +55,8 @@ export default function EmailVerifiedPage() {
         return '/admin/dashboard'
       case 'provider':
         return '/provider/dashboard'
+      case 'agent':
+        return '/agent/dashboard'
       case 'student':
       default:
         return '/student/dashboard'
@@ -73,6 +75,12 @@ export default function EmailVerifiedPage() {
         return {
           icon: <Building className="w-8 h-8" />,
           title: "Provider Dashboard", 
+          description: "Manage your accommodations and bookings"
+        }
+      case 'agent':
+        return {
+          icon: <Building className="w-8 h-8" />,
+          title: "Agent Dashboard", 
           description: "Manage your accommodations and bookings"
         }
       case 'student':
