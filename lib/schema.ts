@@ -55,6 +55,7 @@ export const providers = pgTable("providers", {
   postalCode: varchar("postal_code", { length: 20 }),
   accreditationStatus: varchar("accreditation_status", { length: 30 }).default("pending").$type<"accredited" | "provisionally_accredited" | "non_accredited" | "pending">(),
   subscriptionStatus: varchar("subscription_status", { length: 20 }).default("inactive").$type<"inactive" | "trial" | "active" | "past_due" | "canceled">(),
+  planId: varchar("plan_id", { length: 20 }), // Current subscription plan: starter, growth, or scale
   trialStartDate: timestamp("trial_start_date", { withTimezone: true }),
   trialEndDate: timestamp("trial_end_date", { withTimezone: true }),
   subscriptionToken: varchar("subscription_token", { length: 255 }), // Paystack subscription code for recurring billing management
@@ -81,7 +82,13 @@ export const agents = pgTable("agents", {
   description: text("description"),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
+  subscriptionStatus: varchar("subscription_status", { length: 20 }).default("inactive").$type<"inactive" | "trial" | "active" | "past_due" | "canceled">(),
+  planId: varchar("plan_id", { length: 20 }), // Current subscription plan: starter, growth, or scale
+  trialStartDate: timestamp("trial_start_date", { withTimezone: true }),
+  trialEndDate: timestamp("trial_end_date", { withTimezone: true }),
   subscriptionToken: varchar("subscription_token", { length: 255 }), // Paystack subscription code for recurring billing management
+  lastPaymentDate: timestamp("last_payment_date", { withTimezone: true }),
+  nextPaymentDate: timestamp("next_payment_date", { withTimezone: true }),
   settings: jsonb("settings").default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

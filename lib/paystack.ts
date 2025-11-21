@@ -74,6 +74,7 @@ export function createPaystackPayment(
     planCode?: string // For subscriptions
     invoiceLimit?: number
     entityType?: 'provider' | 'agent' // Explicit entity type for callback URL
+    planId?: string
   }
 ): PaystackInitializeRequest {
   // Determine entity type and set appropriate callback URL
@@ -121,6 +122,11 @@ export function createPaystackPayment(
           display_name: "Idempotency Key",
           variable_name: "idempotency_key",
           value: customData?.idempotencyKey || ""
+        },
+        {
+          display_name: "Plan",
+          variable_name: "plan_id",
+          value: customData?.planId || ""
         }
       ]
     },

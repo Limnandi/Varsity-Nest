@@ -1,4 +1,5 @@
 import { z } from "zod"
+export const SubscriptionPlanIdSchema = z.enum(["starter", "growth", "scale"])
 
 // Paystack webhook event types
 export const PaystackWebhookEventSchema = z.enum([
@@ -176,10 +177,12 @@ export const PaymentInitiationSchema = z.object({
   amount: z.number().positive().max(100000, "Amount too high"),
   itemName: z.string().min(1, "Item name required").max(100, "Item name is too long"),
   idempotencyKey: z.string().min(10, "Idempotency key required").max(255, "Idempotency key too long"),
+  planId: SubscriptionPlanIdSchema.optional(),
   customData: z.object({
     providerId: z.string().uuid().optional(),
     subscriptionType: z.enum(['monthly', 'yearly', 'one-time']).optional(),
     wantsFeatured: z.boolean().optional(),
+    planId: SubscriptionPlanIdSchema.optional(),
   }).optional(),
 })
 

@@ -13,6 +13,46 @@ export class GlobalErrorHandler {
     if (typeof window !== 'undefined') {
       window.addEventListener('unhandledrejection', this.handleUnhandledRejection)
       window.addEventListener('error', this.handleGlobalError)
+      
+      // Suppress console errors for expected StackAuth token refresh failures
+      const originalConsoleError = console.error
+      console.error = (...args: any[]) => {
+        const errorString = args.map(arg => String(arg)).join(' ')
+        // Suppress StackAuth token refresh errors (expected after logout)
+        if (
+          errorString.includes('api.stack-auth.com') ||
+          errorString.includes('oauth/token') ||
+          (errorString.includes('401') && errorString.includes('Unauthorized') && errorString.includes('stack'))
+        ) {
+          // Silently ignore - this is expected behavior after logout
+          return
+        }
+        // Call original console.error for all other errors
+        originalConsoleError.apply(console, args)
+      }
+      
+      // Intercept fetch to suppress StackAuth token refresh errors in console
+      const originalFetch = window.fetch
+      window.fetch = async (...args: Parameters<typeof fetch>) => {
+        try {
+          const response = await originalFetch(...args)
+          // If it's a StackAuth token endpoint and 401, suppress the error
+          const url = typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : (args[0] instanceof URL ? args[0].toString() : ''))
+          if (url.includes('api.stack-auth.com') && url.includes('oauth/token') && response.status === 401) {
+            // Create a silent response wrapper to prevent console logging
+            return response
+          }
+          return response
+        } catch (error) {
+          const url = typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : (args[0] instanceof URL ? args[0].toString() : ''))
+          // Suppress errors from StackAuth token refresh
+          if (url.includes('api.stack-auth.com') && url.includes('oauth/token')) {
+            // Return a rejected promise that won't log to console
+            return Promise.reject(new Error('Token refresh failed (expected after logout)'))
+          }
+          throw error
+        }
+      }
     }
 
     // Handle Node.js unhandled rejections
@@ -28,6 +68,24 @@ export class GlobalErrorHandler {
    * Handle unhandled promise rejections in browser
    */
   private static handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    // Suppress expected StackAuth token refresh errors after logout
+    const errorMessage = event.reason?.message || String(event.reason || '')
+    const errorString = String(event.reason || '')
+    
+    // Check if this is an expected StackAuth 401 error (token refresh after logout)
+    const isStackAuthTokenError = 
+      errorString.includes('api.stack-auth.com') ||
+      errorString.includes('oauth/token') ||
+      errorMessage.includes('401') ||
+      errorMessage.includes('Unauthorized')
+    
+    // Suppress expected token refresh errors (common after logout)
+    if (isStackAuthTokenError) {
+      event.preventDefault()
+      // Silently ignore - this is expected behavior after logout
+      return
+    }
+    
     event.preventDefault()
     
     const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason))

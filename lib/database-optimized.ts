@@ -116,9 +116,30 @@ export class OptimizedAccommodationRepository {
   private static readonly CACHE_TTL = 300 // 5 minutes
   private static readonly FEATURED_CACHE_KEY = "accommodations:featured"
   private static readonly STATUS_CACHE_KEY = "accommodations:status"
+  private static readonly CACHE_VERSION_KEY = "accommodations:cache:version"
+
+  private static async getCacheVersion() {
+    try {
+      const existing = await redis.get(this.CACHE_VERSION_KEY)
+      if (existing) {
+        const parsed = Number(existing)
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          return parsed
+        }
+      }
+      await redis.set(this.CACHE_VERSION_KEY, "1")
+    } catch (error) {
+      console.warn("Failed to read cache version, resetting:", error)
+      try {
+        await redis.set(this.CACHE_VERSION_KEY, "1")
+      } catch {}
+    }
+    return 1
+  }
   
   static async getFeaturedAccommodations(limit = 9) {
-    const cacheKey = `${this.FEATURED_CACHE_KEY}:${limit}`
+    const cacheVersion = await this.getCacheVersion()
+    const cacheKey = `${this.FEATURED_CACHE_KEY}:v${cacheVersion}:${limit}`
     
     // Try cache first
     try {
@@ -212,7 +233,8 @@ export class OptimizedAccommodationRepository {
     limit = 200, 
     offset = 0
   ) {
-    const cacheKey = `${this.STATUS_CACHE_KEY}:${status}:${limit}:${offset}`
+    const cacheVersion = await this.getCacheVersion()
+    const cacheKey = `${this.STATUS_CACHE_KEY}:v${cacheVersion}:${status}:${limit}:${offset}`
     
     // Try cache first
     try {
@@ -303,7 +325,8 @@ export class OptimizedAccommodationRepository {
   }
 
   static async getActiveAccommodations(limit = 200, offset = 0) {
-    const cacheKey = `accommodations:active:${limit}:${offset}`
+    const cacheVersion = await this.getCacheVersion()
+    const cacheKey = `accommodations:active:v${cacheVersion}:${limit}:${offset}`
     try {
       const cached = await redis.get(cacheKey)
       if (cached) {
@@ -362,7 +385,8 @@ export class OptimizedAccommodationRepository {
   }
 
   static async getPublishedAccommodations(limit = 200, offset = 0) {
-    const cacheKey = `accommodations:published:${limit}:${offset}`
+    const cacheVersion = await this.getCacheVersion()
+    const cacheKey = `accommodations:published:v${cacheVersion}:${limit}:${offset}`
     try {
       const cached = await redis.get(cacheKey)
       if (cached) {
@@ -434,7 +458,8 @@ export class OptimizedAccommodationRepository {
   static async getAccommodationsByIds(ids: string[]) {
     if (ids.length === 0) return []
     
-    const cacheKey = `accommodations:ids:${ids.sort().join(',')}`
+    const cacheVersion = await this.getCacheVersion()
+    const cacheKey = `accommodations:ids:v${cacheVersion}:${ids.sort().join(',')}`
     
     // Try cache first
     try {
@@ -493,11 +518,14 @@ export class OptimizedAccommodationRepository {
   
   static async invalidateCache() {
     try {
-      // Upstash Redis doesn't support keys() method
-      // We'll need to track keys manually or use a different approach
-      console.warn("Cache invalidation not fully supported in Upstash Redis")
+      await redis.incr(this.CACHE_VERSION_KEY)
     } catch (error) {
-      console.error("Cache invalidation error:", error)
+      console.warn("Cache version increment failed:", error)
+      try {
+        await redis.set(this.CACHE_VERSION_KEY, `${Date.now()}`)
+      } catch (innerError) {
+        console.error("Cache invalidation error:", innerError)
+      }
     }
   }
 }

@@ -2,6 +2,7 @@ import { secureDb } from "@/lib/database-secure"
 import { eq, and, desc, count, sql } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { randomUUID } from "crypto"
+import { unstable_cache } from "next/cache"
 
 export interface DbAccommodation {
   id: string
@@ -75,6 +76,17 @@ export async function fetchFeaturedAccommodations(limit = 9): Promise<DbAccommod
     is_verified: undefined
   }))
 }
+
+export const FEATURED_ACCOMMODATIONS_CACHE_TAG = "featured_accommodations"
+
+export const fetchFeaturedAccommodationsCached = unstable_cache(
+  async (limit = 9): Promise<DbAccommodation[]> => fetchFeaturedAccommodations(limit),
+  ['fetch_featured_accommodations'],
+  {
+    revalidate: 300,
+    tags: [FEATURED_ACCOMMODATIONS_CACHE_TAG],
+  }
+)
 
 export async function fetchAccommodationsByStatus(status: string, limit = 200, offset = 0): Promise<DbAccommodation[]> {
   const accommodations = await secureDb.db

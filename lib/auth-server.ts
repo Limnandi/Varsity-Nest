@@ -183,6 +183,22 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
       return null
     }
 
+    // First check if user exists in database (prevents foreign key violation during registration)
+    const userResult = await query`
+      SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.student_number, u.institution, 
+             u.is_active, u.email_verified, u.created_at, u.updated_at, u.profile_image_url, u.profile_image_cloudinary_id,
+             s.university, s.year_of_study, s.course, s.emergency_contact_name, s.emergency_contact_phone
+      FROM users u
+      LEFT JOIN students s ON u.id = s.user_id
+      WHERE u.id = ${stackUser.id}
+    `
+    
+    // If user doesn't exist in database yet (e.g., during registration before webhook/registration endpoint completes),
+    // return null gracefully instead of trying to create a session
+    if (userResult.rows.length === 0) {
+      return null
+    }
+
     // Check for existing session with inactivity tracking
     const sessionCheck = await query`
       SELECT id, last_activity, expires_at
@@ -217,14 +233,23 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
         : `stackauth-${stackUser.id}`
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
       
-      await query`
-        INSERT INTO user_sessions (id, user_id, expires_at, created_at, last_activity)
-        VALUES (${sessionId}, ${stackUser.id}, ${expiresAt.toISOString()}, NOW(), NOW())
-        ON CONFLICT (id) DO UPDATE SET
-          expires_at = EXCLUDED.expires_at,
-          last_activity = NOW(),
-          updated_at = NOW()
-      `
+      try {
+        await query`
+          INSERT INTO user_sessions (id, user_id, expires_at, created_at, last_activity)
+          VALUES (${sessionId}, ${stackUser.id}, ${expiresAt.toISOString()}, NOW(), NOW())
+          ON CONFLICT (id) DO UPDATE SET
+            expires_at = EXCLUDED.expires_at,
+            last_activity = NOW(),
+            updated_at = NOW()
+        `
+      } catch (error: any) {
+        // Handle race condition: if user was deleted between check and insert, return null
+        // This can happen during registration if webhook hasn't completed yet
+        if (error?.code === '23503') { // Foreign key constraint violation
+          return null
+        }
+        throw error
+      }
     } else {
       // Update last_activity for active session
       const sessionId = sessionCheck.rows[0].id
@@ -233,20 +258,6 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
         SET last_activity = NOW(), updated_at = NOW()
         WHERE id = ${sessionId}
       `
-    }
-
-    // Get user data from database
-    const userResult = await query`
-      SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.student_number, u.institution, 
-             u.is_active, u.email_verified, u.created_at, u.updated_at, u.profile_image_url, u.profile_image_cloudinary_id,
-             s.university, s.year_of_study, s.course, s.emergency_contact_name, s.emergency_contact_phone
-      FROM users u
-      LEFT JOIN students s ON u.id = s.user_id
-      WHERE u.id = ${stackUser.id}
-    `
-    
-    if (userResult.rows.length === 0) {
-      return null
     }
     
     const user = userResult.rows[0]

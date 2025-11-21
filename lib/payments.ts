@@ -1,3 +1,5 @@
+import { SubscriptionPlanId, determinePlanForPropertyCount, getPlanById } from "./subscription-plans"
+
 // Payment types and utilities
 export interface PaymentMethod {
   id: string
@@ -30,28 +32,15 @@ export interface Subscription {
 
 // Pricing helpers for provider subscription
 export interface ProviderPricingInput {
-  basePrice?: number // default 450
-  extraSitePrice?: number // default 50 per additional accommodation
-  featuredPrice?: number // default 50
-  accommodationsCount: number
-  wantsFeatured: boolean
+  planId?: SubscriptionPlanId
+  accommodationsCount?: number
+  wantsFeatured?: boolean
 }
 
 export function calculateProviderSubscriptionPrice(input: ProviderPricingInput): number {
-  // First accommodation: R199.90
-  // Each additional accommodation: R89.90
-  const firstAccommodationPrice = 199.90
-  const additionalAccommodationPrice = 89.90
-  const featured = input.featuredPrice ?? 0
+  const plan = input.planId
+    ? getPlanById(input.planId)
+    : determinePlanForPropertyCount(Math.max(1, input.accommodationsCount ?? 1))
 
-  const accommodationsCount = input.accommodationsCount || 0
-  
-  if (accommodationsCount === 0) {
-    return firstAccommodationPrice
-  }
-  
-  // First accommodation is R199.90, each additional is R89.90
-  const additionalCount = Math.max(0, accommodationsCount - 1)
-  const total = firstAccommodationPrice + (additionalCount * additionalAccommodationPrice) + (input.wantsFeatured ? featured : 0)
-  return Number(total.toFixed(2))
+  return Number(plan.price.toFixed(2))
 }
