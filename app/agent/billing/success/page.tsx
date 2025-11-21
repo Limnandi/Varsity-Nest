@@ -16,10 +16,15 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
+      console.log(`[PAYMENT SUCCESS] Page loaded - URL: ${typeof window !== 'undefined' ? window.location.href : 'unknown'}`)
+      console.log(`[PAYMENT SUCCESS] Search params:`, searchParams ? Object.fromEntries(searchParams.entries()) : 'null')
+      
       // Extract payment reference from URL parameters
       // Paystack sends 'reference' and 'trxref' parameters
       const paymentReference = searchParams?.get("reference") || 
                                searchParams?.get("trxref")
+      
+      console.log(`[PAYMENT SUCCESS] Extracted payment reference: ${paymentReference}`)
 
       // Always fetch transaction from database to get accurate amount
       // Build API URL with reference if available
@@ -27,12 +32,30 @@ export default function PaymentSuccessPage() {
         ? `/api/agent/billing/latest-transaction?reference=${encodeURIComponent(paymentReference)}`
         : "/api/agent/billing/latest-transaction"
       
+      console.log(`[PAYMENT SUCCESS] Fetching transaction from API: ${apiUrl}`)
       try {
         const response = await fetch(apiUrl, {
           credentials: 'include'
         })
+        console.log(`[PAYMENT SUCCESS] Latest transaction API response status: ${response.status}`)
+        
         if (response.ok) {
           const data = await response.json()
+          console.log(`[PAYMENT SUCCESS] Latest transaction data:`, { paymentId: data.paymentId, status: data.status, amount: data.amount })
+          
+          // Always try to activate subscription (even if status is pending, user was redirected from Paystack success)
+          // This handles the case where webhook hasn't been called yet
+          try {
+            console.log(`[PAYMENT SUCCESS] Attempting to activate subscription...`)
+            const activateResponse = await fetch("/api/agent/billing/activate-subscription", {
+              method: "POST",
+              credentials: "include"
+            })
+            console.log(`[PAYMENT SUCCESS] Activate subscription response status: ${activateResponse.status}`)
+          } catch (activateError) {
+            console.warn(`[PAYMENT SUCCESS] Subscription activation error (non-critical):`, activateError)
+            // Silently handle activation errors - payment was successful, webhook will eventually process it
+          }
           
           setPaymentDetails({
             paymentId: data.paymentId || paymentReference || "pending-verification",
@@ -41,7 +64,10 @@ export default function PaymentSuccessPage() {
             itemName: data.itemName || "Subscription Payment"
           })
         } else {
+          const errorText = await response.text().catch(() => '')
+          console.warn(`[PAYMENT SUCCESS] Latest transaction API failed: ${response.status} - ${errorText}`)
           // If fetch fails but we have a reference, show success with reference (amount will be 0)
+          // This is better than showing nothing
           setPaymentDetails({
             paymentId: paymentReference || "pending-verification",
             status: "COMPLETE",
@@ -50,6 +76,7 @@ export default function PaymentSuccessPage() {
           })
         }
       } catch (error) {
+        console.error(`[PAYMENT SUCCESS] Error fetching latest transaction:`, error)
         // Show success anyway (user was redirected from Paystack)
         setPaymentDetails({
           paymentId: "pending-verification",
@@ -59,6 +86,7 @@ export default function PaymentSuccessPage() {
         })
       }
       
+      console.log(`[PAYMENT SUCCESS] Setting isLoading to false`)
       setIsLoading(false)
     }
 
@@ -153,8 +181,10 @@ export default function PaymentSuccessPage() {
 
   // If we have payment reference in URL, show success even while loading auth
   const hasPaymentReference = searchParams?.get("reference") || searchParams?.get("trxref")
+  console.log(`[PAYMENT SUCCESS] Render check - isLoading: ${isLoading}, hasPaymentReference: ${hasPaymentReference}, paymentDetails: ${paymentDetails ? 'exists' : 'null'}`)
   
   if (isLoading && !hasPaymentReference) {
+    console.log(`[PAYMENT SUCCESS] Showing loading state (no payment reference)`)
     return (
       <AuthGuard requiredRole="agent">
         <DashboardLayout userRole="agent">
@@ -172,6 +202,7 @@ export default function PaymentSuccessPage() {
 
   // If we have payment reference but no details yet, show loading
   if (!paymentDetails && hasPaymentReference) {
+    console.log(`[PAYMENT SUCCESS] Showing loading state (has payment reference but no details yet)`)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#02042b] to-[#040945] p-4 sm:p-6">
         <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 sm:p-8 text-white shadow-2xl shadow-green-500/20 max-w-md text-center mx-4">
@@ -184,6 +215,7 @@ export default function PaymentSuccessPage() {
   }
 
   if (!paymentDetails && !hasPaymentReference) {
+    console.log(`[PAYMENT SUCCESS] No payment details and no reference - showing error state`)
     return (
       <AuthGuard requiredRole="agent">
         <DashboardLayout userRole="agent">
@@ -209,6 +241,7 @@ export default function PaymentSuccessPage() {
     )
   }
 
+  console.log(`[PAYMENT SUCCESS] Rendering success page with payment details`)
   return (
     <AuthGuard requiredRole="agent">
       <DashboardLayout userRole="agent">
