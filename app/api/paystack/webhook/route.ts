@@ -9,6 +9,37 @@ import { eq } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { convertFromKobo } from "@/lib/paystack"
 import { PaystackAPIClient } from "@/lib/paystack-api-client"
+import { inferPlanFromAmount, SubscriptionPlanId } from "@/lib/subscription-plans"
+
+/**
+ * Extract planId from payment transaction's gatewayResponse or customData
+ * Falls back to inferring from amount if not found
+ */
+function extractPlanIdFromPayment(
+  gatewayResponse: any,
+  amount: number
+): SubscriptionPlanId | null {
+  // Try to get planId from gatewayResponse.customData
+  const customData = gatewayResponse?.customData || gatewayResponse?.custom_data
+  if (customData?.planId) {
+    const planId = customData.planId as string
+    if (planId === 'starter' || planId === 'growth' || planId === 'scale') {
+      return planId as SubscriptionPlanId
+    }
+  }
+
+  // Try to get from metadata
+  if (gatewayResponse?.metadata?.planId) {
+    const planId = gatewayResponse.metadata.planId as string
+    if (planId === 'starter' || planId === 'growth' || planId === 'scale') {
+      return planId as SubscriptionPlanId
+    }
+  }
+
+  // Fallback: infer from amount
+  const inferredPlan = inferPlanFromAmount(amount)
+  return inferredPlan.id
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -585,6 +616,9 @@ async function handleChargeSuccess(data: any) {
       // Final token to persist: prefer subscriptionCode from createSubscription, otherwise authorization_code
       const finalSubscriptionToken = subscriptionCode || chargeData.authorization?.authorization_code || undefined
 
+      // Extract planId from payment transaction
+      const extractedPlanId = extractPlanIdFromPayment(mergedGateway, amount)
+
       // If we created a subscription (subscriptionCode), set subscriptionToken to subscriptionCode and set subscriptionStatus to 'trial' (subscription starts at trialEndDate)
       // If subscription not created but we have an authorization_code, persist it so a reconciliation job can retry
       const updates: any = {
@@ -592,8 +626,19 @@ async function handleChargeSuccess(data: any) {
       }
 
       if (subscriptionCode) {
+        // Trial subscription created
         updates.subscriptionStatus = 'trial'
         updates.nextPaymentDate = new Date(trialEndISO)
+        updates.planId = 'starter' // Trial is always Starter plan
+      } else if (!isTokenization && extractedPlanId) {
+        // Regular payment (not tokenization) - activate subscription and set plan_id
+        updates.subscriptionStatus = 'active'
+        updates.lastPaymentDate = paymentDate
+        updates.nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
+        updates.planId = extractedPlanId
+      } else if (extractedPlanId) {
+        // Tokenization without subscription - just set plan_id for future reference
+        updates.planId = extractedPlanId
       }
 
       await secureDb.db
@@ -753,6 +798,16 @@ async function handleInvoiceUpdate(data: any) {
           const amount = convertFromKobo(invoiceData.amount)
           const paymentDate = invoiceData.paid_at ? new Date(invoiceData.paid_at) : new Date()
           
+          // Get gatewayResponse to extract planId
+          const [txnWithGateway] = await secureDb.db
+            .select({ gatewayResponse: schema.paymentTransactions.gatewayResponse })
+            .from(schema.paymentTransactions)
+            .where(eq(schema.paymentTransactions.id, pending.id))
+            .limit(1)
+          
+          const storedGateway = (txnWithGateway?.gatewayResponse || {}) as Record<string, any>
+          const extractedPlanId = extractPlanIdFromPayment(storedGateway, amount)
+          
           await secureDb.db
             .update(schema.paymentTransactions)
             .set({
@@ -762,15 +817,22 @@ async function handleInvoiceUpdate(data: any) {
             })
             .where(eq(schema.paymentTransactions.id, pending.id))
           
-          // Update provider next payment date
+          // Update provider next payment date and plan_id
           if (pending.providerId && invoiceData.subscription?.next_payment_date) {
+            const providerUpdates: any = {
+              nextPaymentDate: new Date(invoiceData.subscription.next_payment_date),
+              lastPaymentDate: paymentDate,
+              subscriptionStatus: 'active'
+            }
+            
+            // Set plan_id if extracted
+            if (extractedPlanId) {
+              providerUpdates.planId = extractedPlanId
+            }
+            
             await secureDb.db
               .update(schema.providers)
-              .set({
-                nextPaymentDate: new Date(invoiceData.subscription.next_payment_date),
-                lastPaymentDate: paymentDate,
-                subscriptionStatus: 'active'
-              })
+              .set(providerUpdates)
               .where(eq(schema.providers.id, pending.providerId))
           }
           

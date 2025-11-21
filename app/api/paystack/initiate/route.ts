@@ -5,13 +5,13 @@ import { PaymentAuditService } from "@/lib/services/payment-audit"
 import { PaymentReconciliationService } from "@/lib/services/payment-reconciliation"
 import { PaystackAPIClient } from "@/lib/paystack-api-client"
 import { createPaystackPayment } from "@/lib/paystack"
-import { calculateProviderSubscriptionPrice } from "@/lib/payments"
 import { secureDb } from "@/lib/database-secure"
 import { eq, count } from "drizzle-orm"
 import * as schema from "@/lib/schema"
 import { getSession } from "@/lib/stackauth"
 import { captureMessage, captureException } from '@/lib/logging/config'
 import { env } from "@/lib/env"
+import { determinePlanForPropertyCount, getPlanById, SubscriptionPlan } from "@/lib/subscription-plans"
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +34,9 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    const { amount, itemName, idempotencyKey, customData } = validationResult.data
+    const { amount, itemName, idempotencyKey, customData, planId } = validationResult.data
+    const requestedPlanId = planId ?? (customData?.planId as SubscriptionPlan["id"] | undefined) ?? null
+    const wantsFeatured = Boolean(customData?.wantsFeatured)
 
     // Check for existing transaction with same idempotency key (idempotency check)
     if (idempotencyKey) {
@@ -90,6 +92,9 @@ export async function POST(request: Request) {
     let agentId: string | null = null
     let effectiveEmail: string = session.user.email
 
+    let providerSelectedPlan: SubscriptionPlan | null = null
+    let providerAccommodationsCount: number | null = null
+
     if (session.user.role === 'provider') {
       const [providerRow] = await secureDb.db
         .select({ 
@@ -113,12 +118,26 @@ export async function POST(request: Request) {
       providerId = providerRow.id
       effectiveEmail = providerRow.contactEmail || session.user.email
 
+      if (!providerId) {
+        return NextResponse.json({ error: "Provider ID not found" }, { status: 403 })
+      }
+
+      const accommodationsCountResult = await secureDb.db
+        .select({ count: count(schema.accommodations.id) })
+        .from(schema.accommodations)
+        .where(eq(schema.accommodations.providerId, providerId))
+
+      providerAccommodationsCount = Number(accommodationsCountResult[0]?.count || 0)
+      const inferredPlan = determinePlanForPropertyCount(Math.max(1, providerAccommodationsCount || 1))
+      providerSelectedPlan = (requestedPlanId ? getPlanById(requestedPlanId) : null) || inferredPlan
+
       // Check if provider is eligible for trial subscription
       const isEligibleForTrial = !providerRow.trialStartDate && 
                                   providerRow.subscriptionStatus !== 'trial' && 
                                   providerRow.subscriptionStatus !== 'active'
+      const planAllowsTrial = providerSelectedPlan.id === 'starter'
       
-      if (isEligibleForTrial) {
+        if (isEligibleForTrial && planAllowsTrial) {
         // Activate trial subscription (14 days free)
         const trialStartDate = new Date()
         const trialEndDate = new Date(trialStartDate.getTime() + 14 * 24 * 60 * 60 * 1000) // 14 days from now
@@ -138,15 +157,8 @@ export async function POST(request: Request) {
           billingDate
         })
 
-        // Calculate amount for recurring subscription (will be charged after trial ends)
-        const [result] = await secureDb.db
-          .select({ count: count(schema.accommodations.id) })
-          .from(schema.accommodations)
-          .where(eq(schema.accommodations.providerId, providerId!))
-        
-        const accommodationsCount = Number(result?.count || 0)
-        const wantsFeatured = Boolean(customData?.wantsFeatured)
-        let calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+        const desiredPlan = providerSelectedPlan
+        let calculatedAmount = desiredPlan.price
         
         // Paystack minimum amount is 100 kobo (R1.00) for subscriptions
         if (calculatedAmount < 1.00) {
@@ -326,15 +338,8 @@ export async function POST(request: Request) {
           // Still in trial - set up payment for after trial ends
           const billingDate = trialEnd.toISOString()
           
-          // Calculate amount for recurring subscription
-          const [result] = await secureDb.db
-            .select({ count: count(schema.accommodations.id) })
-            .from(schema.accommodations)
-            .where(eq(schema.accommodations.providerId, providerId!))
-          
-          const accommodationsCount = Number(result?.count || 0)
-          const wantsFeatured = Boolean(customData?.wantsFeatured)
-          let calculatedAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+          const desiredPlan = providerSelectedPlan ?? determinePlanForPropertyCount(Math.max(1, providerAccommodationsCount || 1))
+        let calculatedAmount = desiredPlan.price
           
           if (calculatedAmount < 1.00) {
             calculatedAmount = 1.00
@@ -534,8 +539,8 @@ export async function POST(request: Request) {
         )
       
       const accommodationsCount = Number(result?.count || 0)
-      const wantsFeatured = Boolean(customData?.wantsFeatured)
-      finalAmount = calculateProviderSubscriptionPrice({ accommodationsCount, wantsFeatured })
+      const desiredPlan = determinePlanForPropertyCount(Math.max(1, accommodationsCount || 1))
+      finalAmount = desiredPlan.price
     }
 
     // Check for duplicate payments (only for providers, agents use idempotency key)

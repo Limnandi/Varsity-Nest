@@ -3,6 +3,37 @@ import { getSession } from "@/lib/stackauth"
 import { secureDb } from "@/lib/database-secure"
 import * as schema from "@/lib/schema"
 import { eq, desc } from "drizzle-orm"
+import { inferPlanFromAmount, SubscriptionPlanId } from "@/lib/subscription-plans"
+
+/**
+ * Extract planId from payment transaction's gatewayResponse or customData
+ * Falls back to inferring from amount if not found
+ */
+function extractPlanIdFromPayment(
+  gatewayResponse: any,
+  amount: number
+): SubscriptionPlanId | null {
+  // Try to get planId from gatewayResponse.customData
+  const customData = gatewayResponse?.customData || gatewayResponse?.custom_data
+  if (customData?.planId) {
+    const planId = customData.planId as string
+    if (planId === 'starter' || planId === 'growth' || planId === 'scale') {
+      return planId as SubscriptionPlanId
+    }
+  }
+
+  // Try to get from metadata
+  if (gatewayResponse?.metadata?.planId) {
+    const planId = gatewayResponse.metadata.planId as string
+    if (planId === 'starter' || planId === 'growth' || planId === 'scale') {
+      return planId as SubscriptionPlanId
+    }
+  }
+
+  // Fallback: infer from amount
+  const inferredPlan = inferPlanFromAmount(amount)
+  return inferredPlan.id
+}
 
 /**
  * Fallback endpoint to activate subscription if webhook hasn't been called yet
@@ -113,6 +144,10 @@ export async function POST(_request: NextRequest) {
     const isTokenization = gw.isTokenization === true || gw.is_tokenization === true || gw.trialPaymentSetup === true || gw.trialActivated === true
     const trialEndISO = gw.trialEndDate || gw.trial_end_date || gw.trialEnd || gw.trialEndDate || null
 
+    // Extract planId from payment transaction
+    const amount = Number(completedPayment.amount)
+    const extractedPlanId = extractPlanIdFromPayment(gw, amount)
+
     // Determine update behavior: if tokenization/trial flow, set provider to 'trial' and schedule nextPaymentDate; otherwise activate subscription as paid
     let updatedProvider
     if (isTokenization && trialEndISO) {
@@ -128,7 +163,8 @@ export async function POST(_request: NextRequest) {
           trialStartDate: trialStart,
           trialEndDate: trialEnd,
           nextPaymentDate: trialEnd,
-          subscriptionToken: subscriptionTokenFromGateway || undefined
+          subscriptionToken: subscriptionTokenFromGateway || undefined,
+          planId: 'starter' // Trial is always Starter plan
         })
         .where(eq(schema.providers.id, providerId))
         .returning({ 
@@ -141,13 +177,21 @@ export async function POST(_request: NextRequest) {
       // Activate subscription based on completed payment (paid customer)
       const paymentDate = completedPayment.paymentDate || completedPayment.createdAt
       const nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
+      
+      const providerUpdates: any = {
+        subscriptionStatus: 'active',
+        lastPaymentDate: paymentDate,
+        nextPaymentDate: nextPaymentDate,
+      }
+      
+      // Set plan_id if extracted
+      if (extractedPlanId) {
+        providerUpdates.planId = extractedPlanId
+      }
+      
       ;[updatedProvider] = await secureDb.db
         .update(schema.providers)
-        .set({
-          subscriptionStatus: 'active',
-          lastPaymentDate: paymentDate,
-          nextPaymentDate: nextPaymentDate,
-        })
+        .set(providerUpdates)
         .where(eq(schema.providers.id, providerId))
         .returning({ 
           id: schema.providers.id,
