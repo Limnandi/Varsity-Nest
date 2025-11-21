@@ -3,13 +3,12 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import type { SessionUser } from "@/lib/stackauth"
 import { Plus, Edit, Eye, Trash2, MapPin, Users, Star, Globe, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Building } from "lucide-react"
 import { formatZar } from "@/lib/utils"
-import SubscriptionModal from "@/components/SubscriptionModal"
+import PlanSelectionModal from "@/components/PlanSelectionModal"
 
 interface ProviderAccommodation {
   id: string
@@ -44,20 +43,32 @@ interface ProviderAccommodation {
 }
 
 export default function ProviderAccommodations() {
-  const [user, setUser] = useState<SessionUser | null>(null)
   const [userAccommodations, setUserAccommodations] = useState<ProviderAccommodation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [publishingId, setPublishingId] = useState<string | number | null>(null)
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
-  const [subscriptionData, setSubscriptionData] = useState<{
-    accommodationCount: number
-    amount: number
-    entityId: string
-    isEligibleForTrial?: boolean
-    hasUsedTrial?: boolean
-    isInTrial?: boolean
-    trialEndDate?: string | null
-  } | null>(null)
+  const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true)
+
+  const fetchSubscriptionInfo = async () => {
+    try {
+      setIsSubscriptionLoading(true)
+      const response = await fetch('/api/subscription/check', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setSubscriptionInfo(data)
+        return data
+      }
+      setSubscriptionInfo(null)
+      return null
+    } catch (error) {
+      console.error('Error fetching subscription info:', error)
+      setSubscriptionInfo(null)
+      return null
+    } finally {
+      setIsSubscriptionLoading(false)
+    }
+  }
 
   useEffect(() => {
     async function loadUser() {
@@ -66,29 +77,6 @@ export default function ProviderAccommodations() {
         const response = await fetch('/api/auth/session')
         
         if (response.ok) {
-          const userSession = await response.json()
-          const currentUser = {
-            id: userSession.userId,
-            email: userSession.email,
-            firstName: userSession.firstName,
-            lastName: userSession.lastName,
-            role: userSession.role,
-            phone: userSession.phone,
-            studentNumber: userSession.studentNumber,
-            institution: userSession.institution,
-            isActive: userSession.isActive,
-            emailVerified: userSession.emailVerified,
-            createdAt: new Date(userSession.createdAt),
-            updatedAt: new Date(userSession.updatedAt),
-            university: userSession.university,
-            yearOfStudy: userSession.yearOfStudy,
-            course: userSession.course,
-            emergencyContactName: userSession.emergencyContactName,
-            emergencyContactPhone: userSession.emergencyContactPhone,
-          }
-          
-          setUser(currentUser)
-          
           // Fetch accommodations from server-side API
           const accommodationsResponse = await fetch(`/api/provider/accommodations?limit=200`, {
             credentials: 'include'
@@ -101,6 +89,8 @@ export default function ProviderAccommodations() {
             console.error('Failed to fetch accommodations:', accommodationsResponse.statusText)
             setUserAccommodations([])
           }
+
+          await fetchSubscriptionInfo()
         } else {
           // No valid session, redirect to login
           window.location.href = '/auth/login'
@@ -226,28 +216,9 @@ export default function ProviderAccommodations() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         
-        // Check if subscription is required
-        if (res.status === 402 && errorData.error === 'SUBSCRIPTION_REQUIRED') {
-          // Fetch subscription details
-          const subscriptionRes = await fetch('/api/subscription/check', {
-            credentials: 'include'
-          })
-          
-          if (subscriptionRes.ok) {
-            const subscriptionInfo = await subscriptionRes.json()
-            setSubscriptionData({
-              accommodationCount: errorData.accommodationCount || subscriptionInfo.accommodationsCount + 1,
-              amount: subscriptionInfo.subscriptionAmount,
-              entityId: subscriptionInfo.entityId,
-              isEligibleForTrial: subscriptionInfo.isEligibleForTrial || false,
-              hasUsedTrial: subscriptionInfo.hasUsedTrial || false,
-              isInTrial: subscriptionInfo.isInTrial || false,
-              trialEndDate: subscriptionInfo.trialEndDate || null
-            })
-            setShowSubscriptionModal(true)
-          } else {
-            alert('Subscription required to publish properties. Please visit the billing page to subscribe.')
-          }
+        if (res.status === 402 && (errorData.error === 'SUBSCRIPTION_REQUIRED' || errorData.error === 'SUBSCRIPTION_PLAN_LIMIT')) {
+          await fetchSubscriptionInfo()
+          openPlanSelectionModal()
           setPublishingId(null)
           return
         }
@@ -277,42 +248,27 @@ export default function ProviderAccommodations() {
     }
   }
 
-  const handleSubscriptionSuccess = async () => {
-    // Refresh accommodations after successful subscription
-    try {
-      const accommodationsResponse = await fetch(`/api/provider/accommodations?limit=200`, {
-        credentials: 'include'
-      })
-      
-      if (accommodationsResponse.ok) {
-        const data = await accommodationsResponse.json()
-        setUserAccommodations(data.accommodations || [])
-      }
-    } catch (error) {
-      console.error('Error refreshing accommodations:', error)
-    }
+  const canAddProperty = subscriptionInfo
+    ? subscriptionInfo.hasActiveSubscription && subscriptionInfo.canCreateMore !== false
+    : false
+
+  const openPlanSelectionModal = () => {
+    setShowPlanSelectionModal(true)
   }
 
   return (
     <AuthGuard requiredRole="provider">
       <DashboardLayout userRole="provider">
-        {showSubscriptionModal && subscriptionData && user && (
-          <SubscriptionModal
-            isOpen={showSubscriptionModal}
-            onClose={() => setShowSubscriptionModal(false)}
-            accommodationCount={subscriptionData.accommodationCount}
-            amount={subscriptionData.amount}
-            userEmail={user.email || ''}
-            userName={`${user.firstName} ${user.lastName}`.trim() || 'User'}
-            entityId={subscriptionData.entityId}
-            entityType="provider"
-            onPaymentSuccess={handleSubscriptionSuccess}
-            isEligibleForTrial={subscriptionData.isEligibleForTrial}
-            hasUsedTrial={subscriptionData.hasUsedTrial}
-            isInTrial={subscriptionData.isInTrial}
-            trialEndDate={subscriptionData.trialEndDate}
-          />
-        )}
+        <PlanSelectionModal
+          isOpen={showPlanSelectionModal}
+          onClose={() => setShowPlanSelectionModal(false)}
+          subscriptionSummary={subscriptionInfo ? {
+            isEligibleForTrial: subscriptionInfo.isEligibleForTrial ?? false,
+            isInTrial: subscriptionInfo.isInTrial ?? false,
+            publishedCount: subscriptionInfo.accommodationsCount ?? 0,
+            totalCount: subscriptionInfo.accommodationsCount ?? 0,
+          } : null}
+        />
         <div className="space-y-6 sm:space-y-8 p-4 sm:p-6 text-white overflow-x-hidden">
           {/* Header */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-blue-500/20">
@@ -323,13 +279,27 @@ export default function ProviderAccommodations() {
                 </h1>
                 <p className="text-neutral-300 text-base sm:text-lg break-words">Manage your property listings</p>
               </div>
-              <Link
-                href="/provider/accommodations/new"
-                className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] text-sm sm:text-base w-full sm:w-auto justify-center break-words"
-              >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                <span className="break-words">Add New Property</span>
-              </Link>
+              {canAddProperty ? (
+                <Link
+                  href="/provider/accommodations/new"
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] text-sm sm:text-base w-full sm:w-auto justify-center break-words"
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                  <span className="break-words">Add New Property</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isSubscriptionLoading}
+                  onClick={() => openPlanSelectionModal()}
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-gray-500/20 hover:shadow-gray-500/40 text-sm sm:text-base w-full sm:w-auto justify-center break-words disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                  <span className="break-words">
+                    {isSubscriptionLoading ? "Checking subscription..." : "Manage Subscription"}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -362,13 +332,27 @@ export default function ProviderAccommodations() {
               </div>
               <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3 break-words">No accommodations yet</h3>
               <p className="text-neutral-300 mb-6 sm:mb-8 text-base sm:text-lg break-words">Start by adding your first property listing</p>
-              <Link
-                href="/provider/accommodations/new"
-                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] text-sm sm:text-base break-words"
-              >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                <span className="break-words">Add Your First Property</span>
-              </Link>
+              {canAddProperty ? (
+                <Link
+                  href="/provider/accommodations/new"
+                  className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] text-sm sm:text-base break-words"
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                  <span className="break-words">Add Your First Property</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isSubscriptionLoading}
+                  onClick={() => openPlanSelectionModal()}
+                  className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-gray-500/20 hover:shadow-gray-500/40 hover:scale-[1.02] text-sm sm:text-base break-words disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                  <span className="break-words">
+                    {isSubscriptionLoading ? "Checking subscription..." : "Manage Subscription"}
+                  </span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

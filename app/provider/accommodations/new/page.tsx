@@ -2,15 +2,18 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
-import { MapPin, Building, DollarSign, Users, Wifi, Shield, Car, Utensils, Bus } from "lucide-react"
+import { MapPin, Building, DollarSign, Users, Wifi, Shield, Car, Utensils, Bus, Plus } from "lucide-react"
 
 export default function NewAccommodation() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true)
+  const [canCreateProperty, setCanCreateProperty] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     address: "",
@@ -53,6 +56,29 @@ export default function NewAccommodation() {
     { id: "shuttle", label: "Shuttle Service", icon: Bus },
   ]
 
+  useEffect(() => {
+    const loadSubscription = async () => {
+      try {
+        const response = await fetch('/api/subscription/check', {
+          credentials: 'include'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setSubscriptionInfo(data)
+          setCanCreateProperty(data.hasActiveSubscription && data.canCreateMore !== false)
+        } else {
+          setCanCreateProperty(false)
+        }
+      } catch (error) {
+        console.error('Error checking subscription status:', error)
+        setCanCreateProperty(false)
+      } finally {
+        setIsSubscriptionLoading(false)
+      }
+    }
+    loadSubscription()
+  }, [])
+
   const handleAmenityToggle = (amenityId: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -64,6 +90,10 @@ export default function NewAccommodation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canCreateProperty) {
+      alert("You need an active subscription to add more properties.")
+      return
+    }
     
     if (!formData.hasSingleRooms && !formData.hasSharingRooms) {
       alert("Please select at least one room type (Single or Sharing)")
@@ -218,6 +248,34 @@ export default function NewAccommodation() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (!isSubscriptionLoading && !canCreateProperty) {
+    return (
+      <AuthGuard requiredRole="provider">
+        <DashboardLayout userRole="provider">
+          <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] pt-20 pb-20 flex items-center justify-center">
+            <div className="max-w-2xl mx-auto px-6 py-10 border border-white/10 bg-black/30 backdrop-blur-xl rounded-2xl text-center shadow-2xl shadow-blue-500/20 text-white space-y-4">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-red-400 to-pink-500 bg-clip-text text-transparent">
+                Subscription Required
+              </h1>
+              <p className="text-neutral-300">
+                {subscriptionInfo?.planLimit
+                  ? `Your current plan allows up to ${subscriptionInfo.planLimit} properties. Upgrade your subscription to add more listings.`
+                  : "You need an active subscription before adding properties."}
+              </p>
+              <button
+                onClick={() => router.push('/provider/accommodations')}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
+              >
+                <Plus className="w-4 h-4" />
+                Manage Subscription
+              </button>
+            </div>
+          </div>
+        </DashboardLayout>
+      </AuthGuard>
+    )
   }
 
   return (
