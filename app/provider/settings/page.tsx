@@ -13,8 +13,11 @@ import {
   Eye,
   EyeOff,
   Settings,
-  Trash2
+  Trash2,
+  Plus
 } from "lucide-react"
+import Link from "next/link"
+import PlanSelectionModal from "@/components/PlanSelectionModal"
 
 interface ProviderSettings {
   // Accommodation settings
@@ -86,10 +89,34 @@ export default function ProviderSettings() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deletionComplete, setDeletionComplete] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true)
+
+  const fetchSubscriptionInfo = async () => {
+    try {
+      setIsSubscriptionLoading(true)
+      const response = await fetch('/api/subscription/check', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setSubscriptionInfo(data)
+        return data
+      }
+      setSubscriptionInfo(null)
+      return null
+    } catch (error) {
+      console.error('Error fetching subscription info:', error)
+      setSubscriptionInfo(null)
+      return null
+    } finally {
+      setIsSubscriptionLoading(false)
+    }
+  }
 
   useEffect(() => {
     fetchSettings()
     fetchAccommodations()
+    fetchSubscriptionInfo()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchSettings = async () => {
@@ -269,6 +296,16 @@ export default function ProviderSettings() {
   return (
     <AuthGuard requiredRole="provider">
       <DashboardLayout userRole="provider">
+        <PlanSelectionModal
+          isOpen={showPlanSelectionModal}
+          onClose={() => setShowPlanSelectionModal(false)}
+          subscriptionSummary={subscriptionInfo ? {
+            isEligibleForTrial: subscriptionInfo.isEligibleForTrial ?? false,
+            isInTrial: subscriptionInfo.isInTrial ?? false,
+            publishedCount: subscriptionInfo.accommodationsCount ?? 0,
+            totalCount: subscriptionInfo.accommodationsCount ?? 0,
+          } : null}
+        />
         <div className="space-y-4 sm:space-y-8 p-4 sm:p-6 text-white overflow-x-hidden">
           {/* Header */}
           <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 shadow-2xl shadow-blue-500/20">
@@ -338,13 +375,25 @@ export default function ProviderSettings() {
                   <Building className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-white mb-2">No accommodations found</h3>
                   <p className="text-neutral-400 mb-6">You haven&apos;t created any accommodations yet.</p>
-                  <a
-                    href="/provider/accommodations/new"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02]"
-                  >
-                    <Building className="w-4 h-4" />
-                    Create Your First Accommodation
-                  </a>
+                  {subscriptionInfo && subscriptionInfo.hasActiveSubscription && subscriptionInfo.canCreateMore !== false ? (
+                    <Link
+                      href="/provider/accommodations/new"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02]"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Your First Accommodation
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isSubscriptionLoading}
+                      onClick={() => setShowPlanSelectionModal(true)}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-gray-500/20 hover:shadow-gray-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {isSubscriptionLoading ? "Checking subscription..." : "Manage Subscription"}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
