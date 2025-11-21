@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/DashboardLayout"
-import { Building, Users, TrendingUp, DollarSign, Settings } from "lucide-react"
+import { Building, Users, TrendingUp, Settings, DollarSign } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 
 export default function AgentDashboard() {
@@ -68,7 +68,7 @@ export default function AgentDashboard() {
             const billingData = await billingResponse.json()
             if (billingData.agent?.billingInfo) {
               setBillingInfo({
-                monthlyFee: billingData.agent.billingInfo.monthlyFee || 0,
+                monthlyFee: billingData.agent.billingInfo.planPrice || billingData.agent.billingInfo.monthlyFee || 0,
                 subscriptionStatus: billingData.agent.billingInfo.subscriptionStatus || 'inactive',
                 nextPaymentDate: billingData.agent.billingInfo.nextPaymentDate || new Date().toISOString()
               })
@@ -98,15 +98,6 @@ export default function AgentDashboard() {
       change: `${stats.totalAccommodations} properties`,
     },
     {
-      title: "Monthly Revenue",
-      value: formatZar(stats.totalRevenue, true),
-      icon: DollarSign,
-      color: "bg-green-500",
-      change: billingInfo 
-        ? `Next payment: ${new Date(billingInfo.nextPaymentDate).toLocaleDateString()}`
-        : "No subscription active",
-    },
-    {
       title: "Average Rating",
       value: stats.averageReviewRating > 0 ? `${stats.averageReviewRating.toFixed(1)} stars` : "No ratings",
       icon: Users,
@@ -128,8 +119,8 @@ export default function AgentDashboard() {
         <div className="space-y-8 p-6">
           <div className="animate-pulse space-y-8">
             <div className="h-24 bg-gray-700 rounded-2xl"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
                 <div key={i} className="h-32 bg-gray-700 rounded-2xl"></div>
               ))}
             </div>
@@ -148,7 +139,7 @@ export default function AgentDashboard() {
           <p className="text-neutral-300 text-base sm:text-lg break-words">Manage your accommodations and track your performance</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {statsData.map((stat, index) => (
             <div key={index} className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
               <div className="flex items-center justify-between min-w-0">
@@ -168,6 +159,19 @@ export default function AgentDashboard() {
         <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-blue-500/10">
           <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <Link
+              href="/agent/accommodations/new"
+              className="group flex items-center p-4 sm:p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-500/20 min-w-0"
+            >
+              <div className="p-3 sm:p-4 border border-blue-500/50 bg-blue-500/10 rounded-xl mr-3 sm:mr-4 group-hover:bg-blue-500/20 transition-all duration-300 flex-shrink-0">
+                <Building className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-white text-base sm:text-lg group-hover:text-blue-300 transition-colors break-words">Add New Accommodation</h3>
+                <p className="text-neutral-400 group-hover:text-neutral-300 transition-colors text-sm sm:text-base break-words">List a new property</p>
+              </div>
+            </Link>
+
             <Link
               href="/agent/accommodations"
               className="group flex items-center p-4 sm:p-6 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-purple-500/20 min-w-0"
