@@ -51,20 +51,32 @@ export function useStudentAuth(): UseStudentAuthReturn {
         return
       }
 
-      // First ensure the user exists in our database
-      await fetch('/api/auth/ensure-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: stackUser.id,
-          fullName: stackUser.displayName,
-          firstName: stackUser.firstName,
-          lastName: stackUser.lastName,
-          cellNumber: stackUser.phoneNumber,
-          studentNumber: stackUser.studentNumber || 'N/A',
-          university: stackUser.primaryEmail?.includes('ufs4life.ac.za') ? 'UFS' : 'CUT'
+      const ensureUserKey = stackUser?.id ? `varsity_nest_ensure_user_${stackUser.id}` : null
+      const shouldEnsureUser = typeof window === 'undefined'
+        ? true
+        : ensureUserKey
+          ? !sessionStorage.getItem(ensureUserKey)
+          : true
+
+      if (shouldEnsureUser) {
+        const ensureResponse = await fetch('/api/auth/ensure-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: stackUser.id,
+            fullName: stackUser.displayName,
+            firstName: stackUser.firstName,
+            lastName: stackUser.lastName,
+            cellNumber: stackUser.phoneNumber,
+            studentNumber: stackUser.studentNumber || 'N/A',
+            university: stackUser.primaryEmail?.includes('ufs4life.ac.za') ? 'UFS' : 'CUT'
+          })
         })
-      })
+
+        if (ensureResponse.ok && typeof window !== 'undefined' && ensureUserKey) {
+          sessionStorage.setItem(ensureUserKey, '1')
+        }
+      }
 
       // Get detailed user data from our secure session API
       const response = await fetch('/api/auth/session', {
