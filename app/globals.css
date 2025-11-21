@@ -109,6 +109,14 @@
     max-width: 100vw;
     position: relative;
   }
+  button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  [class*="user-select"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }
 
 .blur-backdrop {
