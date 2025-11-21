@@ -3,13 +3,15 @@
 import { useState, useRef } from "react"
 import { Shield, CreditCard, AlertCircle, User, Mail, CheckCircle } from "lucide-react"
 import { generateIdempotencyKey } from "@/lib/utils/idempotency"
+import { SubscriptionPlanId } from "@/lib/subscription-plans"
 
 interface PaystackPaymentFormProps {
   amount: number
   userEmail: string
   userName: string
   itemName: string
-  customData?: { providerId?: string; agentId?: string; subscriptionType?: string; wantsFeatured?: boolean }
+  customData?: { providerId?: string; agentId?: string; subscriptionType?: string; wantsFeatured?: boolean; planId?: SubscriptionPlanId }
+  planId?: SubscriptionPlanId
   onSuccess?: () => void
   onError?: (error: string) => void
   isEligibleForTrial?: boolean
@@ -22,6 +24,7 @@ export default function PaystackPaymentForm({
   userName,
   itemName,
   customData,
+  planId,
   onSuccess,
   onError,
   isEligibleForTrial = false,
@@ -50,6 +53,7 @@ export default function PaystackPaymentForm({
           amount, 
           itemName,
           idempotencyKey: idempotencyKeyRef.current,
+          planId,
           customData 
         })
       })

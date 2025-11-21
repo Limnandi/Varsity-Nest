@@ -7,6 +7,7 @@ import { useState, useCallback, memo, useMemo, useEffect } from "react"
 import { formatZar } from "@/lib/utils"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import { toast } from "sonner"
+import { useWishlistStatus, useWishlistStatusUpdater } from "@/hooks/use-wishlist-status"
 
 interface AccommodationCardProps {
   id: string | number
@@ -43,30 +44,19 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
 }: AccommodationCardProps) {
   const [isFavorited, setIsFavorited] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isMutating, setIsMutating] = useState(false)
   const { user: studentUser, isAuthenticated } = useStudentAuth()
+  const { data: wishlistStatus, isPending: isStatusPending } = useWishlistStatus(
+    id,
+    isAuthenticated && !!studentUser
+  )
+  const updateWishlistStatus = useWishlistStatusUpdater()
 
-  // Check if accommodation is in wishlist on component mount
   useEffect(() => {
-    const checkWishlistStatus = async () => {
-      if (!isAuthenticated || !studentUser) return
-      
-      try {
-        // Use a more efficient approach - check if this specific accommodation is in wishlist
-        const response = await fetch(`/api/student/wishlist?accommodationId=${id}&limit=1`)
-        if (response.ok) {
-          const result = await response.json()
-          // If accommodationId is provided, the API will only return items for that accommodation
-          const isInWishlist = result.data?.items?.length > 0
-          setIsFavorited(isInWishlist)
-        }
-      } catch (error) {
-        console.error('Error checking wishlist status:', error)
-      }
+    if (typeof wishlistStatus === "boolean") {
+      setIsFavorited(wishlistStatus)
     }
-
-    checkWishlistStatus()
-  }, [id, isAuthenticated, studentUser])
+  }, [wishlistStatus])
 
   const handleWishlistToggle = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -79,9 +69,9 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
       return
     }
 
-    if (isLoading) return
+    if (isMutating || isStatusPending) return
 
-    setIsLoading(true)
+    setIsMutating(true)
     
     try {
       if (isFavorited) {
@@ -92,6 +82,7 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
         
         if (response.ok) {
           setIsFavorited(false)
+          updateWishlistStatus(id, false)
           toast.success("Removed from wishlist")
         } else {
           const errorData = await response.json()
@@ -109,6 +100,7 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
         
         if (response.ok) {
           setIsFavorited(true)
+          updateWishlistStatus(id, true)
           toast.success("Added to wishlist")
         } else {
           const errorData = await response.json()
@@ -119,9 +111,9 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
       console.error('Wishlist operation failed:', error)
       toast.error(error.message || 'Something went wrong')
     } finally {
-      setIsLoading(false)
+      setIsMutating(false)
     }
-  }, [id, isAuthenticated, studentUser, isFavorited, isLoading])
+  }, [id, isAuthenticated, studentUser, isFavorited, isMutating, isStatusPending, updateWishlistStatus])
 
   const handleImageLoad = useCallback(() => {
     setImageLoaded(true)
@@ -146,6 +138,9 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
           src={image || "/placeholder.jpg"}
           alt={title}
           fill
+          fetchPriority="auto"
+          loading="lazy"
+          quality={70}
           className={`object-cover transition-all duration-300 group-hover:scale-105 ${
             imageLoaded ? "opacity-100" : "opacity-0"
           }`}
@@ -177,13 +172,13 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
 
         <button
           onClick={handleWishlistToggle}
-          disabled={isLoading}
+          disabled={isMutating || isStatusPending}
           className={`absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/10 transition-all duration-300 ${
-            isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            (isMutating || isStatusPending) ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
           <Heart className={`w-4 h-4 ${isFavorited ? "text-red-400 fill-current" : "text-white/80"} ${
-            isLoading ? 'animate-pulse' : ''
+            isMutating || isStatusPending ? 'animate-pulse' : ''
           }`} />
         </button>
 

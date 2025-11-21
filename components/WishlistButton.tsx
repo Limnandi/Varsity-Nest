@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { Star } from "lucide-react"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import { toast } from "sonner"
+import { useWishlistStatus, useWishlistStatusUpdater } from "@/hooks/use-wishlist-status"
 
 interface WishlistButtonProps {
   accommodationId: string
@@ -12,25 +13,18 @@ interface WishlistButtonProps {
 export default function WishlistButton({ accommodationId }: WishlistButtonProps) {
   const { user: studentUser, isAuthenticated } = useStudentAuth()
   const [isFavorited, setIsFavorited] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isMutating, setIsMutating] = useState(false)
+  const { data: wishlistStatus, isPending: isStatusPending } = useWishlistStatus(
+    accommodationId,
+    isAuthenticated && !!studentUser
+  )
+  const updateWishlistStatus = useWishlistStatusUpdater()
 
-  // Check initial wishlist status on mount
   useEffect(() => {
-    const checkWishlistStatus = async () => {
-      if (!isAuthenticated || !studentUser) return
-      try {
-        const response = await fetch(`/api/student/wishlist?accommodationId=${accommodationId}&limit=1`)
-        if (response.ok) {
-          const result = await response.json()
-          const isInWishlist = result.data?.items?.length > 0
-          setIsFavorited(isInWishlist)
-        }
-      } catch (error) {
-        // Non-blocking; silently ignore
-      }
+    if (typeof wishlistStatus === "boolean") {
+      setIsFavorited(wishlistStatus)
     }
-    checkWishlistStatus()
-  }, [accommodationId, isAuthenticated, studentUser])
+  }, [wishlistStatus])
 
   const handleClick = useCallback(async () => {
     if (!isAuthenticated || !studentUser) {
@@ -38,8 +32,8 @@ export default function WishlistButton({ accommodationId }: WishlistButtonProps)
       return
     }
 
-    if (isLoading) return
-    setIsLoading(true)
+    if (isMutating || isStatusPending) return
+    setIsMutating(true)
     try {
       if (isFavorited) {
         const response = await fetch(`/api/student/wishlist?accommodationId=${accommodationId}`, {
@@ -47,6 +41,7 @@ export default function WishlistButton({ accommodationId }: WishlistButtonProps)
         })
         if (response.ok) {
           setIsFavorited(false)
+          updateWishlistStatus(accommodationId, false)
           toast.success("Removed from wishlist")
         } else {
           const errorData = await response.json()
@@ -60,6 +55,7 @@ export default function WishlistButton({ accommodationId }: WishlistButtonProps)
         })
         if (response.ok) {
           setIsFavorited(true)
+          updateWishlistStatus(accommodationId, true)
           toast.success("Added to wishlist")
         } else {
           const errorData = await response.json()
@@ -69,14 +65,14 @@ export default function WishlistButton({ accommodationId }: WishlistButtonProps)
     } catch (error: any) {
       toast.error(error?.message || "Something went wrong")
     } finally {
-      setIsLoading(false)
+      setIsMutating(false)
     }
-  }, [accommodationId, isAuthenticated, studentUser, isFavorited, isLoading])
+  }, [accommodationId, isAuthenticated, studentUser, isFavorited, isMutating, isStatusPending, updateWishlistStatus])
 
   return (
     <button
       onClick={handleClick}
-      disabled={isLoading}
+      disabled={isMutating || isStatusPending}
       className={
         isFavorited
           ? "w-full bg-gradient-to-r from-pink-600 to-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-pink-700 hover:to-red-700 transition-all duration-300 shadow-lg shadow-red-500/20 hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center disabled:opacity-60"

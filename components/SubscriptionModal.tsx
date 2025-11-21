@@ -4,6 +4,7 @@ import { useState } from "react"
 import { X, CreditCard, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import PaystackPaymentForm from "./PaystackPaymentForm"
+import { SubscriptionPlanId, SUBSCRIPTION_PLANS } from "@/lib/subscription-plans"
 
 interface SubscriptionModalProps {
   isOpen: boolean
@@ -19,6 +20,26 @@ interface SubscriptionModalProps {
   hasUsedTrial?: boolean
   isInTrial?: boolean
   trialEndDate?: string | null
+  planId?: SubscriptionPlanId
+  planLimit?: number | null
+}
+
+const PLAN_FEATURES: Record<SubscriptionPlanId, string[]> = {
+  starter: [
+    "Publish up to 5 properties",
+    "14-day free trial",
+    "Basic analytics",
+  ],
+  growth: [
+    "Publish up to 9 properties",
+    "Advanced analytics",
+    "Priority support",
+  ],
+  scale: [
+    "Unlimited properties",
+    "Premium analytics suite",
+    "Dedicated account manager",
+  ],
 }
 
 export default function SubscriptionModal({
@@ -34,9 +55,13 @@ export default function SubscriptionModal({
   isEligibleForTrial = false,
   hasUsedTrial: _hasUsedTrial = false,
   isInTrial = false,
-  trialEndDate = null
+  trialEndDate = null,
+  planId = "starter",
+  planLimit = null
 }: SubscriptionModalProps) {
   const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const selectedPlan = SUBSCRIPTION_PLANS[planId] ?? SUBSCRIPTION_PLANS.starter
+  const effectivePlanLimit = planLimit ?? selectedPlan.maxProperties
 
   if (!isOpen) return null
 
@@ -135,29 +160,28 @@ export default function SubscriptionModal({
 
             {/* Pricing Information */}
             <div className="border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl p-6 mb-6">
-              <h3 className="text-xl font-semibold mb-4 text-white">Subscription Pricing</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400" />
-                    <span className="text-neutral-300">First Accommodation</span>
-                  </div>
-                  <span className="font-bold text-green-400">R 199.90</span>
+              <h3 className="text-xl font-semibold mb-4 text-white">Subscription Plan</h3>
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-2xl font-bold text-white">{selectedPlan.name}</p>
+                  <p className="text-sm text-neutral-400">{selectedPlan.description}</p>
+                  <p className="text-sm text-neutral-400">
+                    {effectivePlanLimit ? `Up to ${effectivePlanLimit} published properties` : "Unlimited properties"}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-blue-400" />
-                    <span className="text-neutral-300">Each Additional Accommodation</span>
-                  </div>
-                  <span className="font-bold text-blue-400">R 89.90</span>
-                </div>
-                <div className="border-t border-white/10 pt-3 mt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-white">Total for {accommodationCount} {accommodationCount === 1 ? 'accommodation' : 'accommodations'}</span>
-                    <span className="text-2xl font-bold text-green-400">R {amount.toFixed(2)}</span>
-                  </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-green-400">R {selectedPlan.price.toFixed(2)}</p>
+                  <p className="text-sm text-neutral-400">per month</p>
                 </div>
               </div>
+              <ul className="space-y-3 text-sm text-neutral-300">
+                {(PLAN_FEATURES[planId] ?? []).map((feature) => (
+                  <li key={`${planId}-${feature}`} className="flex items-start gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* Benefits */}
@@ -291,7 +315,7 @@ export default function SubscriptionModal({
                     </div>
                     <div className="text-sm text-neutral-400 space-y-1">
                       <p>✓ 14 days free trial - no payment required</p>
-                      <p>✓ After trial: R {amount.toFixed(2)}/month</p>
+                      <p>✓ After trial: R {selectedPlan.price.toFixed(2)}/month</p>
                       <p className="mt-2">Covering {accommodationCount} {accommodationCount === 1 ? 'accommodation' : 'accommodations'}</p>
                     </div>
                   </>
@@ -299,7 +323,7 @@ export default function SubscriptionModal({
                   <>
                     <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                       <span className="text-neutral-300">Monthly Amount:</span>
-                      <span className="text-2xl font-bold text-blue-400">R {amount.toFixed(2)}</span>
+                      <span className="text-2xl font-bold text-blue-400">R {selectedPlan.price.toFixed(2)}</span>
                     </div>
                     <div className="text-sm text-neutral-400 space-y-1">
                       <p>Payment will be charged after your trial ends on {trialEndDate ? new Date(trialEndDate).toLocaleDateString() : 'trial end date'}</p>
@@ -329,8 +353,10 @@ export default function SubscriptionModal({
               itemName={`Varsity Nest Subscription - ${accommodationCount} ${accommodationCount === 1 ? 'Accommodation' : 'Accommodations'}`}
               customData={{
                 [entityType === 'provider' ? 'providerId' : 'agentId']: entityId,
-                subscriptionType: 'one-time'
+                subscriptionType: 'one-time',
+                planId,
               }}
+              planId={planId}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
               isEligibleForTrial={isEligibleForTrial}

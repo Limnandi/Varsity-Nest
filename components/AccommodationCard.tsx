@@ -7,6 +7,7 @@ import { useState, useEffect, memo } from "react"
 import { formatZar } from "@/lib/utils"
 import { useStudentAuth } from "@/hooks/useStudentAuth"
 import { toast } from "sonner"
+import { useWishlistStatus, useWishlistStatusUpdater } from "@/hooks/use-wishlist-status"
 
 interface AccommodationCardProps {
   id: string | number
@@ -53,41 +54,19 @@ function AccommodationCard({
 }: AccommodationCardProps) {
   const [isFavorited, setIsFavorited] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isMutating, setIsMutating] = useState(false)
   const { user: studentUser, isAuthenticated } = useStudentAuth()
+  const updateWishlistStatus = useWishlistStatusUpdater()
+  const { data: wishlistStatus, isPending: isStatusPending } = useWishlistStatus(
+    id,
+    isAuthenticated && !!studentUser
+  )
 
-  // Check if accommodation is in wishlist on component mount - optimized to prevent blocking
   useEffect(() => {
-    if (!isAuthenticated || !studentUser) return
-    
-    let cancelled = false
-    
-    const checkWishlistStatus = async () => {
-      try {
-        const response = await fetch(`/api/student/wishlist?accommodationId=${id}&limit=1`)
-        if (cancelled) return
-        
-        if (response.ok) {
-          const result = await response.json()
-          if (cancelled) return
-          const isInWishlist = result.data?.items?.length > 0
-          setIsFavorited(isInWishlist)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Error checking wishlist status:', error)
-        }
-      }
+    if (typeof wishlistStatus === "boolean") {
+      setIsFavorited(wishlistStatus)
     }
-
-    // Defer wishlist check to prevent blocking initial render
-    const timeoutId = setTimeout(checkWishlistStatus, 0)
-    
-    return () => {
-      cancelled = true
-      clearTimeout(timeoutId)
-    }
-  }, [id, isAuthenticated, studentUser])
+  }, [wishlistStatus])
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -100,9 +79,9 @@ function AccommodationCard({
       return
     }
 
-    if (isLoading) return
+    if (isMutating || isStatusPending) return
 
-    setIsLoading(true)
+    setIsMutating(true)
     
     try {
       if (isFavorited) {
@@ -113,6 +92,7 @@ function AccommodationCard({
         
         if (response.ok) {
           setIsFavorited(false)
+          updateWishlistStatus(id, false)
           toast.success("Removed from wishlist")
         } else {
           const errorData = await response.json()
@@ -130,6 +110,7 @@ function AccommodationCard({
         
         if (response.ok) {
           setIsFavorited(true)
+          updateWishlistStatus(id, true)
           toast.success("Added to wishlist")
         } else {
           const errorData = await response.json()
@@ -140,7 +121,7 @@ function AccommodationCard({
       console.error('Wishlist operation failed:', error)
       toast.error(error.message || 'Something went wrong')
     } finally {
-      setIsLoading(false)
+      setIsMutating(false)
     }
   }
 
@@ -152,6 +133,9 @@ function AccommodationCard({
             alt={title}
             fill
             priority={priority}
+            fetchPriority={priority ? "high" : "auto"}
+            quality={priority ? 85 : 70}
+            loading={priority ? "eager" : "lazy"}
             className={`object-cover transition-all duration-700 group-hover:scale-110 ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
@@ -192,16 +176,16 @@ function AccommodationCard({
         {isAuthenticated && studentUser && (
           <button
             onClick={handleWishlistToggle}
-            disabled={isLoading}
+            disabled={isMutating || isStatusPending}
             className={`absolute top-3 right-3 p-2.5 bg-black/40 backdrop-blur-md border border-white/30 rounded-full hover:bg-white/20 transition-all duration-300 z-10 group/heart ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg'
+              (isMutating || isStatusPending) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg'
             } ${isFavorited ? 'bg-red-500/20 border-red-400/50 shadow-lg shadow-red-500/30' : ''}`}
           >
             <Heart className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 ${
               isFavorited 
                 ? "text-red-400 fill-current scale-110" 
                 : "text-white/80 group-hover/heart:text-red-300"
-            } ${isLoading ? 'animate-pulse' : ''}`} />
+            } ${(isMutating || isStatusPending) ? 'animate-pulse' : ''}`} />
           </button>
         )}
 
