@@ -279,8 +279,8 @@ export default function NewAccommodation() {
   }
 
   return (
-    <AuthGuard requiredRole="provider">
-      <DashboardLayout userRole="provider">
+    <AuthGuard requiredRole="agent">
+      <DashboardLayout userRole="agent">
         <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] pt-20 pb-20">
           <div className="max-w-4xl mx-auto px-4 space-y-8">
             {/* Header */}

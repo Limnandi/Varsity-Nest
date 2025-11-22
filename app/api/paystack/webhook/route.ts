@@ -627,8 +627,12 @@ async function handleChargeSuccess(data: any) {
 
       if (subscriptionCode) {
         // Trial subscription created
+        const trialStart = storedGateway.trialStartDate ? new Date(storedGateway.trialStartDate) : new Date()
+        const trialEnd = new Date(trialEndISO)
         updates.subscriptionStatus = 'trial'
-        updates.nextPaymentDate = new Date(trialEndISO)
+        updates.trialStartDate = trialStart
+        updates.trialEndDate = trialEnd
+        updates.nextPaymentDate = trialEnd
         updates.planId = 'starter' // Trial is always Starter plan
       } else if (!isTokenization && extractedPlanId) {
         // Regular payment (not tokenization) - activate subscription and set plan_id
@@ -664,11 +668,61 @@ async function handleChargeSuccess(data: any) {
       }
 
     } else if (actualEntityType === 'agent' && actualEntityId) {
-      // For agents we only persist authorization_code or subscription_code
+      // Read current agent row
+      
+      // Final token to persist: prefer subscriptionCode from createSubscription, otherwise authorization_code
+      const finalSubscriptionToken = subscriptionCode || chargeData.authorization?.authorization_code || undefined
+
+      // Extract planId from payment transaction
+      const extractedPlanId = extractPlanIdFromPayment(mergedGateway, amount)
+
+      // If we created a subscription (subscriptionCode), set subscriptionToken to subscriptionCode and set subscriptionStatus to 'trial' (subscription starts at trialEndDate)
+      // If subscription not created but we have an authorization_code, persist it so a reconciliation job can retry
+      const updates: any = {
+        subscriptionToken: finalSubscriptionToken
+      }
+
+      if (subscriptionCode) {
+        // Trial subscription created
+        const trialStart = storedGateway.trialStartDate ? new Date(storedGateway.trialStartDate) : new Date()
+        const trialEnd = new Date(trialEndISO)
+        updates.subscriptionStatus = 'trial'
+        updates.trialStartDate = trialStart
+        updates.trialEndDate = trialEnd
+        updates.nextPaymentDate = trialEnd
+        updates.planId = 'starter' // Trial is always Starter plan
+      } else if (!isTokenization && extractedPlanId) {
+        // Regular payment (not tokenization) - activate subscription and set plan_id
+        updates.subscriptionStatus = 'active'
+        updates.lastPaymentDate = paymentDate
+        updates.nextPaymentDate = new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from payment
+        updates.planId = extractedPlanId
+      } else if (extractedPlanId) {
+        // Tokenization without subscription - just set plan_id for future reference
+        updates.planId = extractedPlanId
+      }
+
       await secureDb.db
         .update(schema.agents)
-        .set({ subscriptionToken: chargeData.authorization?.authorization_code || undefined })
+        .set(updates)
         .where(eq(schema.agents.id, actualEntityId))
+
+      // Read back agent and log persisted values
+      try {
+        const [refreshedAgent] = await secureDb.db
+          .select({ id: schema.agents.id, subscriptionToken: schema.agents.subscriptionToken, subscriptionStatus: schema.agents.subscriptionStatus })
+          .from(schema.agents)
+          .where(eq(schema.agents.id, actualEntityId))
+          .limit(1)
+
+        console.log('[WEBHOOK] Refreshed agent after updating subscription:', {
+          agentId: refreshedAgent?.id,
+          subscriptionToken: refreshedAgent?.subscriptionToken || 'NULL',
+          subscriptionStatus: refreshedAgent?.subscriptionStatus || 'NULL'
+        })
+      } catch (readErr) {
+        console.warn('[WEBHOOK] Could not read back agent after setting subscription:', String(readErr))
+      }
     }
 
     // Log successful payment

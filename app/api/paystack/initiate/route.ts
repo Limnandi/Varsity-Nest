@@ -499,7 +499,11 @@ export async function POST(request: Request) {
         .select({ 
           id: schema.agents.id,
           contactEmail: schema.agents.contactEmail,
-          contactPerson: schema.agents.contactPerson
+          contactPerson: schema.agents.contactPerson,
+          subscriptionStatus: schema.agents.subscriptionStatus,
+          trialStartDate: schema.agents.trialStartDate,
+          trialEndDate: schema.agents.trialEndDate,
+          createdAt: schema.agents.createdAt
         })
         .from(schema.agents)
         .where(eq(schema.agents.userId, session.user.id))
@@ -512,6 +516,380 @@ export async function POST(request: Request) {
 
       agentId = agentRow.id
       effectiveEmail = agentRow.contactEmail || session.user.email
+
+      // Get accommodations count for agent
+      const accommodationsCountResult = await secureDb.db
+        .select({ count: count(schema.accommodations.id) })
+        .from(schema.accommodations)
+        .where(eq(schema.accommodations.agentId, agentId!))
+
+      const agentAccommodationsCount = Number(accommodationsCountResult[0]?.count || 0)
+      const inferredPlan = determinePlanForPropertyCount(Math.max(1, agentAccommodationsCount || 1))
+      const agentSelectedPlan = (requestedPlanId ? getPlanById(requestedPlanId) : null) || inferredPlan
+
+      // Check if agent is eligible for trial subscription
+      const isEligibleForTrial = !agentRow.trialStartDate && 
+                                  agentRow.subscriptionStatus !== 'trial' && 
+                                  agentRow.subscriptionStatus !== 'active'
+      const planAllowsTrial = agentSelectedPlan.id === 'starter'
+      
+      if (isEligibleForTrial && planAllowsTrial) {
+        // Activate trial subscription (14 days free)
+        const trialStartDate = new Date()
+        const trialEndDate = new Date(trialStartDate.getTime() + 14 * 24 * 60 * 60 * 1000) // 14 days from now
+        const nextPaymentDate = new Date(trialEndDate.getTime()) // First payment due after trial ends
+        const billingDate = trialEndDate.toISOString() // ISO 8601 format for Paystack
+
+        // NOTE: Do NOT persist trial state to the agents table here. The agent record
+        // should be updated only after we receive and verify Paystack webhooks (charge.success
+        // and/or subscription.create). Persisting trial state at initiation leads to premature
+        // state changes if the user abandons checkout or the webhook fails.
+        captureMessage('Trial subscription scheduled (not activated) - will be applied after webhook confirmation', {
+          level: 'info',
+          component: 'payment-initiation',
+          agentId,
+          trialStartDate: trialStartDate.toISOString(),
+          trialEndDate: trialEndDate.toISOString(),
+          billingDate
+        })
+
+        const desiredPlan = agentSelectedPlan
+        let calculatedAmount = desiredPlan.price
+        
+        // Paystack minimum amount is 100 kobo (R1.00) for subscriptions
+        if (calculatedAmount < 1.00) {
+          calculatedAmount = 1.00
+        }
+
+        // Generate secure payment ID
+        const paymentId = PaymentSecurityService.generateSecurePaymentId()
+
+        // Create plan for subscription
+        let planCode: string
+        try {
+          const plan = await PaystackAPIClient.createPlan(
+            itemName,
+            calculatedAmount,
+            "monthly",
+            `Varsity Nest - ${itemName}`,
+            0 // 0 = unlimited until cancelled
+          )
+          planCode = plan.plan_code
+        } catch (planError) {
+          captureException(planError instanceof Error ? planError : new Error(String(planError)), { 
+            component: 'payment-initiation', 
+            action: 'createPlan',
+            agentId,
+            amount: calculatedAmount
+          })
+          return NextResponse.json({ error: "Failed to create subscription plan" }, { status: 500 })
+        }
+
+        // Create server-side custom data (prevent client tampering)
+        // Exclude entityType from customData to prevent client tampering - always use session.user.role
+        const customDataWithoutEntityType = customData ? (() => {
+          const { entityType: _, ...rest } = customData as any
+          return rest
+        })() : {}
+        // Always set entityType from session.user.role - never trust client data
+        const entityTypeFromSession = session.user.role as 'provider' | 'agent'
+        const serverCustomDataForTrial: {
+          providerId?: string
+          agentId?: string
+          paymentId: string
+          idempotencyKey: string
+          timestamp: number
+          userId: string
+          planCode: string
+          subscriptionType: string
+          entityType: 'provider' | 'agent'
+        } = {
+          ...customDataWithoutEntityType,
+          providerId: undefined, // Agents don't have providerId
+          agentId: agentId || undefined,
+          paymentId,
+          idempotencyKey,
+          timestamp: Date.now(),
+          userId: session.user.id,
+          planCode,
+          subscriptionType: "monthly",
+          entityType: entityTypeFromSession // Always from session, never from client
+        }
+
+        // For trial: Charge minimum R1.00 to tokenize the card (Paystack requirement)
+        // This amount can be refunded or credited back to the user
+        const tokenizationAmount = 1.00 // Minimum ZAR 1.00 for card tokenization
+        
+        // Initialize transaction for card tokenization (NOT a subscription yet)
+        // We'll create the subscription after we get the authorization_code
+        // entityType is already set in serverCustomDataForTrial from session.user.role
+        // Create object directly - don't use type annotation to avoid type narrowing issues
+        const customDataForPayment = {
+          providerId: serverCustomDataForTrial.providerId,
+          agentId: serverCustomDataForTrial.agentId,
+          subscriptionType: serverCustomDataForTrial.subscriptionType,
+          paymentId: serverCustomDataForTrial.paymentId,
+          idempotencyKey: serverCustomDataForTrial.idempotencyKey,
+          planCode: serverCustomDataForTrial.planCode,
+          invoiceLimit: 0, // Unlimited
+          entityType: serverCustomDataForTrial.entityType as 'provider' | 'agent' // CRITICAL: Explicitly preserve entityType with type assertion
+        }
+        const paymentRequest = createPaystackPayment(
+          tokenizationAmount, // R1.00 for card tokenization
+          effectiveEmail,
+          `Card Tokenization - ${itemName}`, // itemName parameter
+          customDataForPayment // customData parameter
+        )
+
+        // Initialize Paystack transaction for tokenization
+        // Note: We're NOT passing planCode here - this is just to tokenize the card
+        let transactionResponse
+        try {
+          transactionResponse = await PaystackAPIClient.initializeTransaction(
+            effectiveEmail,
+            tokenizationAmount, // R1.00 for tokenization
+            paymentRequest.reference!,
+            paymentRequest.callback_url,
+            {
+              custom_fields: paymentRequest.metadata?.custom_fields || [],
+              entity_id: agentId,
+              subscription_type: "monthly",
+              payment_id: paymentId,
+              wants_featured: wantsFeatured ? "true" : "false",
+              idempotency_key: idempotencyKey,
+              is_tokenization: "true", // Flag for tokenization
+              plan_code: planCode // Store plan code in metadata for later use
+            }
+            // Don't pass planCode to initializeTransaction - this is just tokenization
+          )
+        } catch (initError) {
+          captureException(initError instanceof Error ? initError : new Error(String(initError)), { 
+            component: 'payment-initiation', 
+            action: 'initializeTransaction',
+            agentId,
+            planCode
+          })
+          return NextResponse.json({ error: "Failed to initialize payment" }, { status: 500 })
+        }
+
+        // Record tokenization transaction
+        const transaction = await secureDb.db
+          .insert(schema.paymentTransactions)
+          .values({
+            agentId: agentId!,
+            amount: tokenizationAmount.toString(), // R1.00 tokenization charge
+            status: 'pending',
+            idempotencyKey: idempotencyKey || null,
+            mPaymentId: paymentRequest.reference!,
+            gatewayResponse: { 
+              authorizationUrl: transactionResponse.authorization_url,
+              accessCode: transactionResponse.access_code,
+              reference: transactionResponse.reference,
+              planCode,
+              trialActivated: true,
+              isTokenization: true, // Flag as tokenization
+              tokenizationAmount: tokenizationAmount,
+              recurringAmount: calculatedAmount, // Amount that will be charged after trial
+              billingDate: billingDate,
+              trialStartDate: trialStartDate.toISOString(),
+              trialEndDate: trialEndDate.toISOString(),
+              nextPaymentDate: nextPaymentDate.toISOString()
+            },
+            createdAt: new Date()
+          })
+          .returning()
+
+        captureMessage('Trial payment setup created', {
+          level: 'info',
+          component: 'payment-initiation',
+          agentId: agentId!,
+          transactionId: transaction[0]?.id,
+          billingDate,
+          amount: calculatedAmount
+        })
+
+        // Return payment data to redirect to Paystack for card tokenization
+        return NextResponse.json({
+          authorizationUrl: transactionResponse.authorization_url,
+          transactionId: transaction[0]?.id,
+          amount: tokenizationAmount, // R1.00 for card tokenization
+          recurringAmount: calculatedAmount, // Amount that will be charged after trial
+          trialActivated: true,
+          trialPaymentSetup: true,
+          isTokenization: true,
+          billingDate: billingDate,
+          trialStartDate: trialStartDate.toISOString(),
+          trialEndDate: trialEndDate.toISOString(),
+          planCode,
+          message: `Trial scheduled. A R${tokenizationAmount.toFixed(2)} charge is required to verify your card. This amount will be credited back to your account. Your subscription will start after your 14-day trial ends.`
+        })
+      }
+
+      // Check if agent is in trial period and trying to pay early
+      if (agentRow.subscriptionStatus === 'trial' && agentRow.trialEndDate) {
+        const trialEnd = new Date(agentRow.trialEndDate)
+        const now = new Date()
+        
+        if (trialEnd > now) {
+          // Still in trial - set up payment for after trial ends
+          const billingDate = trialEnd.toISOString()
+          
+          const desiredPlan = agentSelectedPlan ?? determinePlanForPropertyCount(Math.max(1, agentAccommodationsCount || 1))
+        let calculatedAmount = desiredPlan.price
+          
+          if (calculatedAmount < 1.00) {
+            calculatedAmount = 1.00
+          }
+
+          // Generate secure payment ID
+          const paymentId = PaymentSecurityService.generateSecurePaymentId()
+
+          // Create plan for subscription
+          let planCode: string
+          try {
+            const plan = await PaystackAPIClient.createPlan(
+              itemName,
+              calculatedAmount,
+              "monthly",
+              `Varsity Nest - ${itemName}`,
+              0
+            )
+            planCode = plan.plan_code
+          } catch (planError) {
+            captureException(planError instanceof Error ? planError : new Error(String(planError)), { 
+              component: 'payment-initiation', 
+              action: 'createPlan',
+              agentId,
+              amount: calculatedAmount
+            })
+            return NextResponse.json({ error: "Failed to create subscription plan" }, { status: 500 })
+          }
+
+          // Create server-side custom data
+          // Exclude entityType from customData to prevent client tampering - always use session.user.role
+          const customDataWithoutEntityType = customData ? (() => {
+            const { entityType: _, ...rest } = customData as any
+            return rest
+          })() : {}
+          // Always set entityType from session.user.role - never trust client data
+          const entityTypeFromSession = session.user.role as 'provider' | 'agent'
+          const serverCustomDataForTrial: {
+            providerId?: string
+            agentId?: string
+            paymentId: string
+            idempotencyKey: string
+            timestamp: number
+            userId: string
+            planCode: string
+            subscriptionType: string
+            entityType: 'provider' | 'agent'
+          } = {
+            ...customDataWithoutEntityType,
+            providerId: undefined, // Agents don't have providerId
+            agentId: agentId || undefined,
+            paymentId,
+            idempotencyKey,
+            timestamp: Date.now(),
+            userId: session.user.id,
+            planCode,
+            subscriptionType: "monthly",
+            entityType: entityTypeFromSession // Always from session, never from client
+          }
+
+          // Initialize transaction with plan
+          // entityType is already set in serverCustomDataForTrial from session.user.role
+          // Create object directly - don't use type annotation to avoid type narrowing issues
+          const customDataForPayment = {
+            providerId: serverCustomDataForTrial.providerId,
+            agentId: serverCustomDataForTrial.agentId,
+            subscriptionType: serverCustomDataForTrial.subscriptionType,
+            paymentId: serverCustomDataForTrial.paymentId,
+            idempotencyKey: serverCustomDataForTrial.idempotencyKey,
+            planCode: serverCustomDataForTrial.planCode,
+            invoiceLimit: 0,
+            entityType: serverCustomDataForTrial.entityType as 'provider' | 'agent' // CRITICAL: Explicitly preserve entityType with type assertion
+          }
+          const paymentRequest = createPaystackPayment(
+            0, // R0 for trial
+            effectiveEmail,
+            itemName, // itemName parameter
+            customDataForPayment // customData parameter
+          )
+
+          // Initialize Paystack transaction
+          let transactionResponse
+          try {
+            transactionResponse = await PaystackAPIClient.initializeTransaction(
+              effectiveEmail,
+              0,
+              paymentRequest.reference!,
+              paymentRequest.callback_url,
+              {
+                custom_fields: paymentRequest.metadata?.custom_fields || [],
+                entity_id: agentId,
+                subscription_type: "monthly",
+                payment_id: paymentId,
+                wants_featured: wantsFeatured ? "true" : "false",
+                idempotency_key: idempotencyKey
+              },
+              planCode
+            )
+          } catch (initError) {
+            captureException(initError instanceof Error ? initError : new Error(String(initError)), { 
+              component: 'payment-initiation', 
+              action: 'initializeTransaction',
+              agentId,
+              planCode
+            })
+            return NextResponse.json({ error: "Failed to initialize payment" }, { status: 500 })
+          }
+
+          // Record pending transaction
+          const [transaction] = await secureDb.db
+            .insert(schema.paymentTransactions)
+            .values({
+              agentId: agentId!,
+              amount: calculatedAmount.toString(),
+              currency: 'ZAR',
+              mPaymentId: paymentRequest.reference!,
+              idempotencyKey: idempotencyKey,
+              status: 'pending',
+              gatewayResponse: { 
+                initiated_at: new Date().toISOString(),
+                authorizationUrl: transactionResponse.authorization_url,
+                accessCode: transactionResponse.access_code,
+                reference: transactionResponse.reference,
+                trial_payment_setup: true,
+                billing_date: billingDate,
+                planCode
+              }
+            })
+            .returning({ id: schema.paymentTransactions.id })
+
+          await PaymentAuditService.logAuditEvent(transaction.id, 'created', {
+            amount: calculatedAmount,
+            reason: 'Payment setup for post-trial subscription',
+            metadata: { 
+              itemName,
+              trialEndDate: trialEnd.toISOString(),
+              billingDate,
+              customData: serverCustomDataForTrial,
+              agentId: agentId!
+            }
+          })
+
+          return NextResponse.json({ 
+            authorizationUrl: transactionResponse.authorization_url,
+            transactionId: transaction.id,
+            amount: 0, // R0 for trial
+            recurringAmount: calculatedAmount,
+            trialPaymentSetup: true,
+            billingDate: billingDate,
+            planCode,
+            message: "Payment will be processed automatically after your trial ends."
+          })
+        }
+      }
     }
 
     // Calculate amount server-side (prevent client manipulation)
