@@ -299,6 +299,7 @@ export default function AgentSettings() {
         <PlanSelectionModal
           isOpen={showPlanSelectionModal}
           onClose={() => setShowPlanSelectionModal(false)}
+          entityType="agent"
           subscriptionSummary={subscriptionInfo ? {
             isEligibleForTrial: subscriptionInfo.isEligibleForTrial ?? false,
             isInTrial: subscriptionInfo.isInTrial ?? false,
