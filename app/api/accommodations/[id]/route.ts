@@ -23,25 +23,41 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
     }
 
-    // Check if user is provider/owner or admin - they can see inactive properties
-    const isOwnerOrAdmin = user && (user.role === 'provider' || user.role === 'admin')
+    // Check if user is provider/agent/owner or admin - they can see inactive properties
+    const isOwnerOrAdmin = user && (user.role === 'provider' || user.role === 'agent' || user.role === 'admin')
     
-    if (isOwnerOrAdmin && user.role === 'provider') {
-      const providerResult = await query`
-        SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
-      `
-      
-      if (providerResult.rows.length === 0) {
-        return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+    if (isOwnerOrAdmin && (user.role === 'provider' || user.role === 'agent')) {
+      if (user.role === 'provider') {
+        const providerResult = await query`
+          SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
+        `
+        
+        if (providerResult.rows.length === 0) {
+          return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+        }
+        
+        const providerId = providerResult.rows[0].id
+        
+        if (accommodation.providerId !== providerId) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
+      } else if (user.role === 'agent') {
+        const agentResult = await query`
+          SELECT id FROM agents WHERE user_id = ${user.id} LIMIT 1
+        `
+        
+        if (agentResult.rows.length === 0) {
+          return NextResponse.json({ error: 'Agent profile not found' }, { status: 404 })
+        }
+        
+        const agentId = agentResult.rows[0].id
+        
+        if ((accommodation as any).agentId !== agentId) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
       }
       
-      const providerId = providerResult.rows[0].id
-      
-      if (accommodation.providerId !== providerId) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
-      
-      // Provider can see their own properties regardless of status
+      // Provider/Agent can see their own properties regardless of status
       return NextResponse.json(accommodation)
     }
 
@@ -66,7 +82,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser()
-    if (!user || user.role !== 'provider') {
+    if (!user || (user.role !== 'provider' && user.role !== 'agent')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -81,26 +97,52 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
 
-    const providerResult = await query`
-      SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
-    `
-    
-    if (providerResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+    let entityId: string
+    let entityType: 'provider' | 'agent'
+
+    if (user.role === 'provider') {
+      const providerResult = await query`
+        SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
+      `
+      
+      if (providerResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+      }
+      
+      entityId = providerResult.rows[0].id
+      entityType = 'provider'
+    } else {
+      const agentResult = await query`
+        SELECT id FROM agents WHERE user_id = ${user.id} LIMIT 1
+      `
+      
+      if (agentResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Agent profile not found' }, { status: 404 })
+      }
+      
+      entityId = agentResult.rows[0].id
+      entityType = 'agent'
     }
-    
-    const providerId = providerResult.rows[0].id
 
     const [existingAccommodation] = await secureDb.db
       .select({ 
         providerId: schema.accommodations.providerId,
+        agentId: schema.accommodations.agentId,
         images: schema.accommodations.images
       })
       .from(schema.accommodations)
       .where(eq(schema.accommodations.id, id))
       .limit(1)
     
-    if (!existingAccommodation || existingAccommodation.providerId !== providerId) {
+    if (!existingAccommodation) {
+      return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
+    }
+
+    if (entityType === 'provider' && existingAccommodation.providerId !== entityId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (entityType === 'agent' && existingAccommodation.agentId !== entityId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -172,32 +214,58 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser()
-    if (!user || user.role !== 'provider') {
+    if (!user || (user.role !== 'provider' && user.role !== 'agent')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = await params
     
-    const providerResult = await query`
-      SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
-    `
-    
-    if (providerResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+    let entityId: string
+    let entityType: 'provider' | 'agent'
+
+    if (user.role === 'provider') {
+      const providerResult = await query`
+        SELECT id FROM providers WHERE user_id = ${user.id} LIMIT 1
+      `
+      
+      if (providerResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Provider profile not found' }, { status: 404 })
+      }
+      
+      entityId = providerResult.rows[0].id
+      entityType = 'provider'
+    } else {
+      const agentResult = await query`
+        SELECT id FROM agents WHERE user_id = ${user.id} LIMIT 1
+      `
+      
+      if (agentResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Agent profile not found' }, { status: 404 })
+      }
+      
+      entityId = agentResult.rows[0].id
+      entityType = 'agent'
     }
-    
-    const providerId = providerResult.rows[0].id
-    
+
     const [existingAccommodation] = await secureDb.db
       .select({ 
         providerId: schema.accommodations.providerId,
+        agentId: schema.accommodations.agentId,
         images: schema.accommodations.images
       })
       .from(schema.accommodations)
       .where(eq(schema.accommodations.id, id))
       .limit(1)
     
-    if (!existingAccommodation || existingAccommodation.providerId !== providerId) {
+    if (!existingAccommodation) {
+      return NextResponse.json({ error: 'Accommodation not found' }, { status: 404 })
+    }
+
+    if (entityType === 'provider' && existingAccommodation.providerId !== entityId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (entityType === 'agent' && existingAccommodation.agentId !== entityId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
