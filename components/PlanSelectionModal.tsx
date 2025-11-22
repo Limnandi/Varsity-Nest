@@ -7,6 +7,7 @@ import { SubscriptionPlanId, SUBSCRIPTION_PLANS } from "@/lib/subscription-plans
 interface PlanSelectionModalProps {
   isOpen: boolean
   onClose: () => void
+  entityType?: 'provider' | 'agent'
   subscriptionSummary?: {
     isEligibleForTrial: boolean
     isInTrial: boolean
@@ -36,6 +37,7 @@ const PLAN_FEATURES: Record<SubscriptionPlanId, string[]> = {
 export default function PlanSelectionModal({
   isOpen,
   onClose,
+  entityType = 'provider',
   subscriptionSummary,
 }: PlanSelectionModalProps) {
   const router = useRouter()
@@ -46,7 +48,10 @@ export default function PlanSelectionModal({
   const isEligibleForTrial = subscriptionSummary?.isEligibleForTrial ?? false
 
   const handlePlanSelect = (planId: SubscriptionPlanId) => {
-    router.push(`/provider/billing/payment?planId=${planId}`)
+    const paymentPath = entityType === 'agent' 
+      ? `/agent/billing/payment?planId=${planId}`
+      : `/provider/billing/payment?planId=${planId}`
+    router.push(paymentPath)
     onClose()
   }
 
