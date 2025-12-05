@@ -8,6 +8,15 @@ import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
 import EmailVerificationModal from "@/components/EmailVerificationModal"
 import ForgotPasswordModal from "@/components/ForgotPasswordModal"
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Sign-In',
+  description: 'Access your Varsity Nest account dashboard to manage your student housing applications, property listings, or agent activity.',
+  alternates: {
+    canonical: 'https://varsitynest.space/auth/login',
+  },
+}
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
