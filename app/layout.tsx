@@ -30,8 +30,21 @@ if (typeof window !== 'undefined') {
 }
 
 export const metadata: Metadata = {
-  title: "Varsity Nest",
-  description: "Off-Campus Living Made Simple",
+  // Title: Focused on South African terms. (Target: 50-60 chars)
+  title: 'Varsity Nest | Find & List Student Housing & Accommodation', 
+  
+  // Description: Clear value proposition, targeting SA audience and services. (Target: 150-160 chars)
+  description: 'Varsity Nest simplifies off-campus living, connecting students with trusted agents and providers to find the best university and college accommodations.',
+  
+  // Keywords: Helps reinforce relevance to search engines.
+  keywords: ['student accommodation south africa', 'off-campus housing', 'varsity res', 'student flats', 'university housing', 'varsity nest', 'ufs', 'cut', 'bloemfontein'], 
+  
+  // Canonical Tag: Essential for preventing content duplication issues.
+  alternates: {
+    canonical: 'https://varsitynest.space/', 
+  },
+
+  // --- EXISTING/WORKING FAVICON CONFIG (Kept for continuity) ---
   icons: {
     icon: [
       { url: "/favicon.ico", rel: "icon", type: "image/x-icon" },
