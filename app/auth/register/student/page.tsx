@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { GraduationCap, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home, Phone } from "lucide-react"
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Student Sign Up | Varsity Nest',
+  description: 'Join Varsity Nest to find your ideal student accommodation. Sign up as a student today.',
+}
 
 export default function StudentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
