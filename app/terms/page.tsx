@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Varsity Nest',
-  description: 'Terms of Service for Varsity Nest - University accommodation platform',
+  description: 'Terms of Service for Varsity Nest - Accomodation listing platform',
 }
 
 // Terms of Service page.
