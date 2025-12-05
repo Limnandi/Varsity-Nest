@@ -6,6 +6,15 @@ import { useState, useRef, useEffect } from "react"
 import { Phone, Mail, Clock, Send, CheckCircle, AlertCircle, ChevronDown } from "lucide-react"
 import ReCAPTCHA from "react-google-recaptcha"
 import { publicEnv } from "@/lib/env.client"
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Contact Varsity Nest',
+  description: 'Need assistance with student housing, listings, or technical support? Contact the Varsity Nest team for prompt help and information.',
+  alternates: {
+    canonical: 'https://varsitynest.space/contact',
+  },
+}
 
 export default function Contact() {
   const [formData, setFormData] = useState({
