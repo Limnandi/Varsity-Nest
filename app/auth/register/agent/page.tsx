@@ -6,6 +6,16 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { UserCheck, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Agent Sign Up | List Student Properties',
+  description: 'Register as an agent on Varsity Nest to list, manage, and connect students with your available rental properties. Start growing your portfolio today.',
+  // Optional: Add a canonical tag if you worry about duplicate content
+  alternates: {
+    canonical: 'https://varsitynest.space/auth/register/agent',
+  },
+}
 
 export default function AgentRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
