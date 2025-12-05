@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Building, Mail, User, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Home } from "lucide-react"
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Provider Sign Up | Property Management',
+  description: 'Are you a housing provider or landlord? Sign up to list your accommodations directly and reach thousands of students seeking housing on Varsity Nest.',
+  alternates: {
+    canonical: 'https://varsitynest.space/auth/register/provider',
+  },
+}
 
 export default function ProviderRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false)
