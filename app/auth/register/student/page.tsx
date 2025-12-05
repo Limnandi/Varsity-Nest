@@ -9,7 +9,7 @@ import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator"
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Student Sign Up | Varsity Nest',
+  title: 'Student Sign Up',
   description: 'Join Varsity Nest to find your ideal student accommodation. Sign up as a student today.',
 }
 
