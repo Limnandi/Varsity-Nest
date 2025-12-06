@@ -107,7 +107,7 @@ export default function ContactClient() {
           <button type="submit" disabled={isSubmitting} className="btn">
             {isSubmitting ? "Sending..." : "Send"}
           </button>
-          {submitMessage && <div className={`mt-4 ${submitMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>{submitMessage.text}</div>}</n>        </form>
+          {submitMessage && <div className={`mt-4 ${submitMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>{submitMessage.text}</div>}        </form>
       </div>
     </div>
   );
