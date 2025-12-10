@@ -1,9 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // Run ESLint during builds
-    ignoreDuringBuilds: false,
-  },
+   turbopack: {}, // Enables Turbopack for development builds
   typescript: {
     ignoreBuildErrors: false,
   },
