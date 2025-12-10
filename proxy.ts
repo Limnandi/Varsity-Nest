@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { defaultSecurityConfig, SecurityMiddleware } from '@/lib/security-config'
 
-export async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   // Only apply CORS/security headers to API routes
   if (!request.nextUrl.pathname.startsWith('/api')) {
     return NextResponse.next()
@@ -55,5 +55,3 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/api/:path*']
 }
-
-

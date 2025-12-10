@@ -6,7 +6,7 @@ export async function invalidateAccommodationsCache() {
   await OptimizedAccommodationRepository.invalidateCache()
 
   try {
-    await revalidateTag(FEATURED_ACCOMMODATIONS_CACHE_TAG)
+    await revalidateTag(FEATURED_ACCOMMODATIONS_CACHE_TAG, "max")
   } catch (error) {
     console.warn("Failed to revalidate featured accommodations tag:", error)
   }
