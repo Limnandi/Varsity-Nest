@@ -110,13 +110,18 @@ export const getCurrentUser = async (): Promise<SessionUser | null> => {
       const user = await clientApp.getUser()
       
       if (user) {
-        // Convert StackAuth user to our SessionUser format
+        // Ensure role is explicitly set based on registration flow
+        const role = (user as any).role;
+        if (!role) {
+          throw new Error('Role is missing during registration. Ensure the registration flow sets the role explicitly.');
+        }
+
         return {
           id: user.id,
           email: user.primaryEmail || '',
           firstName: user.displayName?.split(' ')[0] || '',
           lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
-          role: (user as any).role || 'student',
+          role: role, // Explicitly set role
           phone: (user as any).phone,
           studentNumber: (user as any).studentNumber,
           institution: (user as any).institution,
@@ -124,7 +129,7 @@ export const getCurrentUser = async (): Promise<SessionUser | null> => {
           emailVerified: user.primaryEmailVerified,
           createdAt: new Date(),
           updatedAt: new Date(),
-        }
+        };
       }
     } catch (error) {
       console.error('Error getting user from StackAuth client:', error)
