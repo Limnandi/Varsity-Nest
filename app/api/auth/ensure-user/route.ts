@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
       studentNumber,
       university
     } = body
+
+    console.log('ensure-user received:', { userId, fullName, providedFirstName, providedLastName, cellNumber, studentNumber, university })
+
     if (!userId || typeof userId !== 'string') {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
@@ -50,31 +53,26 @@ export async function POST(request: NextRequest) {
 
     // Role assignment logic:
     // - This endpoint is called from student registration page
-    // - If studentNumber and university are provided, it's a student registration → set role to 'student'
-    // - Otherwise, this shouldn't happen (ensure-user is only for students), but we'll preserve existing role
-    let role: 'student' | 'provider' | 'admin' | 'agent' = 'provider'
+    // - Always set role to 'student' since this endpoint is only for student registration
+    let role: 'student' | 'provider' | 'admin' | 'agent' = 'student'
     
-    if (studentNumber && university) {
-      // This is a student registration - validate domain and set role to student
-      const domainValidation = await DomainValidationService.isEmailWhitelisted(stackUser.primaryEmail)
-      if (!domainValidation.isValid) {
-        return NextResponse.json({ 
-          error: 'Email domain not whitelisted for student registration. Please use a valid university email address.' 
-        }, { status: 403 })
-      }
-      role = 'student'
-    } else {
-      // Not a student registration - this endpoint shouldn't be called for non-students
-      // But if it is, preserve existing role or check for admin
-      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
-      if (adminEmails.includes(stackUser.primaryEmail.toLowerCase())) {
-        role = 'admin'
-      } else {
-        // Preserve existing role if user exists, otherwise default to 'provider'
-        // This should rarely happen since ensure-user is only for students
-        role = 'provider'
-      }
+    // Validate that studentNumber and university are provided (required for students)
+    if (!studentNumber || !university) {
+      return NextResponse.json({ 
+        error: 'Student number and university are required for student registration.' 
+      }, { status: 400 })
     }
+
+    // Validate domain
+    const domainValidation = await DomainValidationService.isEmailWhitelisted(stackUser.primaryEmail)
+    console.log('Domain validation result:', domainValidation)
+    if (!domainValidation.isValid) {
+      return NextResponse.json({ 
+        error: 'Email domain not whitelisted for student registration. Please use a valid university email address.' 
+      }, { status: 403 })
+    }
+
+    console.log('Assigned role: student')
     
     // Determine names with precedence: explicit body -> fullName -> StackAuth fields -> displayName -> email local-part
     let firstName = (providedFirstName as string | undefined) || ''
