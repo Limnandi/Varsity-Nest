@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
       }
     } catch {}
 
-    // Redirect to email-verified (which will route to dashboard), honoring redirect param
-    const base = new URL('/auth/email-verified', request.url)
+    // Redirect to login with verified=true
+    const base = new URL('/auth/login?verified=true', request.url)
     if (redirectTo) base.searchParams.set('redirect_to', redirectTo)
     return NextResponse.redirect(base)
   } catch (error) {
