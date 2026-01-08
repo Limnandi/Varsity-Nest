@@ -81,6 +81,7 @@ export default function StudentRegistrationPage() {
       }
 
       // Validate email domain against whitelisted domains in database
+      let university: string | undefined
       try {
         const domainValidationResponse = await fetch('/api/auth/validate-domain', {
           method: 'POST',
@@ -99,7 +100,7 @@ export default function StudentRegistrationPage() {
         }
 
         // Use the university from database validation
-        const university = domainValidation.university
+        university = domainValidation.university
       } catch (error) {
         console.error('Domain validation failed:', error)
         setState({ error: 'Failed to validate email domain. Please try again.' })
