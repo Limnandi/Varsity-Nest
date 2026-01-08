@@ -120,7 +120,11 @@ export class StudentAuthService {
   // OTP functions removed in favor of StackAuth native flows
 
   static async registerStudent(email: string, name: string, password: string): Promise<StudentUser> {
-    const { university } = this.isEmailWhitelisted(email)
+    const whitelisted = this.isEmailWhitelisted(email)
+    if (!whitelisted.isValid) {
+      throw new Error('Email domain is not whitelisted. Only university email addresses are allowed for student registration.')
+    }
+    const { university } = whitelisted
 
     // Call secure registration API instead of localStorage
     try {
