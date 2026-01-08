@@ -32,7 +32,7 @@ export default function LoginPage() {
   // Redirect if user is already logged in
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      if (user) {
+      if (user && searchParams.get('verified') !== 'true') {
         try {
           // Fetch user role from session API
           const response = await fetch('/api/auth/session', { credentials: 'include' })
@@ -64,7 +64,7 @@ export default function LoginPage() {
       }
     }
     checkAuthAndRedirect()
-  }, [user, router])
+  }, [user, router, searchParams])
 
   // Check for URL parameters (verified, error, etc.)
   useEffect(() => {
