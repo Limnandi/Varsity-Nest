@@ -19,6 +19,15 @@ export class DomainValidationService {
         return { isValid: false, error: "Invalid email format" }
       }
 
+      // Reject common non-university domains
+      const commonDomains = ['@gmail.com', '@yahoo.com', '@hotmail.com', '@outlook.com', '@icloud.com']
+      if (commonDomains.includes(emailDomain.toLowerCase())) {
+        return { 
+          isValid: false, 
+          error: "Personal email domains are not allowed for student registration. Please use your university email address." 
+        }
+      }
+
       // Query database for active whitelisted domains
       const result = await query`SELECT university FROM whitelisted_domains WHERE domain = ${emailDomain} AND is_active = true LIMIT 1`
       
