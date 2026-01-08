@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       
       // Role assignment logic:
       // - If user exists with same role, reject duplicate registration
-      // - If user exists with temporary 'provider' role (set by webhook), allow update to actual role
+      // - If user exists with temporary 'student' role (set by webhook), allow update to actual role
       // - If user exists with 'student' role, allow change to agent/provider (edge case)
       // - If user exists with different non-temporary role, reject
       if (user && user.role === role) {
@@ -151,12 +151,12 @@ export async function POST(request: NextRequest) {
         }, { status: 409 }) // 409 Conflict
       }
       
-      // Allow role updates from temporary 'provider' role set by webhook
-      // Webhook sets temporary 'provider' role for all non-admin users
+      // Allow role updates from temporary 'student' role set by webhook
+      // Webhook sets temporary 'student' role for all non-admin users
       // Registration endpoint sets the correct role based on which registration page was used
-      const isTemporaryRole = user && user.role === 'provider' && (role === 'agent' || role === 'provider')
+      const isTemporaryRole = user && user.role === 'student' && (role === 'agent' || role === 'provider')
       const isStudentToAgentProvider = user && user.role === 'student' && (role === 'agent' || role === 'provider')
-      const isDifferentNonTemporaryRole = user && user.role !== role && user.role !== 'provider' && user.role !== 'admin'
+      const isDifferentNonTemporaryRole = user && user.role !== role && user.role !== 'student' && user.role !== 'admin'
       
       if (isTemporaryRole) {
         console.log(`Updating temporary 'provider' role to actual '${role}' for ${email} (ID: ${userId})`)
