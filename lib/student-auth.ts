@@ -190,7 +190,16 @@ export class StudentAuthService {
       // Call secure session API
       const response = await fetch('/api/auth/session')
       if (response.ok) {
-        const userSession = await response.json()
+        const userSession = await response.json();
+
+        // Check if the session has expired
+        const sessionExpiryTime = new Date(userSession.createdAt);
+        sessionExpiryTime.setHours(sessionExpiryTime.getHours() + 2); // Example: 2-hour session expiration
+
+        if (new Date() > sessionExpiryTime) {
+          throw new Error('Session has expired. Please log in again.');
+        }
+
         return {
           id: userSession.userId,
           email: userSession.email,
@@ -200,8 +209,7 @@ export class StudentAuthService {
           createdAt: userSession.createdAt,
           isBlocked: !userSession.isActive,
           blockedAt: userSession.isActive ? undefined : userSession.updatedAt,
-          blockedReason: userSession.isActive ? undefined : 'Account deactivated'
-        }
+        };
       }
       return null
     } catch (error) {
