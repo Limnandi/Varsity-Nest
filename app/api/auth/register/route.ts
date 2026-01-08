@@ -108,7 +108,35 @@ export async function POST(request: NextRequest) {
       
       const user = userById || userByEmail
       
-      const role = String(form.get('role') || 'provider')
+      const role = form.get('role');
+
+      // Ensure role is explicitly provided
+      if (!role) {
+        console.error('Role is missing in registration request.');
+        return NextResponse.json({
+          error: 'Role is required for registration.',
+          details: 'Please specify a valid role (e.g., student, agent, provider) during registration.'
+        }, { status: 400 }); // 400 Bad Request
+      }
+
+      // Ensure role is a string
+      if (typeof role !== 'string') {
+        console.error('Role must be a string.');
+        return NextResponse.json({
+          error: 'Invalid role.',
+          details: 'The role must be a valid string.'
+        }, { status: 400 }); // 400 Bad Request
+      }
+      
+      // Validate role
+      const validRoles = ['student', 'agent', 'provider'];
+      if (!validRoles.includes(role)) {
+        console.error(`Invalid role provided: ${role}`);
+        return NextResponse.json({
+          error: 'Invalid role.',
+          details: `The role '${role}' is not valid. Allowed roles are: ${validRoles.join(', ')}.`
+        }, { status: 400 }); // 400 Bad Request
+      }
       
       // Role assignment logic:
       // - If user exists with same role, reject duplicate registration
