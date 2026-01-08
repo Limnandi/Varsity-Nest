@@ -197,6 +197,19 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date()
           })
         
+        // Verify role was set correctly
+        const [verifiedUser] = await secureDb.db
+          .select({ role: schema.users.role })
+          .from(schema.users)
+          .where(eq(schema.users.id, userId))
+          .limit(1)
+
+        if (verifiedUser?.role !== role) {
+          console.error(`CRITICAL: Role mismatch! Expected: ${role}, Got: ${verifiedUser?.role}`)
+        } else {
+          console.log(`VERIFIED: Provider/Agent user created with correct role: ${role}`)
+        }
+
         console.log(`SUCCESS: User created in Neon with ID: ${userId}`)
       } else {
         // Update existing user to the specified role
@@ -213,6 +226,20 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date()
           })
           .where(eq(schema.users.id, userId))
+
+        // Verify role was updated correctly
+        const [verifiedUser] = await secureDb.db
+          .select({ role: schema.users.role })
+          .from(schema.users)
+          .where(eq(schema.users.id, userId))
+          .limit(1)
+
+        if (verifiedUser?.role !== role) {
+          console.error(`CRITICAL: Role update mismatch! Expected: ${role}, Got: ${verifiedUser?.role}`)
+        } else {
+          console.log(`VERIFIED: Provider/Agent user updated with correct role: ${role}`)
+        }
+
         console.log(`SUCCESS: User ${userId} updated to ${role} role`)
       }
 
@@ -318,10 +345,134 @@ export async function POST(request: NextRequest) {
           details: 'Role must be either "provider" or "agent"'
         }, { status: 400 })
       }
-    }
+    } else if (contentType.includes('application/json')) {
+      // Student registration (JSON body)
+      const body = await request.json()
+      const { email, firstName, lastName, password, role: jsonRole, university } = body
 
-    // Unsupported content type to avoid server-side StackAuth sign-up
-    return NextResponse.json({ error: 'Unsupported content type' }, { status: 415 })
+      if (!email || !firstName || !password || !jsonRole) {
+        return NextResponse.json({
+          error: 'Missing required fields',
+          details: 'Email, firstName, password, and role are required.'
+        }, { status: 400 })
+      }
+
+      const role = jsonRole
+
+      // Ensure role is a string
+      if (typeof role !== 'string') {
+        console.error('Role must be a string.');
+        return NextResponse.json({
+          error: 'Invalid role.',
+          details: 'The role must be a valid string.'
+        }, { status: 400 }); // 400 Bad Request
+      }
+
+      // Validate role
+      const validRoles = ['student', 'agent', 'provider'];
+      if (!validRoles.includes(role)) {
+        console.error(`Invalid role provided: ${role}`);
+        return NextResponse.json({
+          error: 'Invalid role.',
+          details: `The role '${role}' is not valid. Allowed roles are: ${validRoles.join(', ')}.`
+        }, { status: 400 }); // 400 Bad Request
+      }
+
+      // For student registration, create user in StackAuth first
+      const app = getStackServerApp()
+      const signUpResult = await app.signUpWithCredential({
+        email,
+        password,
+      })
+
+      if (signUpResult.status !== 'ok') {
+        console.error('Error creating StackAuth user:', signUpResult.error)
+        return NextResponse.json({
+          error: 'Registration failed',
+          details: signUpResult.error.message || 'Could not create user account.'
+        }, { status: 400 })
+      }
+
+      const stackUser = signUpResult.data as any // Assuming data is the user object
+      console.log(`Student registration - Created StackAuth user: ${stackUser.id} (${email})`)
+
+      const userId = stackUser.id
+
+      // Check if user exists in DB (shouldn't, but check)
+      const [userById] = await secureDb.db
+        .select({
+          id: schema.users.id,
+          email: schema.users.email,
+          role: schema.users.role,
+          isActive: schema.users.isActive
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, userId))
+        .limit(1)
+
+      if (userById) {
+        console.warn(`User ${userId} already exists in DB`)
+        return NextResponse.json({
+          error: 'User already exists',
+          details: 'This user is already registered.'
+        }, { status: 409 })
+      }
+
+      // Create user in DB
+      await secureDb.db
+        .insert(schema.users)
+        .values({
+          id: userId,
+          email: email,
+          password: 'stackauth',
+          firstName: firstName,
+          lastName: lastName,
+          phone: null,
+          studentNumber: null,
+          institution: university || null,
+          role: role,
+          isActive: true,
+          emailVerified: stackUser.primaryEmailVerified || false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+
+      // Verify role was set correctly
+      const [verifiedUser] = await secureDb.db
+        .select({ role: schema.users.role })
+        .from(schema.users)
+        .where(eq(schema.users.id, userId))
+        .limit(1)
+
+      if (verifiedUser?.role !== role) {
+        console.error(`CRITICAL: Role mismatch! Expected: ${role}, Got: ${verifiedUser?.role}`)
+        // Optionally, you could throw an error or correct it here
+      } else {
+        console.log(`VERIFIED: Student user created with correct role: ${role}`)
+      }
+
+      console.log(`Student user created successfully with role: ${role}`)
+
+      return NextResponse.json({
+        success: true,
+        message: "Student registered successfully",
+        user: {
+          id: userId,
+          email: email,
+          firstName: firstName,
+          lastName: lastName,
+          role: role,
+          isActive: true,
+          emailVerified: stackUser.primaryEmailVerified || false,
+        }
+      })
+    } else {
+      // Unsupported content type
+      return NextResponse.json({
+        error: 'Unsupported content type',
+        details: 'Only multipart/form-data and application/json are supported.'
+      }, { status: 400 })
+    }
 
   } catch (error) {
     console.error("=== Registration Error Caught ===")
