@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
         try {
           // Role assignment logic:
           // - Only set 'admin' if email is in admin list
-          // - For all others, set temporary 'provider' role (required field)
+          // - For all others, set temporary 'student' role (required field)
           // - Registration endpoints (/api/auth/register or /api/auth/ensure-user) will set the correct role
           //   based on which registration page was used (agent, provider, or student)
-          let role: 'admin' | 'provider' | 'student' | 'agent' = 'provider'
+          let role: 'admin' | 'provider' | 'student' | 'agent' = 'student'
           
           // Check if it's an admin email
           const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
             console.log(` Admin user created: ${primaryEmail}`)
           } else {
             // Temporary role - will be overridden by registration endpoint based on which page was used
-            role = 'provider'
+            role = 'student'
             console.log(` User created (temporary role, will be set by registration endpoint): ${primaryEmail}`)
           }
           
