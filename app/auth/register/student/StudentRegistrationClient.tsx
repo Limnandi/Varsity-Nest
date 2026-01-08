@@ -81,24 +81,31 @@ export default function StudentRegistrationPage() {
       }
 
       // Validate email domain against whitelisted domains in database
-      const domainValidationResponse = await fetch('/api/auth/validate-domain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-
-      const domainValidation = await domainValidationResponse.json()
-
-      if (!domainValidation.isValid) {
-        setState({ 
-          error: domainValidation.error || 'Please use your university email address.' 
+      try {
+        const domainValidationResponse = await fetch('/api/auth/validate-domain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
         })
+
+        const domainValidation = await domainValidationResponse.json()
+
+        if (!domainValidation.isValid) {
+          setState({ 
+            error: domainValidation.error || 'Please use your university email address.' 
+          })
+          setIsPending(false)
+          return
+        }
+
+        // Use the university from database validation
+        const university = domainValidation.university
+      } catch (error) {
+        console.error('Domain validation failed:', error)
+        setState({ error: 'Failed to validate email domain. Please try again.' })
         setIsPending(false)
         return
       }
-
-      // Use the university from database validation
-      const university = domainValidation.university
 
       const callbackBase = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       
