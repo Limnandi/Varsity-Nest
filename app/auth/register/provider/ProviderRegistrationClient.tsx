@@ -161,6 +161,7 @@ export default function ProviderRegistrationPage() {
       payload.set('lastName', lastName)
       payload.set('phone', phone)
       payload.set('institution', institution)
+      payload.set('role', 'provider')
       if (referralCode) payload.set('referralCode', referralCode)
 
       const resp = await fetch('/api/auth/register', {
