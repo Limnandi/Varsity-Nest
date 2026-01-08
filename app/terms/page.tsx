@@ -2,7 +2,20 @@ import { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Varsity Nest',
-  description: 'Terms of Service for Varsity Nest - Accomodation listing platform',
+  description: 'Terms of Service for Varsity Nest - Accommodation listing platform',
+  alternates: { canonical: 'https://varsitynest.space/terms' },
+  openGraph: {
+    title: 'Terms of Service | Varsity Nest',
+    description: 'Terms of Service for Varsity Nest - Accommodation listing platform',
+    url: 'https://varsitynest.space/terms',
+    siteName: 'Varsity Nest',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Terms of Service | Varsity Nest',
+    description: 'Terms of Service for Varsity Nest - Accommodation listing platform',
+  },
 }
 
 // Terms of Service page.

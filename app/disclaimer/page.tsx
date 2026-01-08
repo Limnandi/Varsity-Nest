@@ -3,6 +3,19 @@ import { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Disclaimer | Varsity Nest',
   description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
+  alternates: { canonical: 'https://varsitynest.space/disclaimer' },
+  openGraph: {
+    title: 'Disclaimer | Varsity Nest',
+    description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
+    url: 'https://varsitynest.space/disclaimer',
+    siteName: 'Varsity Nest',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Disclaimer | Varsity Nest',
+    description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
+  },
 }
 
 // Disclaimer page with comprehensive legal protections

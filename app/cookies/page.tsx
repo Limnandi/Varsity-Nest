@@ -3,6 +3,19 @@ import { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Cookies Policy | Varsity Nest',
   description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
+  alternates: { canonical: 'https://varsitynest.space/cookies' },
+  openGraph: {
+    title: 'Cookies Policy | Varsity Nest',
+    description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
+    url: 'https://varsitynest.space/cookies',
+    siteName: 'Varsity Nest',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Cookies Policy | Varsity Nest',
+    description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
+  },
 }
 
 // Cookies Policy page explaining cookie usage and tracking technologies

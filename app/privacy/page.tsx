@@ -3,6 +3,19 @@ import { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Privacy Policy | Varsity Nest',
   description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
+  alternates: { canonical: 'https://varsitynest.space/privacy' },
+  openGraph: {
+    title: 'Privacy Policy | Varsity Nest',
+    description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
+    url: 'https://varsitynest.space/privacy',
+    siteName: 'Varsity Nest',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Privacy Policy | Varsity Nest',
+    description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
+  },
 }
 
 // Privacy Policy page with comprehensive data protection terms and GDPR compliance
