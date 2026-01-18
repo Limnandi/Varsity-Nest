@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ApiErrorResponseBuilder } from "@/lib/api-error-response"
-import { query } from "@/lib/database"
 import { redis } from "@/lib/redis"
 import { getStackServerApp } from "@/lib/stack"
 import { secureDb } from "@/lib/database-secure"
