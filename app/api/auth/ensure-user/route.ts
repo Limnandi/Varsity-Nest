@@ -4,6 +4,7 @@ import * as schema from "@/lib/schema"
 import { eq, and, ne } from "drizzle-orm"
 import { getStackServerApp } from "@/lib/stack"
 import { DomainValidationService } from "@/lib/domain-validation"
+import { randomUUID } from "crypto"
 
 function splitFullName(fullName?: string): { firstName: string; lastName: string } {
   const safe = (fullName || '').trim().replace(/\s+/g, ' ')
@@ -57,9 +58,16 @@ export async function POST(request: NextRequest) {
     let role: 'student' | 'provider' | 'admin' | 'agent' = 'student'
     
     // Validate that studentNumber and university are provided (required for students)
-    if (!studentNumber || !university) {
+    if (!studentNumber) {
       return NextResponse.json({ 
-        error: 'Student number and university are required for student registration.' 
+        error: 'Student number is required for student registration.' 
+      }, { status: 400 })
+    }
+    
+    if (!university) {
+      console.error('ensure-user: University is missing from request body', { userId, studentNumber, university })
+      return NextResponse.json({ 
+        error: 'University is required for student registration. Please ensure your email domain is whitelisted.' 
       }, { status: 400 })
     }
 
@@ -119,44 +127,164 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       // If user exists, preserve admin role, otherwise update to determined role
-      // This handles temporary 'provider' role set by webhook → update to 'student'
+      // This endpoint is specifically for student registration, so always set role to 'student'
+      // unless the user is already an admin (admin role takes precedence)
       const finalRole = existingUser.role === 'admin' ? 'admin' : role
       
-      await secureDb.db
-        .update(schema.users)
-        .set({
-          email: stackUser.primaryEmail,
-          firstName: firstName,
-          lastName: lastName,
-          role: finalRole as any,
-          phone: cellNumber,
-          studentNumber: finalRole === 'student' ? studentNumber : null,
-          institution: finalRole === 'student' ? university : null,
-          updatedAt: new Date(),
-        })
+      // Log role change if it's different from current role
+      if (existingUser.role !== finalRole && existingUser.role !== 'admin') {
+        console.log(`ensure-user: Updating role from '${existingUser.role}' to '${finalRole}' for user ${stackUser.id}`)
+      } else {
+        console.log(`ensure-user: User ${stackUser.id} exists with role '${existingUser.role}', final role will be '${finalRole}'`)
+      }
+      
+      try {
+        await secureDb.db
+          .update(schema.users)
+          .set({
+            email: stackUser.primaryEmail,
+            firstName: firstName,
+            lastName: lastName,
+            role: finalRole as any,
+            phone: cellNumber,
+            studentNumber: finalRole === 'student' ? studentNumber : null,
+            institution: finalRole === 'student' ? university : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.users.id, stackUser.id))
+        
+        console.log(`ensure-user: User update completed for ${stackUser.id}`)
+      } catch (updateError) {
+        console.error(`ensure-user: Failed to update user ${stackUser.id}:`, updateError)
+        throw updateError
+      }
+      
+      // Verify role was set correctly
+      const [verifiedUser] = await secureDb.db
+        .select({ role: schema.users.role, email: schema.users.email })
+        .from(schema.users)
         .where(eq(schema.users.id, stackUser.id))
+        .limit(1)
+      
+      if (!verifiedUser) {
+        console.error(`CRITICAL: User ${stackUser.id} was not found in database after update!`)
+      } else if (verifiedUser.role !== finalRole) {
+        console.error(`CRITICAL: Role mismatch in ensure-user! Expected: ${finalRole}, Got: ${verifiedUser?.role}`)
+      } else {
+        console.log(`VERIFIED: Student user role set correctly: ${finalRole}, email: ${verifiedUser.email}`)
+      }
     } else {
-      await secureDb.db
-        .insert(schema.users)
-        .values({
-          id: stackUser.id,
-          email: stackUser.primaryEmail,
-          password: 'stackauth',
-          firstName: firstName,
-          lastName: lastName,
-          role: role as any,
-          phone: cellNumber,
-          studentNumber: role === 'student' ? studentNumber : null,
-          institution: role === 'student' ? university : null,
-          emailVerified: !!stackUser.primaryEmailVerified,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+      console.log(`ensure-user: Creating new user in database with ID: ${stackUser.id}, email: ${stackUser.primaryEmail}, role: ${role}`)
+      
+      try {
+        const [insertedUser] = await secureDb.db
+          .insert(schema.users)
+          .values({
+            id: stackUser.id,
+            email: stackUser.primaryEmail,
+            password: 'stackauth',
+            firstName: firstName,
+            lastName: lastName,
+            role: role as any,
+            phone: cellNumber,
+            studentNumber: role === 'student' ? studentNumber : null,
+            institution: role === 'student' ? university : null,
+            emailVerified: !!stackUser.primaryEmailVerified,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning()
+        
+        if (!insertedUser) {
+          throw new Error('User insert returned no data - insert may have failed')
+        }
+        
+        console.log(`ensure-user: User insert completed for ${stackUser.id}, inserted user:`, {
+          id: insertedUser.id,
+          email: insertedUser.email,
+          role: insertedUser.role
         })
+      } catch (insertError: any) {
+        console.error(`ensure-user: Failed to insert user ${stackUser.id}:`, insertError)
+        console.error(`ensure-user: Error details:`, {
+          code: insertError?.code,
+          message: insertError?.message,
+          detail: insertError?.detail,
+          constraint: insertError?.constraint
+        })
+        
+        // If it's a duplicate key error, the user might have been created by webhook
+        if (insertError?.code === '23505' || insertError?.message?.includes('duplicate') || insertError?.message?.includes('unique') || insertError?.constraint) {
+          console.log(`ensure-user: User ${stackUser.id} already exists (likely created by webhook), updating instead`)
+          // User was created by webhook, update it instead
+          const finalRole = role
+          const [updatedUser] = await secureDb.db
+            .update(schema.users)
+            .set({
+              email: stackUser.primaryEmail,
+              firstName: firstName,
+              lastName: lastName,
+              role: finalRole as any,
+              phone: cellNumber,
+              studentNumber: finalRole === 'student' ? studentNumber : null,
+              institution: finalRole === 'student' ? university : null,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.users.id, stackUser.id))
+            .returning()
+          
+          if (!updatedUser) {
+            throw new Error(`Failed to update user ${stackUser.id} - user may not exist in database`)
+          }
+          
+          console.log(`ensure-user: User updated successfully:`, {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            role: updatedUser.role
+          })
+        } else {
+          // Re-throw the error so it's properly handled
+          throw insertError
+        }
+      }
+      
+      // Verify role was set correctly
+      const [verifiedUser] = await secureDb.db
+        .select({ role: schema.users.role, email: schema.users.email })
+        .from(schema.users)
+        .where(eq(schema.users.id, stackUser.id))
+        .limit(1)
+      
+      if (!verifiedUser) {
+        console.error(`CRITICAL: User ${stackUser.id} was not found in database after insert/update!`)
+      } else if (verifiedUser.role !== role) {
+        console.error(`CRITICAL: Role mismatch in ensure-user insert! Expected: ${role}, Got: ${verifiedUser?.role}`)
+      } else {
+        console.log(`VERIFIED: Student user created with correct role: ${role}, email: ${verifiedUser.email}`)
+      }
     }
 
     // Create student record if role is student
+    // IMPORTANT: Only create student record if user exists in users table
     if (role === 'student') {
+      // Verify user exists before creating student record
+      const [userCheck] = await secureDb.db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.id, stackUser.id))
+        .limit(1)
+      
+      if (!userCheck) {
+        console.error(`CRITICAL: Cannot create student record - user ${stackUser.id} does not exist in users table!`)
+        return NextResponse.json({ 
+          error: 'User was not created in database',
+          details: 'Failed to create user record. Student record cannot be created without a user record.'
+        }, { status: 500 })
+      }
+      
+      console.log(`ensure-user: User ${stackUser.id} confirmed in database, proceeding with student record creation`)
+      
       const existingStudent = await secureDb.db
         .select({ 
           id: schema.students.id,
@@ -185,16 +313,40 @@ export async function POST(request: NextRequest) {
           // Don't insert if it would violate unique constraint
           // The user record is already created, so we'll just skip the student record
         } else {
-        await secureDb.db
-          .insert(schema.students)
-          .values({
-            id: crypto.randomUUID(),
-            userId: stackUser.id,
-            studentNumber: studentNumber,
-            university: university as 'UFS' | 'CUT',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
+          try {
+            const [insertedStudent] = await secureDb.db
+              .insert(schema.students)
+              .values({
+                id: randomUUID(),
+                userId: stackUser.id,
+                studentNumber: studentNumber,
+                university: university as 'UFS' | 'CUT',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .returning()
+            
+            if (!insertedStudent) {
+              console.error(`CRITICAL: Student record insert returned no data for user ${stackUser.id}`)
+            } else {
+              console.log(`ensure-user: Student record created successfully:`, {
+                id: insertedStudent.id,
+                userId: insertedStudent.userId,
+                studentNumber: insertedStudent.studentNumber,
+                university: insertedStudent.university
+              })
+            }
+          } catch (studentInsertError: any) {
+            console.error(`ensure-user: Failed to insert student record for user ${stackUser.id}:`, studentInsertError)
+            console.error(`ensure-user: Student insert error details:`, {
+              code: studentInsertError?.code,
+              message: studentInsertError?.message,
+              detail: studentInsertError?.detail,
+              constraint: studentInsertError?.constraint
+            })
+            // Don't throw - user record is more important than student record
+            // Student record can be created later if needed
+          }
         }
       } else {
         const currentStudent = existingStudent[0]
@@ -250,10 +402,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true })
+    // Final verification - check that user exists in database with correct role
+    const [finalCheck] = await secureDb.db
+      .select({ 
+        id: schema.users.id, 
+        email: schema.users.email, 
+        role: schema.users.role,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, stackUser.id))
+      .limit(1)
+    
+    if (!finalCheck) {
+      console.error(`CRITICAL: User ${stackUser.id} does not exist in database after ensure-user completion!`)
+      return NextResponse.json({ 
+        error: 'User was not created in database',
+        details: 'Please try again or contact support'
+      }, { status: 500 })
+    }
+    
+    if (finalCheck.role !== role) {
+      console.error(`CRITICAL: Final check - User ${stackUser.id} has wrong role! Expected: ${role}, Got: ${finalCheck.role}`)
+      return NextResponse.json({ 
+        error: 'Role was not set correctly',
+        details: `Expected role: ${role}, but got: ${finalCheck.role}. Please contact support.`
+      }, { status: 500 })
+    }
+    
+    console.log(`ensure-user: SUCCESS - User ${stackUser.id} (${finalCheck.email}) created/updated with role '${finalCheck.role}'`)
+    
+    return NextResponse.json({ 
+      success: true,
+      user: {
+        id: finalCheck.id,
+        email: finalCheck.email,
+        role: finalCheck.role,
+        firstName: finalCheck.firstName,
+        lastName: finalCheck.lastName
+      }
+    })
   } catch (error) {
     console.error('ensure-user error', error)
-    return NextResponse.json({ error: 'Failed to ensure user in database' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to ensure user in database',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

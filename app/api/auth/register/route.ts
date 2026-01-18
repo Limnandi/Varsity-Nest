@@ -411,44 +411,73 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       if (userById) {
-        console.warn(`User ${userId} already exists in DB`)
-        return NextResponse.json({
-          error: 'User already exists',
-          details: 'This user is already registered.'
-        }, { status: 409 })
-      }
-
-      // Create user in DB
-      await secureDb.db
-        .insert(schema.users)
-        .values({
-          id: userId,
-          email: email,
-          password: 'stackauth',
-          firstName: firstName,
-          lastName: lastName,
-          phone: null,
-          studentNumber: null,
-          institution: university || null,
-          role: role,
-          isActive: true,
-          emailVerified: stackUser.primaryEmailVerified || false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-
-      // Verify role was set correctly
-      const [verifiedUser] = await secureDb.db
-        .select({ role: schema.users.role })
-        .from(schema.users)
-        .where(eq(schema.users.id, userId))
-        .limit(1)
-
-      if (verifiedUser?.role !== role) {
-        console.error(`CRITICAL: Role mismatch! Expected: ${role}, Got: ${verifiedUser?.role}`)
-        // Optionally, you could throw an error or correct it here
+        // User exists - check if role needs to be updated
+        // This can happen if webhook created user before this endpoint ran
+        if (userById.role !== role && userById.role !== 'admin') {
+          console.log(`User ${userId} exists with role '${userById.role}', updating to '${role}'`)
+          await secureDb.db
+            .update(schema.users)
+            .set({
+              role: role as any,
+              firstName: firstName,
+              lastName: lastName,
+              institution: university || null,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.users.id, userId))
+        } else if (userById.role === role) {
+          console.log(`User ${userId} already exists with correct role '${role}'`)
+          return NextResponse.json({
+            error: 'User already exists',
+            details: 'This user is already registered.'
+          }, { status: 409 })
+        } else {
+          // User is admin, don't change role
+          console.log(`User ${userId} is admin, preserving admin role`)
+          return NextResponse.json({
+            error: 'User already exists',
+            details: 'This user is already registered.'
+          }, { status: 409 })
+        }
       } else {
-        console.log(`VERIFIED: Student user created with correct role: ${role}`)
+
+        // Create user in DB
+        await secureDb.db
+          .insert(schema.users)
+          .values({
+            id: userId,
+            email: email,
+            password: 'stackauth',
+            firstName: firstName,
+            lastName: lastName,
+            phone: null,
+            studentNumber: null,
+            institution: university || null,
+            role: role,
+            isActive: true,
+            emailVerified: stackUser.primaryEmailVerified || false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+
+        // Verify role was set correctly
+        const [verifiedUser] = await secureDb.db
+          .select({ role: schema.users.role })
+          .from(schema.users)
+          .where(eq(schema.users.id, userId))
+          .limit(1)
+
+        if (verifiedUser?.role !== role) {
+          console.error(`CRITICAL: Role mismatch! Expected: ${role}, Got: ${verifiedUser?.role}`)
+          // Correct the role if it's wrong
+          await secureDb.db
+            .update(schema.users)
+            .set({ role: role as any, updatedAt: new Date() })
+            .where(eq(schema.users.id, userId))
+          console.log(`CORRECTED: Role fixed to '${role}' for user ${userId}`)
+        } else {
+          console.log(`VERIFIED: Student user created with correct role: ${role}`)
+        }
       }
 
       console.log(`Student user created successfully with role: ${role}`)
