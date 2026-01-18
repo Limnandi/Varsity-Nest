@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
-//import { OAuthButton } from "@stackframe/stack" //Temporal disable - SSO disabled
+import { OAuthButton } from "@stackframe/stack" 
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
@@ -358,21 +358,19 @@ export default function LoginPage() {
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
           </button>
 
-          {/* OAuth Button */}
-          {/* Disable for now
-          <div className="flex items-center justify-between">
-            
-            <div className="group relative w-full">
-              <div className="!w-full !px-6 !py-3 !bg-black/20 !text-white !border !border-white/20 !rounded-xl !font-medium !shadow-lg !hover:bg-white/5 !hover:shadow-blue-500/20 !transition-all !duration-300 !hover:scale-105 !active:scale-95 !flex !items-center !justify-center !space-x-3 !backdrop-blur-xl">
-                <OAuthButton 
-                  provider="google" 
-                  type="sign-in"
-                />
-              </div>
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-            </div>
+          {/* OAuth Buttons */}
+          
+          <div className="flex items-center justify-center space-x-4 mt-4">
+            <OAuthButton 
+              provider="google" 
+              type="sign-in"
+            />
+            <OAuthButton 
+              provider="microsoft" 
+              type="sign-in"
+            />
           </div>
-          */}
+          
           {/* Forgot Password Link */}
           <div className="flex justify-end pt-2">
             <button
