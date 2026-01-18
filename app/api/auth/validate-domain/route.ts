@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
 
     // Only validate domain whitelisting for students
     // Agents and providers can use any email domain
-    if (role === 'student') {
+    // Default to student validation if role is not provided (for backward compatibility)
+    if (role === 'student' || !role) {
       // Check if email domain is whitelisted in database
       const validationResult = await DomainValidationService.isEmailWhitelisted(email)
       return NextResponse.json(validationResult)

@@ -86,7 +86,7 @@ export default function StudentRegistrationPage() {
         const domainValidationResponse = await fetch('/api/auth/validate-domain', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ email, role: 'student' })
         })
 
         const domainValidation = await domainValidationResponse.json()
@@ -101,6 +101,15 @@ export default function StudentRegistrationPage() {
 
         // Use the university from database validation
         university = domainValidation.university
+        
+        // Ensure university is set - it's required for student registration
+        if (!university) {
+          setState({ 
+            error: 'University could not be determined from email domain. Please contact support.' 
+          })
+          setIsPending(false)
+          return
+        }
       } catch (error) {
         console.error('Domain validation failed:', error)
         setState({ error: 'Failed to validate email domain. Please try again.' })
