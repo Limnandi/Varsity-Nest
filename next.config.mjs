@@ -40,6 +40,15 @@ const nextConfig = {
     ],
     unoptimized: false,
   },
+  // ADD THIS SECTION BELOW
+  async rewrites() {
+    return [
+      {
+        source: '/.well-known/microsoft-identity-association',
+        destination: '/.well-known/microsoft-identity-association.json',
+      },
+    ];
+  },
   async headers() {
     return [
       {
