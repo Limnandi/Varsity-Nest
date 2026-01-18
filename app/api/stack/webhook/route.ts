@@ -93,24 +93,35 @@ export async function POST(request: NextRequest) {
           
           // Check if user exists by ID
           const [existingById] = await secureDb.db
-            .select({ id: schema.users.id })
+            .select({ id: schema.users.id, role: schema.users.role })
             .from(schema.users)
             .where(eq(schema.users.id, id))
             .limit(1)
           
           if (existingById) {
-            // Update existing user
+            // Update existing user, but preserve role if it's already set correctly
+            // Only update role if it's still the temporary 'student' role (set by webhook initially)
+            // or if user is admin (admin role takes precedence)
+            // Registration endpoints will set the correct role based on registration flow
+            const currentRole = existingById.role || null
+            // Only update role if:
+            // 1. Current role is the temporary 'student' role (will be overridden by registration endpoint)
+            // 2. New role is 'admin' (admin takes precedence)
+            // Otherwise, preserve the existing role set by registration endpoint
+            const shouldUpdateRole = currentRole === 'student' || role === 'admin'
+            const finalRole = shouldUpdateRole ? role : currentRole
+            
             await secureDb.db
               .update(schema.users)
               .set({
                 email: primaryEmail,
                 firstName: firstName || '',
                 lastName: lastName || '',
-                role: role as any,
+                role: finalRole as any,
                 updatedAt: new Date()
               })
               .where(eq(schema.users.id, id))
-            console.log(` User updated in database: ${id} (${primaryEmail})`)
+            console.log(` User updated in database: ${id} (${primaryEmail}), role preserved: ${finalRole}`)
           } else {
             // Insert new user
             await secureDb.db
@@ -140,20 +151,35 @@ export async function POST(request: NextRequest) {
         break
       }
       case 'user.verified': {
-        const { id, primaryEmail } = event.data || {}
+        const { id, primaryEmail, primaryEmailVerified } = event.data || {}
         if (id && primaryEmail) {
           try {
-            await secureDb.db
+            console.log(` Webhook: user.verified event received for ${id} (${primaryEmail}), primaryEmailVerified: ${primaryEmailVerified}`)
+            
+            const [updatedUser] = await secureDb.db
               .update(schema.users)
               .set({ 
                 emailVerified: true, 
                 updatedAt: new Date() 
               })
               .where(eq(schema.users.id, id))
-            console.log(` User email verified: ${id} (${primaryEmail})`)
+              .returning({ id: schema.users.id, emailVerified: schema.users.emailVerified })
+            
+            if (updatedUser) {
+              console.log(` Webhook: User email verified successfully: ${id} (${primaryEmail}), emailVerified: ${updatedUser.emailVerified}`)
+            } else {
+              console.warn(` Webhook: User ${id} not found in database when trying to update email verification`)
+            }
           } catch (error) {
-            console.error(' Failed to update email verification:', error)
+            console.error(' Webhook: Failed to update email verification:', error)
+            console.error(' Webhook: Error details:', {
+              code: (error as any)?.code,
+              message: (error as any)?.message,
+              detail: (error as any)?.detail
+            })
           }
+        } else {
+          console.error(' Webhook: user.verified event missing id or primaryEmail:', { id, primaryEmail })
         }
         break
       }
@@ -173,24 +199,36 @@ export async function POST(request: NextRequest) {
             
             // Check if email verification status changed
             if (primaryEmailVerified === true) {
-              await secureDb.db
+              console.log(` Webhook: user.updated event - email verification changed to true for ${id} (${primaryEmail})`)
+              
+              const [updatedUser] = await secureDb.db
                 .update(schema.users)
                 .set({ 
                   emailVerified: true, 
                   updatedAt: new Date() 
                 })
                 .where(eq(schema.users.id, id))
+                .returning({ id: schema.users.id, emailVerified: schema.users.emailVerified })
               
-              // Log the verification event
-              await secureDb.db
-                .insert(schema.adminActivities)
-                .values({
-                  activityType: 'email_verification_webhook',
-                  message: `User ${primaryEmail} verified their email address via webhook`,
-                  adminId: id
-                })
-              
-              console.log(`User email verified via webhook: ${id} (${primaryEmail})`)
+              if (updatedUser) {
+                console.log(` Webhook: User email verified via user.updated event: ${id} (${primaryEmail}), emailVerified: ${updatedUser.emailVerified}`)
+                
+                // Log the verification event
+                try {
+                  await secureDb.db
+                    .insert(schema.adminActivities)
+                    .values({
+                      activityType: 'email_verification_webhook',
+                      message: `User ${primaryEmail} verified their email address via webhook`,
+                      adminId: id
+                    })
+                } catch (activityError) {
+                  console.warn(' Webhook: Failed to log admin activity for email verification:', activityError)
+                  // Don't fail if activity logging fails
+                }
+              } else {
+                console.warn(` Webhook: User ${id} not found in database when trying to update email verification via user.updated event`)
+              }
             }
             
             console.log(`User updated: ${id} (${primaryEmail})`)
