@@ -262,6 +262,9 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
     
     const user = userResult.rows[0]
     
+    // Get email verification status from StackAuth (source of truth)
+    const emailVerified = !!stackUser.primaryEmailVerified
+    
     return {
       id: user.id,
       email: user.email,
@@ -272,7 +275,7 @@ export async function getCurrentUserFromStackAuth(): Promise<SecureUser | null> 
       studentNumber: user.student_number,
       institution: user.institution,
       isActive: user.is_active,
-      emailVerified: user.email_verified,
+      emailVerified: emailVerified,
       createdAt: new Date(user.created_at),
       updatedAt: new Date(user.updated_at),
       university: user.university,

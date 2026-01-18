@@ -15,6 +15,7 @@ export default function VerifyPage() {
     const verifyEmail = async () => {
       const code = searchParams?.get('code')
       const token = searchParams?.get('token')
+      const userId = searchParams?.get('userId')
       const redirectTo = searchParams?.get('redirect_to')
 
       if (!code) {
@@ -27,7 +28,7 @@ export default function VerifyPage() {
         const response = await fetch('/api/auth/verify-email-native', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, token })
+          body: JSON.stringify({ code, token, userId })
         })
 
         const data = await response.json()

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/database"
 import { createSecureSession } from "@/lib/auth-server"
+import { getStackServerApp } from "@/lib/stack"
 import bcrypt from "bcryptjs"
 
 export async function POST(request: NextRequest) {
@@ -50,8 +51,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if email is verified
-    if (!userData.email_verified) {
+    // Check if email is verified in StackAuth (source of truth)
+    let emailVerified = false
+    try {
+      const stackApp = getStackServerApp()
+      const stackUser = await stackApp.getUser(userData.id)
+      emailVerified = !!stackUser?.primaryEmailVerified
+    } catch (stackError) {
+      console.error('secure-login: Failed to check StackAuth email verification:', stackError)
+      // If StackAuth check fails, fallback to database value
+      emailVerified = userData.email_verified
+    }
+
+    if (!emailVerified) {
       return NextResponse.json(
         { error: "Please verify your email before signing in" },
         { status: 403 }
@@ -69,7 +81,7 @@ export async function POST(request: NextRequest) {
       studentNumber: userData.student_number,
       institution: userData.institution,
       isActive: userData.is_active,
-      emailVerified: userData.email_verified,
+      emailVerified: emailVerified,
       createdAt: new Date(userData.created_at),
       updatedAt: new Date(userData.updated_at),
       university: userData.university,
@@ -94,7 +106,7 @@ export async function POST(request: NextRequest) {
         studentNumber: user.studentNumber,
         institution: user.institution,
         isActive: user.isActive,
-        emailVerified: user.emailVerified,
+        emailVerified: emailVerified,
         university: user.university,
         yearOfStudy: user.yearOfStudy,
         course: user.course,
