@@ -360,7 +360,7 @@ export default function LoginPage() {
 
           {/* OAuth Buttons */}
           
-          <div className="flex items-center justify-center space-x-4 mt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-4">
             <OAuthButton 
               provider="google" 
               type="sign-in"
