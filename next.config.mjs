@@ -40,17 +40,23 @@ const nextConfig = {
     ],
     unoptimized: false,
   },
-  // ADD THIS SECTION BELOW
-  async rewrites() {
-    return [
-      {
-        source: '/.well-known/microsoft-identity-association',
-        destination: '/.well-known/microsoft-identity-association.json',
-      },
-    ];
-  },
+ 
   async headers() {
     return [
+
+      {
+        source: '/.well-known/microsoft-identity-association',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-store',
+          },
+        ],
+      },
       {
         source: '/api/:path*',
         headers: [
