@@ -41,7 +41,7 @@ export class DomainValidationService {
 
       return { 
         isValid: false, 
-        error: "Email domain not whitelisted for student registration" 
+        error: "Email domain not whitelisted for student registration. Please use your student email address or contact support if facing any issues." 
       }
     } catch (error) {
       console.error("Domain validation error:", error)
