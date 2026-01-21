@@ -11,6 +11,7 @@ import Paystack from "@paystack/paystack-sdk"
 import { env } from "@/lib/env"
 import { captureException } from "@/lib/logging/config"
 import { convertToKobo } from "@/lib/paystack"
+import { GlobalErrorHandler } from "@/lib/error-handler"
 
 /**
  * Initialize Paystack client
@@ -18,6 +19,52 @@ import { convertToKobo } from "@/lib/paystack"
 const paystack = new Paystack(env.PAYSTACK_SECRET_KEY, {
   hostname: env.NODE_ENV === "production" ? "api.paystack.co" : "api.paystack.co" // Paystack uses same API for test/live, controlled by secret key
 })
+
+/**
+ * Check if an error is a rate limit error (429)
+ */
+function isRateLimitError(error: any): boolean {
+  if (error?.status === 429) return true
+  if (error?.response?.status === 429) return true
+  if (error?.code === '429') return true
+  if (error?.message?.includes('429')) return true
+  if (error?.message?.includes('Too Many Requests')) return true
+  return false
+}
+
+/**
+ * Execute a Paystack API call with retry logic for rate limits
+ */
+async function executeWithRetry<T>(
+  fn: () => Promise<T>,
+  context: Record<string, any> = {}
+): Promise<T> {
+  return GlobalErrorHandler.withRetry(
+    async () => {
+      try {
+        return await fn()
+      } catch (error) {
+        // Check if this is a rate limit error
+        if (isRateLimitError(error)) {
+          captureException(error instanceof Error ? error : new Error(String(error)), {
+            component: "paystack-api-client",
+            action: "rate_limit_detected",
+            ...context
+          })
+          throw error // Re-throw to trigger retry
+        }
+        // For non-rate-limit errors, don't retry
+        throw error
+      }
+    },
+    3, // maxRetries
+    2000, // baseDelay (2 seconds)
+    {
+      component: 'paystack-api-client',
+      ...context
+    }
+  )
+}
 
 /**
  * Paystack API Client Class
@@ -42,7 +89,7 @@ export class PaystackAPIClient {
     metadata?: Record<string, any>,
     planCode?: string
   ) {
-    try {
+    return executeWithRetry(async () => {
       const response = await paystack.transaction.initialize({
         email,
         amount: convertToKobo(amount),
@@ -58,15 +105,12 @@ export class PaystackAPIClient {
       }
 
       return response.data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "initializeTransaction",
-        email,
-        amount
-      })
-      throw error
-    }
+    }, {
+      action: "initializeTransaction",
+      email,
+      amount,
+      reference
+    })
   }
 
   /**
@@ -111,7 +155,7 @@ export class PaystackAPIClient {
     description?: string,
     invoiceLimit: number = 0
   ) {
-    try {
+    return executeWithRetry(async () => {
       const response = await paystack.plan.create({
         name,
         amount: convertToKobo(amount),
@@ -128,15 +172,12 @@ export class PaystackAPIClient {
       }
 
       return response.data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "createPlan",
-        name,
-        amount
-      })
-      throw error
-    }
+    }, {
+      action: "createPlan",
+      name,
+      amount,
+      interval
+    })
   }
 
   /**
@@ -230,7 +271,7 @@ export class PaystackAPIClient {
     authorizationCode?: string,
     startDate?: string
   ) {
-    try {
+    return executeWithRetry(async () => {
       const subscriptionData: any = {
         customer,
         plan: planCode
@@ -251,15 +292,11 @@ export class PaystackAPIClient {
       }
 
       return response.data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "createSubscription",
-        customer,
-        planCode
-      })
-      throw error
-    }
+    }, {
+      action: "createSubscription",
+      customer,
+      planCode
+    })
   }
 
   /**
@@ -269,53 +306,62 @@ export class PaystackAPIClient {
    * @returns Subscription details
    */
   static async getSubscription(subscriptionCode: string) {
-    try {
-      // Try using SDK first
-      const response = await paystack.subscription.fetch(subscriptionCode)
-
-      if (!response.status) {
-        throw new Error(response.message || "Failed to fetch subscription")
-      }
-
-      return response.data
-    } catch (error) {
-      // Capture the original SDK error for observability
-      const origMsg = error instanceof Error ? error.message : String(error)
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "getSubscription",
-        subscriptionCode
-      })
-
-      // Fallback: call Paystack REST API directly (handles SDK signature differences)
+    return executeWithRetry(async () => {
       try {
-        const resp = await fetch(`https://api.paystack.co/subscription/${encodeURIComponent(subscriptionCode)}`, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        })
+        // Try using SDK first
+        const response = await paystack.subscription.fetch(subscriptionCode)
 
-        const data = await resp.json()
-
-        if (!data || data.status === false) {
-          throw new Error(data?.message || 'Failed to fetch subscription via Paystack API')
+        if (!response.status) {
+          throw new Error(response.message || "Failed to fetch subscription")
         }
 
-        return data.data
-      } catch (fallbackError) {
-        // Capture fallback error and throw combined error for upstream handling
-        const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-        captureException(fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)), {
+        return response.data
+      } catch (error) {
+        // Capture the original SDK error for observability
+        const origMsg = error instanceof Error ? error.message : String(error)
+        captureException(error instanceof Error ? error : new Error(String(error)), {
           component: "paystack-api-client",
-          action: "getSubscriptionFallback",
+          action: "getSubscription",
           subscriptionCode
         })
 
-        throw new Error(`getSubscription SDK error: ${origMsg}; fallback error: ${fbMsg}`)
+        // Fallback: call Paystack REST API directly (handles SDK signature differences)
+        try {
+          const resp = await fetch(`https://api.paystack.co/subscription/${encodeURIComponent(subscriptionCode)}`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (resp.status === 429) {
+            throw { status: 429, message: "Too Many Requests" }
+          }
+
+          const data = await resp.json()
+
+          if (!data || data.status === false) {
+            throw new Error(data?.message || 'Failed to fetch subscription via Paystack API')
+          }
+
+          return data.data
+        } catch (fallbackError) {
+          // Capture fallback error and throw combined error for upstream handling
+          const fbMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          captureException(fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)), {
+            component: "paystack-api-client",
+            action: "getSubscriptionFallback",
+            subscriptionCode
+          })
+
+          throw new Error(`getSubscription SDK error: ${origMsg}; fallback error: ${fbMsg}`)
+        }
       }
-    }
+    }, {
+      action: "getSubscription",
+      subscriptionCode
+    })
   }
 
   /**
@@ -412,7 +458,7 @@ export class PaystackAPIClient {
    * @returns Management link
    */
   static async generateSubscriptionManagementLink(subscriptionCode: string) {
-    try {
+    return executeWithRetry(async () => {
       // Paystack SDK might not have this method, using direct API call
       const response = await fetch(`https://api.paystack.co/subscription/${subscriptionCode}/manage/link`, {
         method: "GET",
@@ -422,6 +468,10 @@ export class PaystackAPIClient {
         }
       })
 
+      if (response.status === 429) {
+        throw { status: 429, message: "Too Many Requests" }
+      }
+
       const data = await response.json()
 
       if (!data.status) {
@@ -429,14 +479,10 @@ export class PaystackAPIClient {
       }
 
       return data.data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "generateSubscriptionManagementLink",
-        subscriptionCode
-      })
-      throw error
-    }
+    }, {
+      action: "generateSubscriptionManagementLink",
+      subscriptionCode
+    })
   }
 
   /**
@@ -446,7 +492,7 @@ export class PaystackAPIClient {
    * @returns Email send response
    */
   static async sendSubscriptionManagementEmail(subscriptionCode: string) {
-    try {
+    return executeWithRetry(async () => {
       // Note: Paystack SDK might not have this method, using direct API call
       const response = await fetch(`https://api.paystack.co/subscription/${subscriptionCode}/manage/email`, {
         method: "POST",
@@ -456,6 +502,10 @@ export class PaystackAPIClient {
         }
       })
 
+      if (response.status === 429) {
+        throw { status: 429, message: "Too Many Requests" }
+      }
+
       const data = await response.json()
 
       if (!data.status) {
@@ -463,14 +513,10 @@ export class PaystackAPIClient {
       }
 
       return data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "sendSubscriptionManagementEmail",
-        subscriptionCode
-      })
-      throw error
-    }
+    }, {
+      action: "sendSubscriptionManagementEmail",
+      subscriptionCode
+    })
   }
 
   /**
@@ -490,7 +536,7 @@ export class PaystackAPIClient {
     customerNote?: string,
     merchantNote?: string
   ) {
-    try {
+    return executeWithRetry(async () => {
       const refundData: any = {
         transaction
       }
@@ -521,6 +567,10 @@ export class PaystackAPIClient {
         body: JSON.stringify(refundData)
       })
 
+      if (response.status === 429) {
+        throw { status: 429, message: "Too Many Requests" }
+      }
+
       const data = await response.json()
 
       if (!data.status) {
@@ -528,15 +578,11 @@ export class PaystackAPIClient {
       }
 
       return data.data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "createRefund",
-        transaction,
-        amount
-      })
-      throw error
-    }
+    }, {
+      action: "createRefund",
+      transaction,
+      amount
+    })
   }
 
   /**
@@ -555,7 +601,7 @@ export class PaystackAPIClient {
       bank_id: string
     }
   ) {
-    try {
+    return executeWithRetry(async () => {
       const response = await fetch(`https://api.paystack.co/refund/retry_with_customer_details/${refundId}`, {
         method: "POST",
         headers: {
@@ -567,6 +613,10 @@ export class PaystackAPIClient {
         })
       })
 
+      if (response.status === 429) {
+        throw { status: 429, message: "Too Many Requests" }
+      }
+
       const data = await response.json()
 
       if (!data.status) {
@@ -574,14 +624,10 @@ export class PaystackAPIClient {
       }
 
       return data.data
-    } catch (error) {
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        component: "paystack-api-client",
-        action: "retryRefundWithCustomerDetails",
-        refundId
-      })
-      throw error
-    }
+    }, {
+      action: "retryRefundWithCustomerDetails",
+      refundId
+    })
   }
 }
 
