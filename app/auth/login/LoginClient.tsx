@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useStackApp, useUser } from "@stackframe/stack"
-import { OAuthButton } from "@stackframe/stack" 
+//import { OAuthButton } from "@stackframe/stack" 
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Home, CheckCircle } from "lucide-react"
@@ -360,7 +360,7 @@ export default function LoginPage() {
 
           {/* OAuth Buttons */}
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-4">
+          {/*<div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-4">
             <OAuthButton 
               provider="google" 
               type="sign-in"
@@ -369,7 +369,7 @@ export default function LoginPage() {
               provider="microsoft" 
               type="sign-in"
             />
-          </div>
+          </div>*/}
           
           {/* Forgot Password Link */}
           <div className="flex justify-end pt-2">
