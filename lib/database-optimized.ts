@@ -387,67 +387,93 @@ export class OptimizedAccommodationRepository {
   static async getPublishedAccommodations(limit = 200, offset = 0) {
     const cacheVersion = await this.getCacheVersion()
     const cacheKey = `accommodations:published:v${cacheVersion}:${limit}:${offset}`
-    try {
-      const cached = await redis.get(cacheKey)
-      if (cached) {
-        if (typeof cached === 'string') return JSON.parse(cached)
-        await redis.del(cacheKey)
+    
+    // Temporarily bypass cache to debug - remove after fixing
+    const BYPASS_CACHE = process.env.BYPASS_ACCOMMODATIONS_CACHE === 'true'
+    
+    if (!BYPASS_CACHE) {
+      try {
+        const cached = await redis.get(cacheKey)
+        if (cached) {
+          if (typeof cached === 'string') {
+            const parsed = JSON.parse(cached)
+            console.log(`[getPublishedAccommodations] Cache hit: ${parsed.length} accommodations`)
+            return parsed
+          }
+          await redis.del(cacheKey)
+        }
+      } catch (err) {
+        console.warn('[getPublishedAccommodations] Cache read error:', err)
+        try { await redis.del(cacheKey) } catch {}
       }
-    } catch (_) {
-      try { await redis.del(cacheKey) } catch {}
+    } else {
+      console.log('[getPublishedAccommodations] Cache bypassed for debugging')
     }
 
     const result = await QueryMonitor.executeWithMonitoring(
       "getPublishedAccommodations",
       async () => {
-        const accommodations = await getDB()
-          .select({
-            id: schema.accommodations.id,
-            name: schema.accommodations.name,
-            description: schema.accommodations.description,
-            address: schema.accommodations.address,
-            price: schema.accommodations.price,
-            images: schema.accommodations.images,
-            amenities: schema.accommodations.amenities,
-            area: schema.accommodations.area,
-            distance: schema.accommodations.distance,
-            rating: schema.accommodations.rating,
-            reviewCount: schema.accommodations.reviewCount,
-            isOpen: schema.accommodations.isOpen,
-            featured: schema.accommodations.featured,
-            availableRooms: schema.accommodations.availableRooms,
-            totalRooms: schema.accommodations.totalRooms,
-            isVerified: schema.accommodations.isVerified,
-            accreditationStatus: schema.accommodations.accreditationStatus,
-          })
-          .from(schema.accommodations)
-          .where(
-            sql`accommodations.is_published = true`
-          )
-          .orderBy(desc(schema.accommodations.createdAt))
-          .limit(limit)
-          .offset(offset)
+        try {
+          const accommodations = await getDB()
+            .select({
+              id: schema.accommodations.id,
+              name: schema.accommodations.name,
+              description: schema.accommodations.description,
+              address: schema.accommodations.address,
+              price: schema.accommodations.price,
+              images: schema.accommodations.images,
+              amenities: schema.accommodations.amenities,
+              area: schema.accommodations.area,
+              distance: schema.accommodations.distance,
+              rating: schema.accommodations.rating,
+              reviewCount: schema.accommodations.reviewCount,
+              isOpen: schema.accommodations.isOpen,
+              featured: schema.accommodations.featured,
+              availableRooms: schema.accommodations.availableRooms,
+              totalRooms: schema.accommodations.totalRooms,
+              isVerified: schema.accommodations.isVerified,
+              accreditationStatus: schema.accommodations.accreditationStatus,
+            })
+            .from(schema.accommodations)
+            .where(
+              and(
+                eq(schema.accommodations.isActive, true),
+                sql`accommodations.is_published = true`
+              )
+            )
+            .orderBy(desc(schema.accommodations.createdAt))
+            .limit(limit)
+            .offset(offset)
 
-        return accommodations.map((acc: any) => ({
-          id: acc.id,
-          name: acc.name,
-          description: acc.description,
-          address: acc.address,
-          price: acc.price,
-          images: acc.images || [],
-          amenities: acc.amenities || [],
-          accreditation_status: acc.accreditationStatus,
-          provider_id: null,
-          area: acc.area,
-          distance: acc.distance,
-          rating: acc.rating,
-          review_count: acc.reviewCount,
-          is_open: acc.isOpen,
-          featured: acc.featured,
-          available_rooms: acc.availableRooms,
-          total_rooms: acc.totalRooms,
-          is_verified: acc.isVerified,
-        }))
+          console.log(`[getPublishedAccommodations] Query returned ${accommodations.length} rows`)
+
+          const mapped = accommodations.map((acc: any) => ({
+            id: acc.id,
+            name: acc.name,
+            description: acc.description,
+            address: acc.address,
+            price: acc.price,
+            images: acc.images || [],
+            amenities: acc.amenities || [],
+            accreditation_status: acc.accreditationStatus,
+            provider_id: null,
+            area: acc.area,
+            distance: acc.distance,
+            rating: acc.rating,
+            review_count: acc.reviewCount,
+            is_open: acc.isOpen,
+            featured: acc.featured,
+            available_rooms: acc.availableRooms,
+            total_rooms: acc.totalRooms,
+            is_verified: acc.isVerified,
+          }))
+          
+          console.log(`[getPublishedAccommodations] Mapped ${mapped.length} accommodations`)
+          return mapped
+        } catch (error) {
+          console.error('[getPublishedAccommodations] Query error:', error)
+          throw error
+        }
       }
     )
 

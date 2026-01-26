@@ -126,7 +126,7 @@ function AccommodationCard({
   }
 
   return (
-    <div className="group relative border border-white/10 bg-black/30 backdrop-blur-2xl rounded-2xl overflow-hidden text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/30 transition-all duration-500 hover:scale-[1.02] hover:border-blue-500/30 w-full">
+    <div className="group relative border border-white/10 bg-black/40 md:bg-black/30 backdrop-blur-none md:backdrop-blur-2xl rounded-2xl overflow-hidden text-white shadow-lg md:shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/30 transition-all duration-500 md:hover:scale-[1.02] hover:border-blue-500/30 w-full">
         <div className="relative h-48 sm:h-56 overflow-hidden">
           <Image
             src={image || "/placeholder.jpg"}
@@ -157,12 +157,12 @@ function AccommodationCard({
         {/* Status Pills */}
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
           {featured && (
-            <span className="px-3 py-1.5 bg-gradient-to-r from-yellow-400/95 to-orange-500/95 backdrop-blur-md text-white text-xs font-bold rounded-full border border-yellow-400/40 shadow-lg shadow-yellow-500/30 animate-pulse">
+            <span className="px-3 py-1.5 bg-gradient-to-r from-yellow-400/95 to-orange-500/95 backdrop-blur-none md:backdrop-blur-md text-white text-xs font-bold rounded-full border border-yellow-400/40 shadow-lg shadow-yellow-500/30 animate-pulse motion-reduce:animate-none">
               ⭐ FEATURED
             </span>
           )}
           <span
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border shadow-lg transition-all duration-300 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-none md:backdrop-blur-md border shadow-lg transition-all duration-300 ${
               isOpen 
                 ? "bg-green-500/30 text-green-200 border-green-400/60 shadow-green-500/30" 
                 : "bg-red-500/30 text-red-200 border-red-400/60 shadow-red-500/30"
@@ -177,7 +177,7 @@ function AccommodationCard({
           <button
             onClick={handleWishlistToggle}
             disabled={isMutating || isStatusPending}
-            className={`absolute top-3 right-3 p-2.5 bg-black/40 backdrop-blur-md border border-white/30 rounded-full hover:bg-white/20 transition-all duration-300 z-10 group/heart ${
+            className={`absolute top-3 right-3 p-2.5 bg-black/40 backdrop-blur-none md:backdrop-blur-md border border-white/30 rounded-full hover:bg-white/20 transition-all duration-300 z-10 group/heart ${
               (isMutating || isStatusPending) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-lg'
             } ${isFavorited ? 'bg-red-500/20 border-red-400/50 shadow-lg shadow-red-500/30' : ''}`}
           >
@@ -191,7 +191,7 @@ function AccommodationCard({
 
         {/* Availability Badge */}
         {isOpen && (
-          <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-white/30 shadow-lg">
+          <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-none md:backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-white/30 shadow-lg">
             <span className="text-green-400 font-bold">{availableRooms}</span>
             <span className="text-white/70">/{totalRooms}</span>
             <span className="text-white/60 ml-1">rooms</span>
@@ -203,7 +203,7 @@ function AccommodationCard({
         <div className="flex items-start justify-between mb-3 gap-2 min-w-0">
           <h3 className="font-bold text-lg sm:text-xl mb-1 group-hover:text-blue-300 transition-colors duration-300 text-white break-words flex-1 min-w-0 leading-tight">{title}</h3>
           {verified && (
-            <div className="p-2 border border-green-500/50 bg-green-500/20 backdrop-blur-sm rounded-lg flex-shrink-0 shadow-lg shadow-green-500/20 group-hover:shadow-green-500/30 transition-all duration-300 group-hover:scale-110">
+            <div className="p-2 border border-green-500/50 bg-green-500/20 backdrop-blur-none md:backdrop-blur-sm rounded-lg flex-shrink-0 shadow-lg shadow-green-500/20 group-hover:shadow-green-500/30 transition-all duration-300 group-hover:scale-110">
               <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
             </div>
           )}
@@ -272,13 +272,13 @@ function AccommodationCard({
               {roomTypes.slice(0, 3).map((roomType, index) => (
                 <span
                   key={index}
-                  className="px-2 sm:px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full border border-indigo-500/40 break-words backdrop-blur-sm hover:bg-indigo-500/30 hover:border-indigo-400/60 transition-all duration-300 hover:scale-105"
+                  className="px-2 sm:px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full border border-indigo-500/40 break-words backdrop-blur-none md:backdrop-blur-sm hover:bg-indigo-500/30 hover:border-indigo-400/60 transition-all duration-300 hover:scale-105"
                 >
                   {roomType.type} - {formatZar(roomType.price)}
                 </span>
               ))}
               {roomTypes.length > 3 && (
-                <span className="px-2 sm:px-3 py-1 bg-neutral-500/20 text-neutral-400 text-xs rounded-full border border-neutral-500/30 break-words backdrop-blur-sm hover:bg-neutral-500/30 transition-all duration-300">
+                <span className="px-2 sm:px-3 py-1 bg-neutral-500/20 text-neutral-400 text-xs rounded-full border border-neutral-500/30 break-words backdrop-blur-none md:backdrop-blur-sm hover:bg-neutral-500/30 transition-all duration-300">
                   +{roomTypes.length - 3} more
                 </span>
               )}
@@ -290,4 +290,23 @@ function AccommodationCard({
   )
 }
 
-export default memo(AccommodationCard)
+// Memoize with custom comparison to allow real-time rating/review count updates
+export default memo(AccommodationCard, (prevProps, nextProps) => {
+  // Re-render if rating or reviewCount changes (for real-time updates)
+  if (prevProps.rating !== nextProps.rating || prevProps.reviewCount !== nextProps.reviewCount) {
+    return false // Re-render
+  }
+  // Otherwise, use default shallow comparison for other props
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.title === nextProps.title &&
+    prevProps.address === nextProps.address &&
+    prevProps.price === nextProps.price &&
+    prevProps.isOpen === nextProps.isOpen &&
+    prevProps.image === nextProps.image &&
+    prevProps.verified === nextProps.verified &&
+    prevProps.featured === nextProps.featured &&
+    prevProps.availableRooms === nextProps.availableRooms &&
+    prevProps.totalRooms === nextProps.totalRooms
+  )
+})

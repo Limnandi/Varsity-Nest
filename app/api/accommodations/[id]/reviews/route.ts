@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserFromRequest, getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { query } from "@/lib/database"
 import { redis } from "@/lib/redis"
+import { CacheManager } from "@/lib/cache"
 
 export const revalidate = 120
 
@@ -213,6 +214,11 @@ export async function POST(
       `
 
       console.log(`[REVIEWS] Accommodation ${id} updated successfully. Rows affected: ${updateResult.rowCount}`)
+      
+      // Invalidate cache to force fresh data on next fetch
+      await CacheManager.del(CacheManager.getAccommodationKey(id))
+      await CacheManager.del(CacheManager.getAccommodationsByStatusKey('published', 100, 0))
+      await CacheManager.del(CacheManager.getAccommodationsByStatusKey('published', 24, 0))
     } catch (updateError) {
       console.error(`[REVIEWS] Failed to update accommodation stats for ${id}:`, updateError)
       // Don't fail the whole request if stats update fails

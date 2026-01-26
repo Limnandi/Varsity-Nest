@@ -20,6 +20,7 @@ export default function Accommodations() {
   const [useVirtualization, setUseVirtualization] = useState(false)
   const [isSortOpen, setIsSortOpen] = useState(false)
   const sortRef = useRef<HTMLDivElement>(null)
+  const ratingsMapRef = useRef<Record<string, { rating: number, review_count: number }>>({})
 
   const sortOptions = [
     { value: "price-desc" as const, label: "Price: High to Low" },
@@ -45,15 +46,116 @@ export default function Accommodations() {
     }
   }, [isSortOpen])
 
+  // Fetch ratings/review counts in real-time
+  const fetchRatings = useCallback(async (accommodationIds: string[]) => {
+    if (accommodationIds.length === 0) return
+
+    try {
+      const idsParam = accommodationIds.join(',')
+      const response = await fetch(`/api/accommodations/ratings?ids=${idsParam}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          const freshData = result.data
+          ratingsMapRef.current = freshData
+          
+          // Update accommodations with fresh ratings - force update even if values are 0
+          setAllAccs(prev => {
+            const updated = prev.map(acc => {
+              const fresh = freshData[acc.id]
+              if (fresh !== undefined) {
+                const newRating = fresh.rating ?? 0
+                const newReviewCount = fresh.review_count ?? 0
+                
+                // Only update if values actually changed (avoid unnecessary re-renders)
+                if (acc.rating !== newRating || acc.review_count !== newReviewCount) {
+                  return { 
+                    ...acc, 
+                    rating: newRating, 
+                    review_count: newReviewCount 
+                  }
+                }
+              }
+              return acc
+            })
+            return updated
+          })
+          
+          setFilteredAccommodations(prev => {
+            const updated = prev.map(acc => {
+              const fresh = freshData[acc.id]
+              if (fresh !== undefined) {
+                const newRating = fresh.rating ?? 0
+                const newReviewCount = fresh.review_count ?? 0
+                
+                // Only update if values actually changed (avoid unnecessary re-renders)
+                if (acc.rating !== newRating || acc.review_count !== newReviewCount) {
+                  return { 
+                    ...acc, 
+                    rating: newRating, 
+                    review_count: newReviewCount 
+                  }
+                }
+              }
+              return acc
+            })
+            return updated
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch ratings:', error)
+      // Don't throw - this is a background update
+    }
+  }, [])
+
+  // Listen for review deletion events to trigger immediate refresh
+  useEffect(() => {
+    const handleReviewChange = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const accommodationId = customEvent.detail?.accommodationId
+      
+      // Trigger immediate ratings refresh when reviews are added/deleted
+      // Don't clear cache here - just refresh ratings
+      if (allAccs.length > 0) {
+        const ids = allAccs.map(acc => acc.id).filter(Boolean)
+        if (ids.length > 0) {
+          // If specific accommodation ID provided, prioritize it
+          if (accommodationId && ids.includes(accommodationId)) {
+            fetchRatings([accommodationId])
+          }
+          // Always refresh all to be safe
+          fetchRatings(ids)
+        }
+      }
+    }
+
+    window.addEventListener('reviewDeleted', handleReviewChange)
+    window.addEventListener('reviewAdded', handleReviewChange)
+
+    return () => {
+      window.removeEventListener('reviewDeleted', handleReviewChange)
+      window.removeEventListener('reviewAdded', handleReviewChange)
+    }
+  }, [allAccs, fetchRatings])
+
   useEffect(() => {
     const load = async () => {
       try {
         // Try client-side cache first using a dedicated key
         let accommodations = CacheManager.getCachedAccommodationsByStatusClient('published', 100, 0) as any[] | null
 
-        if (!accommodations || !Array.isArray(accommodations)) {
+        if (!accommodations || !Array.isArray(accommodations) || accommodations.length === 0) {
           // Fetch only published & active accommodations (default API behavior without accreditation filter)
-          const response = await fetch('/api/accommodations?limit=100&offset=0')
+          const response = await fetch('/api/accommodations?limit=100&offset=0', {
+            cache: 'no-store'
+          })
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
@@ -66,12 +168,32 @@ export default function Accommodations() {
           }
 
           const result = await response.json()
+          console.log('[ACCOMMODATIONS] API Response:', { 
+            hasSuccess: !!result?.success, 
+            hasData: !!result?.data,
+            isArray: Array.isArray(result),
+            resultKeys: result ? Object.keys(result) : [],
+            dataLength: result?.data?.length || (Array.isArray(result) ? result.length : 0)
+          })
 
           // Extract data from API response structure
-          const data = (result && result.success && result.data) ? result.data : result
+          let data: any[] = []
+          if (result && result.success && result.data) {
+            data = result.data
+          } else if (Array.isArray(result)) {
+            data = result
+          } else if (result && Array.isArray(result.data)) {
+            data = result.data
+          }
 
           // Ensure data is an array
           accommodations = Array.isArray(data) ? data : []
+          
+          console.log(`[ACCOMMODATIONS] Loaded ${accommodations.length} accommodations`)
+          
+          if (accommodations.length === 0) {
+            console.warn('[ACCOMMODATIONS] No accommodations found. Raw result:', result)
+          }
 
           // Cache the result under the 'published' key
           if (accommodations && accommodations.length > 0) {
@@ -86,6 +208,17 @@ export default function Accommodations() {
         if (accommodationsList.length > 50) {
           setUseVirtualization(true)
         }
+
+        // Fetch initial ratings after accommodations are loaded (don't await - let it run in background)
+        if (accommodationsList.length > 0) {
+          const ids = accommodationsList.map(acc => acc.id).filter(Boolean)
+          if (ids.length > 0) {
+            // Don't await - let ratings load in background so accommodations show immediately
+            fetchRatings(ids).catch(err => {
+              console.error('Background ratings fetch failed:', err)
+            })
+          }
+        }
       } catch (error) {
         console.error('Failed to load accommodations:', error)
         setAllAccs([])
@@ -95,7 +228,34 @@ export default function Accommodations() {
       }
     }
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
+
+  // Poll ratings every 15 seconds for real-time updates (more frequent for better UX)
+  useEffect(() => {
+    if (allAccs.length === 0) return
+
+    const POLL_INTERVAL = 15 * 1000 // 15 seconds
+
+    const pollRatings = () => {
+      const ids = allAccs.map(acc => acc.id).filter(Boolean)
+      if (ids.length > 0) {
+        fetchRatings(ids).catch(err => {
+          console.error('Polling ratings failed:', err)
+        })
+      }
+    }
+
+    // Start polling after a short delay to let initial load complete
+    const initialTimeout = setTimeout(pollRatings, 2000)
+    const interval = setInterval(pollRatings, POLL_INTERVAL)
+
+    return () => {
+      clearTimeout(initialTimeout)
+      clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allAccs.length]) // Only depend on length, not the array itself
 
   const handleSort = useCallback((accommodations: typeof filteredAccommodations) => {
     if (!Array.isArray(accommodations)) {
@@ -162,7 +322,7 @@ export default function Accommodations() {
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-2xl shadow-blue-500/10 overflow-visible">
+        <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-lg md:shadow-2xl shadow-blue-500/10 overflow-visible">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1 min-w-0">
               <Suspense fallback={<div className="h-12 bg-black/20 border border-white/10 rounded-lg animate-pulse"></div>}>
@@ -185,13 +345,13 @@ export default function Accommodations() {
                 <button
                   type="button"
                   onClick={() => setIsSortOpen(!isSortOpen)}
-                  className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg hover:bg-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white backdrop-blur-sm w-full sm:w-auto min-w-[180px] flex items-center justify-between transition-all duration-300"
+                  className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg hover:bg-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white backdrop-blur-none md:backdrop-blur-sm w-full sm:w-auto min-w-[180px] flex items-center justify-between transition-all duration-300"
                 >
                   <span className="text-sm">{sortOptions.find(opt => opt.value === sortBy)?.label || "Price: High to Low"}</span>
                   <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 flex-shrink-0 ml-2 ${isSortOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {isSortOpen && (
-                  <div className="absolute z-50 w-full mt-2 bg-black/30 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl shadow-blue-500/10 overflow-hidden min-w-[180px]">
+                  <div className="absolute z-50 w-full mt-2 bg-black/40 md:bg-black/30 border border-white/20 backdrop-blur-none md:backdrop-blur-xl rounded-xl shadow-lg md:shadow-2xl shadow-blue-500/10 overflow-hidden min-w-[180px]">
                     {sortOptions.map((option) => (
                       <button
                         key={option.value}
