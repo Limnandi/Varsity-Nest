@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useRef, useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { createPortal } from "react-dom"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 export default function ImageCarousel({ images = [] as string[] }) {
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -11,6 +12,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
   const [showFullscreenViewer, setShowFullscreenViewer] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const galleryDialogRef = useRef<HTMLDivElement>(null)
   const totalSlides = Math.max(images.length, 1)
   const displayImages = images.length > 0 ? images : ["/placeholder.jpg"]
 
@@ -94,6 +96,8 @@ export default function ImageCarousel({ images = [] as string[] }) {
     }
   }, [showFullscreenViewer, closeFullscreenViewer, nextFullscreenSlide, prevFullscreenSlide])
 
+  useModalA11y({ isOpen: showGalleryModal, containerRef: galleryDialogRef, onClose: closeGalleryModal })
+
   return (
     <>
       <div className="relative w-full h-96 bg-gray-200 overflow-hidden rounded-xl cursor-pointer group" onClick={openGalleryModal}>
@@ -120,6 +124,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
             prevSlide()
           }}
           className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity z-10"
+          aria-label="Previous image"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -130,6 +135,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
             nextSlide()
           }}
           className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity z-10"
+          aria-label="Next image"
         >
           <ChevronRight className="w-6 h-6" />
         </button>
@@ -168,12 +174,15 @@ export default function ImageCarousel({ images = [] as string[] }) {
             role="dialog"
             aria-modal="true"
             aria-label="Photo Gallery"
+            ref={galleryDialogRef}
+            tabIndex={-1}
             className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl p-6 text-white shadow-[0_10px_40px_rgba(59,130,246,0.25)] max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto transform transition-all duration-300 animate-in slide-in-from-bottom-4 sm:animate-in zoom-in-95"
           >
             {/* Close Button */}
             <button
               onClick={closeGalleryModal}
               className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
+              aria-label="Close gallery"
             >
               <X className="w-5 h-5" />
             </button>

@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { X, Mail, RefreshCw, CheckCircle, AlertCircle } from "lucide-react"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface EmailVerificationModalProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export default function EmailVerificationModal({
   const [isResending, setIsResending] = useState(false)
   const [resendSuccess, setResendSuccess] = useState(false)
   const [resendError, setResendError] = useState<string | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const handleResendVerification = async () => {
     setIsResending(true)
@@ -52,6 +54,8 @@ export default function EmailVerificationModal({
 
   if (!isOpen) return null
 
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose })
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -61,11 +65,20 @@ export default function EmailVerificationModal({
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-black/90 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Email verification required"
+        className="relative w-full max-w-md bg-black/90 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white transition-colors"
+          aria-label="Close verification modal"
         >
           <X className="w-5 h-5" />
         </button>

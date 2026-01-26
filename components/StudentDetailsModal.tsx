@@ -2,8 +2,9 @@
 
 import { X, Eye, Mail, Calendar, GraduationCap } from "lucide-react"
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useRef, useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface StudentDetailsModalProps {
   isOpen: boolean
@@ -26,6 +27,8 @@ export default function StudentDetailsModal({
 }: StudentDetailsModalProps) {
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const imageViewerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -33,6 +36,13 @@ export default function StudentDetailsModal({
   }, [])
 
   if (!isOpen) return null
+
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose })
+  useModalA11y({
+    isOpen: showImageViewer,
+    containerRef: imageViewerRef,
+    onClose: () => setShowImageViewer(false),
+  })
 
   const getInitials = (name: string) => {
     return name
@@ -67,12 +77,15 @@ export default function StudentDetailsModal({
             role="dialog"
             aria-modal="true"
             aria-label="Reviewer details"
+            ref={dialogRef}
+            tabIndex={-1}
             className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl p-6 text-white shadow-[0_10px_40px_rgba(59,130,246,0.25)] max-w-md w-full mx-4 transform transition-all duration-300 animate-in slide-in-from-bottom-4 sm:animate-in zoom-in-95"
           >
           {/* Close Button */}
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+            aria-label="Close student details"
           >
             <X className="w-5 h-5" />
           </button>
@@ -103,6 +116,7 @@ export default function StudentDetailsModal({
                 <button
                   onClick={() => setShowImageViewer(true)}
                   className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300"
+                  aria-label="View profile picture"
                 >
                   <div className="flex flex-col items-center gap-1">
                     <Eye className="w-6 h-6 text-white" />
@@ -161,6 +175,8 @@ export default function StudentDetailsModal({
       {/* Image Viewer Modal - Portal to body for full screen */}
       {showImageViewer && profileImageUrl && mounted && createPortal(
         <div
+          ref={imageViewerRef}
+          tabIndex={-1}
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setShowImageViewer(false)}
           aria-modal="true"
@@ -170,6 +186,7 @@ export default function StudentDetailsModal({
           <button
             onClick={() => setShowImageViewer(false)}
             className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            aria-label="Close profile picture"
           >
             <X className="w-6 h-6 text-white" />
           </button>

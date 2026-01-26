@@ -2,11 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { X, Mail, User, AlertCircle, Lock, Eye, EyeOff } from "lucide-react"
 import { StudentAuthService } from "@/lib/student-auth"
 import { useStackApp } from "@stackframe/stack"
+import { useModalA11y } from "@/hooks/useModalA11y"
+import { toast } from "sonner"
 
 interface StudentAuthModalProps {
   isOpen: boolean
@@ -28,6 +30,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
   const [error, setError] = useState("")
   const app = useStackApp()
   const router = useRouter()
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,7 +159,7 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
     try {
       const success = await StudentAuthService.resetPassword(email, password)
       if (success) {
-        alert("Password reset successfully! You can now sign in with your new password.")
+        toast.success("Password reset successfully! You can now sign in with your new password.")
         setMode("login")
         setStep("password")
         setPassword("")
@@ -191,14 +194,29 @@ export default function StudentAuthModal({ isOpen, onClose, onSuccess }: Student
 
   if (!isOpen) return null
 
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose: handleClose })
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl max-w-md w-full mx-4 overflow-hidden">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Student authentication"
+        className="bg-white rounded-xl max-w-md w-full mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-bold">
             {mode === "login" ? "Student Sign In" : mode === "register" ? "Student Registration" : "Reset Password"}
           </h2>
-          <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button
+            type="button"
+            aria-label="Close student auth dialog"
+            onClick={handleClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>

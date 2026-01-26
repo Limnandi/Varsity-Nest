@@ -1,6 +1,8 @@
 "use client"
 
 import { X, AlertTriangle } from "lucide-react"
+import { useRef } from "react"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -25,7 +27,10 @@ export default function ConfirmDialog({
   isLoading = false,
   variant = 'danger'
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
   if (!isOpen) return null
+
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose })
 
   const variantStyles = {
     danger: {
@@ -56,7 +61,15 @@ export default function ConfirmDialog({
       />
       
       {/* Modal */}
-      <div className="relative bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] border border-white/20 rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] border border-white/20 rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-4">
           <div className="flex items-center gap-4">
@@ -71,6 +84,7 @@ export default function ConfirmDialog({
             onClick={onClose}
             className="p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
             disabled={isLoading}
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>

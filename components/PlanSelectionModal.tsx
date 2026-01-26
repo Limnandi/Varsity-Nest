@@ -3,6 +3,8 @@
 import { X, CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { SubscriptionPlanId, SUBSCRIPTION_PLANS } from "@/lib/subscription-plans"
+import { useRef } from "react"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface PlanSelectionModalProps {
   isOpen: boolean
@@ -41,8 +43,11 @@ export default function PlanSelectionModal({
   subscriptionSummary,
 }: PlanSelectionModalProps) {
   const router = useRouter()
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   if (!isOpen) return null
+
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose })
 
   const hasActiveSubscription = subscriptionSummary?.isInTrial || false
   const isEligibleForTrial = subscriptionSummary?.isEligibleForTrial ?? false
@@ -57,11 +62,19 @@ export default function PlanSelectionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Choose your subscription plan"
+        className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-lg transition-colors z-10"
+          aria-label="Close plan selection"
         >
           <X className="w-5 h-5" />
         </button>

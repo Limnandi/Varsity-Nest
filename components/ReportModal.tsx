@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { X, AlertTriangle, Flag } from "lucide-react"
+import { useModalA11y } from "@/hooks/useModalA11y"
+import { createPortal } from "react-dom"
 
 interface ReportModalProps {
   isOpen: boolean
@@ -21,6 +23,8 @@ export default function ReportModal({
   const [reason, setReason] = useState("")
   const [description, setDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
 
   const reportReasons = [
     { value: "spam", label: "Spam or misleading content" },
@@ -54,12 +58,43 @@ export default function ReportModal({
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-red-500/20 max-w-md w-full mx-4">
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose: handleClose })
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (!isOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev || "unset"
+    }
+  }, [isOpen])
+
+  const content = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={handleClose}
+      aria-hidden={!isOpen}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Report ${itemType}`}
+        className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-red-500/20 max-w-md w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
+          type="button"
           onClick={handleClose}
           className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white transition-colors"
+          aria-label="Close report modal"
         >
           <X className="w-5 h-5" />
         </button>
@@ -156,4 +191,7 @@ export default function ReportModal({
       </div>
     </div>
   )
+
+  if (!mounted) return null
+  return createPortal(content, document.body)
 }

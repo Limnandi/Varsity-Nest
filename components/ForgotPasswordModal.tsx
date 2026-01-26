@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { X, Mail, Loader2, CheckCircle, AlertCircle, Lock } from "lucide-react"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface ForgotPasswordModalProps {
   isOpen: boolean
@@ -18,6 +19,7 @@ export default function ForgotPasswordModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,6 +72,8 @@ export default function ForgotPasswordModal({
 
   if (!isOpen) return null
 
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose: handleClose })
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -80,6 +84,11 @@ export default function ForgotPasswordModal({
       
       {/* Modal */}
       <div 
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reset password"
         className="relative w-full max-w-md bg-black/90 border border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 p-8"
         onClick={(e) => e.stopPropagation()}
       >
@@ -88,6 +97,7 @@ export default function ForgotPasswordModal({
           onClick={handleClose}
           className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white transition-colors"
           disabled={isSubmitting}
+          aria-label="Close password reset"
         >
           <X className="w-5 h-5" />
         </button>

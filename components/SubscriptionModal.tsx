@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { X, CreditCard, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import PaystackPaymentForm from "./PaystackPaymentForm"
 import { SubscriptionPlanId, SUBSCRIPTION_PLANS } from "@/lib/subscription-plans"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface SubscriptionModalProps {
   isOpen: boolean
@@ -62,8 +63,11 @@ export default function SubscriptionModal({
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const selectedPlan = SUBSCRIPTION_PLANS[planId] ?? SUBSCRIPTION_PLANS.starter
   const effectivePlanLimit = planLimit ?? selectedPlan.maxProperties
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   if (!isOpen) return null
+
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose })
 
   const handlePaymentSuccess = () => {
     setShowPaymentForm(false)
@@ -77,11 +81,19 @@ export default function SubscriptionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Subscription"
+        className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl shadow-2xl shadow-blue-500/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-lg transition-colors z-10"
+          aria-label="Close subscription modal"
         >
           <X className="w-5 h-5" />
         </button>

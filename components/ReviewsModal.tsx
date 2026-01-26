@@ -2,9 +2,10 @@
 
 import { X, MessageSquare, Filter, ArrowUpDown } from "lucide-react"
 import Image from "next/image"
-import { useState, useEffect, useMemo } from "react"
+import { useRef, useState, useEffect, useMemo } from "react"
 import { createPortal } from "react-dom"
 import ReviewCard from "./ReviewCard"
+import { useModalA11y } from "@/hooks/useModalA11y"
 
 interface Review {
   id: string
@@ -69,6 +70,7 @@ export default function ReviewsModal({
   const [mounted, setMounted] = useState(false)
   const [orderFilter, setOrderFilter] = useState<'most-relevant' | 'newest' | 'oldest'>('most-relevant')
   const [starFilter, setStarFilter] = useState<number | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -121,6 +123,8 @@ export default function ReviewsModal({
 
   if (!isOpen) return null
 
+  useModalA11y({ isOpen, containerRef: dialogRef, onClose })
+
   return (
     <>
       {mounted && createPortal(
@@ -134,12 +138,15 @@ export default function ReviewsModal({
             role="dialog"
             aria-modal="true"
             aria-label="All reviews"
+            ref={dialogRef}
+            tabIndex={-1}
             className="relative border border-white/10 bg-black/40 backdrop-blur-xl rounded-2xl text-white shadow-[0_10px_40px_rgba(59,130,246,0.25)] max-w-4xl w-full mx-4 my-8 transform transition-all duration-300 animate-in slide-in-from-bottom-4 sm:animate-in zoom-in-95 max-h-[90vh] flex flex-col"
           >
             {/* Close Button */}
             <button
               onClick={onClose}
               className="absolute top-4 right-4 z-10 p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              aria-label="Close reviews modal"
             >
               <X className="w-5 h-5" />
             </button>
