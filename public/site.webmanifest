@@ -1,0 +1,16 @@
+{
+  "name": "Varsity Nest",
+  "short_name": "Varsity Nest",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#02042b",
+  "theme_color": "#040945",
+  "icons": [
+    {
+      "src": "/images/varsity-nest-logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}
+
