@@ -110,7 +110,7 @@ export default function ReplyCard({ reply, onVote, onReport, userVote }: ReplyCa
           <button
             onClick={() => onReport(reply.id, `${reply.first_name} ${reply.last_name}`)}
             className="p-1.5 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-300"
-            title="Report this reply"
+            aria-label="Report this reply"
           >
             <Flag className="w-3 h-3" />
           </button>

@@ -4,10 +4,13 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { Flag, Eye, CheckCircle, XCircle, AlertTriangle, Trash2, Ban, Clock } from "lucide-react"
+import { toast } from "sonner"
 
 interface ReviewReport {
   id: string
+  type: "review" | "reply"
   reviewId: string
+  replyId?: string | null
   reason: string
   description?: string
   status: "pending" | "reviewed" | "resolved" | "dismissed"
@@ -17,7 +20,7 @@ interface ReviewReport {
   updatedAt: string
   review: {
     content: string
-    rating: number
+    rating: number | null
   }
   reporter: {
     id: string
@@ -66,7 +69,12 @@ export default function ReportsPage() {
     }
   }
 
-  const handleAction = async (reportId: string, status: ReviewReport["status"], adminNotes?: string) => {
+  const handleAction = async (
+    reportId: string,
+    reportType: ReviewReport["type"],
+    status: ReviewReport["status"],
+    adminNotes?: string,
+  ) => {
     setIsUpdating(true)
     try {
       const response = await fetch('/api/admin/reports', {
@@ -77,6 +85,7 @@ export default function ReportsPage() {
         credentials: 'include',
         body: JSON.stringify({
           reportId,
+          type: reportType,
           status,
           adminNotes
         })
@@ -88,11 +97,11 @@ export default function ReportsPage() {
       } else {
         const error = await response.json()
         console.error('Failed to update report:', error)
-        alert('Failed to update report. Please try again.')
+        toast.error('Failed to update report. Please try again.')
       }
     } catch (error) {
       console.error('Error updating report:', error)
-      alert('An error occurred. Please try again.')
+      toast.error('An error occurred. Please try again.')
     } finally {
       setIsUpdating(false)
     }
@@ -145,6 +154,7 @@ export default function ReportsPage() {
     const labels: Record<string, string> = {
       inappropriate: "Inappropriate Language",
       spam: "Spam or Fake Review",
+      fake: "Fake or Fraudulent Content",
       harassment: "Harassment or Bullying",
       false_info: "False Information",
       personal_attack: "Personal Attack",
@@ -272,7 +282,7 @@ export default function ReportsPage() {
                     Reporter
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
-                    Review Author
+                    Content Author
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
                     Status
@@ -295,7 +305,20 @@ export default function ReportsPage() {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-white">{getReasonLabel(report.reason)}</div>
-                          <div className="text-sm text-neutral-300">Review ID: {report.reviewId}</div>
+                          <div className="text-sm text-neutral-300">
+                            {report.type === "reply" ? "Reply report" : "Review report"}
+                          </div>
+                          <div className="text-xs text-neutral-400">
+                            {report.type === "reply" ? (
+                              <>
+                                Reply ID: {report.replyId}
+                                <span className="mx-2 text-neutral-600">•</span>
+                                Review ID: {report.reviewId}
+                              </>
+                            ) : (
+                              <>Review ID: {report.reviewId}</>
+                            )}
+                          </div>
                           {report.review && (
                             <div className="text-xs text-neutral-400 mt-1 max-w-xs truncate">
                               &quot;{report.review.content}&quot;
@@ -363,8 +386,19 @@ export default function ReportsPage() {
                     <p className="text-sm text-white">{selectedReport.id}</p>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-neutral-300 mb-1">Type</label>
+                    <p className="text-sm text-white capitalize">{selectedReport.type}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-sm font-medium text-neutral-300 mb-1">Review ID</label>
                     <p className="text-sm text-white">{selectedReport.reviewId}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-300 mb-1">Reply ID</label>
+                    <p className="text-sm text-white">{selectedReport.replyId || "—"}</p>
                   </div>
                 </div>
 
@@ -410,7 +444,7 @@ export default function ReportsPage() {
                     <h3 className="text-lg font-medium text-white mb-4">Take Action</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <button
-                        onClick={() => handleAction(selectedReport.id, "dismissed")}
+                        onClick={() => handleAction(selectedReport.id, selectedReport.type, "dismissed")}
                         disabled={isUpdating}
                         className="flex items-center justify-center px-4 py-2 border border-white/20 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -418,7 +452,7 @@ export default function ReportsPage() {
                         Dismiss Report
                       </button>
                       <button
-                        onClick={() => handleAction(selectedReport.id, "resolved")}
+                        onClick={() => handleAction(selectedReport.id, selectedReport.type, "resolved")}
                         disabled={isUpdating}
                         className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -426,7 +460,7 @@ export default function ReportsPage() {
                         Resolve Report
                       </button>
                       <button
-                        onClick={() => handleAction(selectedReport.id, "reviewed")}
+                        onClick={() => handleAction(selectedReport.id, selectedReport.type, "reviewed")}
                         disabled={isUpdating}
                         className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >

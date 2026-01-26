@@ -132,6 +132,11 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
         // Reload reviews to get the updated list with the new review
         await loadReviews()
         
+        // Dispatch event to trigger ratings refresh on accommodations page
+        window.dispatchEvent(new CustomEvent('reviewAdded', { 
+          detail: { accommodationId } 
+        }))
+        
         // Scroll to reviews section after a brief delay to ensure DOM is updated
         setTimeout(() => {
           const reviewsSection = document.querySelector('[role="listbox"]')
@@ -275,15 +280,28 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
       })
 
       if (response.ok) {
+        toast.success("Report submitted", {
+          description: "Thanks — our moderation team will review it.",
+        })
         setShowReportModal(false)
         setReportingItem(null)
-        // You could show a success message here
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit report')
+        const msg = errorData.error || 'Failed to submit report'
+        // Friendly handling of duplicate submissions
+        if (String(msg).toLowerCase().includes('already reported')) {
+          toast.info("Already reported", { description: "You’ve already reported this content." })
+          setShowReportModal(false)
+          setReportingItem(null)
+          return
+        }
+        throw new Error(msg)
       }
     } catch (error) {
       console.error('Report failed:', error)
+      toast.error("Failed to submit report", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      })
       throw error
     }
   }
@@ -306,6 +324,11 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
         })
         // Reload reviews to get updated average rating
         await loadReviews()
+        
+        // Dispatch event to trigger ratings refresh on accommodations page
+        window.dispatchEvent(new CustomEvent('reviewDeleted', { 
+          detail: { accommodationId } 
+        }))
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to delete review')

@@ -38,69 +38,131 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Build query
-    let reportsQuery
-    if (status === 'all') {
-      reportsQuery = query`
-        SELECT 
-          rr.id,
-          rr.review_id,
-          rr.reason,
-          rr.description,
-          rr.status,
-          rr.admin_id,
-          rr.admin_notes,
-          rr.created_at,
-          rr.updated_at,
-          r.comment AS review_content,
-          r.rating AS review_rating,
-          s.id AS reporter_student_id,
-          s.first_name || ' ' || s.last_name AS reporter_name,
-          s.email AS reporter_email,
-          review_author.first_name || ' ' || review_author.last_name AS review_author_name,
-          review_author.email AS review_author_email
-        FROM review_reports rr
-        JOIN reviews r ON rr.review_id = r.id
-        JOIN students s ON rr.reporter_id = s.id
-        JOIN students review_author ON r.student_id = review_author.id
-        ORDER BY rr.created_at DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `
-    } else {
-      reportsQuery = query`
-        SELECT 
-          rr.id,
-          rr.review_id,
-          rr.reason,
-          rr.description,
-          rr.status,
-          rr.admin_id,
-          rr.admin_notes,
-          rr.created_at,
-          rr.updated_at,
-          r.comment AS review_content,
-          r.rating AS review_rating,
-          s.id AS reporter_student_id,
-          s.first_name || ' ' || s.last_name AS reporter_name,
-          s.email AS reporter_email,
-          review_author.first_name || ' ' || review_author.last_name AS review_author_name,
-          review_author.email AS review_author_email
-        FROM review_reports rr
-        JOIN reviews r ON rr.review_id = r.id
-        JOIN students s ON rr.reporter_id = s.id
-        JOIN students review_author ON r.student_id = review_author.id
-        WHERE rr.status = ${status}
-        ORDER BY rr.created_at DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `
-    }
+    const reportsResult =
+      status === "all"
+        ? await query`
+            SELECT *
+            FROM (
+              SELECT 
+                rr.id,
+                'review'::text AS item_type,
+                rr.review_id,
+                NULL::text AS reply_id,
+                rr.reason,
+                rr.description,
+                rr.status,
+                rr.admin_id,
+                rr.admin_notes,
+                rr.created_at,
+                rr.updated_at,
+                r.comment AS content,
+                r.rating AS rating,
+                s.id AS reporter_student_id,
+                s.first_name || ' ' || s.last_name AS reporter_name,
+                s.email AS reporter_email,
+                review_author.first_name || ' ' || review_author.last_name AS content_author_name,
+                review_author.email AS content_author_email
+              FROM review_reports rr
+              JOIN reviews r ON rr.review_id = r.id
+              JOIN students s ON rr.reporter_id = s.id
+              JOIN students review_author ON r.student_id = review_author.id
 
-    const reportsResult = await reportsQuery
+              UNION ALL
+
+              SELECT
+                rp.id,
+                'reply'::text AS item_type,
+                rrep.review_id,
+                rp.reply_id,
+                rp.reason,
+                rp.description,
+                rp.status,
+                rp.admin_id,
+                rp.admin_notes,
+                rp.created_at,
+                rp.updated_at,
+                rrep.comment AS content,
+                parent_review.rating AS rating,
+                reporter.id AS reporter_student_id,
+                reporter.first_name || ' ' || reporter.last_name AS reporter_name,
+                reporter.email AS reporter_email,
+                reply_author.first_name || ' ' || reply_author.last_name AS content_author_name,
+                reply_author.email AS content_author_email
+              FROM reply_reports rp
+              JOIN review_replies rrep ON rp.reply_id = rrep.id
+              JOIN reviews parent_review ON rrep.review_id = parent_review.id
+              JOIN students reporter ON rp.reporter_id = reporter.id
+              JOIN students reply_author ON rrep.student_id = reply_author.id
+            ) t
+            ORDER BY created_at DESC
+            LIMIT ${limit}
+            OFFSET ${offset}
+          `
+        : await query`
+            SELECT *
+            FROM (
+              SELECT 
+                rr.id,
+                'review'::text AS item_type,
+                rr.review_id,
+                NULL::text AS reply_id,
+                rr.reason,
+                rr.description,
+                rr.status,
+                rr.admin_id,
+                rr.admin_notes,
+                rr.created_at,
+                rr.updated_at,
+                r.comment AS content,
+                r.rating AS rating,
+                s.id AS reporter_student_id,
+                s.first_name || ' ' || s.last_name AS reporter_name,
+                s.email AS reporter_email,
+                review_author.first_name || ' ' || review_author.last_name AS content_author_name,
+                review_author.email AS content_author_email
+              FROM review_reports rr
+              JOIN reviews r ON rr.review_id = r.id
+              JOIN students s ON rr.reporter_id = s.id
+              JOIN students review_author ON r.student_id = review_author.id
+              WHERE rr.status = ${status}
+
+              UNION ALL
+
+              SELECT
+                rp.id,
+                'reply'::text AS item_type,
+                rrep.review_id,
+                rp.reply_id,
+                rp.reason,
+                rp.description,
+                rp.status,
+                rp.admin_id,
+                rp.admin_notes,
+                rp.created_at,
+                rp.updated_at,
+                rrep.comment AS content,
+                parent_review.rating AS rating,
+                reporter.id AS reporter_student_id,
+                reporter.first_name || ' ' || reporter.last_name AS reporter_name,
+                reporter.email AS reporter_email,
+                reply_author.first_name || ' ' || reply_author.last_name AS content_author_name,
+                reply_author.email AS content_author_email
+              FROM reply_reports rp
+              JOIN review_replies rrep ON rp.reply_id = rrep.id
+              JOIN reviews parent_review ON rrep.review_id = parent_review.id
+              JOIN students reporter ON rp.reporter_id = reporter.id
+              JOIN students reply_author ON rrep.student_id = reply_author.id
+              WHERE rp.status = ${status}
+            ) t
+            ORDER BY created_at DESC
+            LIMIT ${limit}
+            OFFSET ${offset}
+          `
     const reports = reportsResult.rows.map((row: any) => ({
       id: row.id,
+      type: row.item_type,
       reviewId: row.review_id,
+      replyId: row.reply_id,
       reason: row.reason,
       description: row.description,
       status: row.status,
@@ -109,8 +171,8 @@ export async function GET(request: NextRequest) {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       review: {
-        content: row.review_content,
-        rating: row.review_rating
+        content: row.content,
+        rating: row.rating
       },
       reporter: {
         id: row.reporter_student_id,
@@ -118,8 +180,8 @@ export async function GET(request: NextRequest) {
         email: row.reporter_email
       },
       reviewAuthor: {
-        name: row.review_author_name,
-        email: row.review_author_email
+        name: row.content_author_name,
+        email: row.content_author_email
       }
     }))
 
@@ -152,7 +214,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { reportId, status, adminNotes } = body
+    const { reportId, status, adminNotes, type } = body
 
     if (!reportId || !status) {
       return NextResponse.json(
@@ -169,8 +231,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Update report
-    const updateResult = await query`
+    const updateReviewReport = () => query`
       UPDATE review_reports
       SET 
         status = ${status},
@@ -180,6 +241,31 @@ export async function PATCH(request: NextRequest) {
       WHERE id = ${reportId}
       RETURNING id, status, admin_notes, updated_at
     `
+
+    const updateReplyReport = () => query`
+      UPDATE reply_reports
+      SET 
+        status = ${status},
+        admin_id = ${user.id},
+        admin_notes = ${adminNotes || null},
+        updated_at = NOW()
+      WHERE id = ${reportId}
+      RETURNING id, status, admin_notes, updated_at
+    `
+
+    // Update report (review or reply)
+    let updateResult
+    if (type === "reply") {
+      updateResult = await updateReplyReport()
+    } else if (type === "review") {
+      updateResult = await updateReviewReport()
+    } else {
+      // Backward-compatible: try review_reports first, then reply_reports
+      updateResult = await updateReviewReport()
+      if (updateResult.rows.length === 0) {
+        updateResult = await updateReplyReport()
+      }
+    }
 
     if (updateResult.rows.length === 0) {
       return NextResponse.json(

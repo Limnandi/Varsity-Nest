@@ -261,7 +261,7 @@ function ReviewCard({
                   <button
                     onClick={() => setShowDeleteMenu(!showDeleteMenu)}
                     className="p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-300"
-                    title="More options"
+                    aria-label="More options"
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
@@ -284,7 +284,7 @@ function ReviewCard({
                   <button
                     onClick={() => handleReport(review.id, `${review.first_name} ${review.last_name}`)}
                     className="p-2 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-300"
-                    title="Report this review"
+                    aria-label="Report this review"
                   >
                     <Flag className="w-4 h-4" />
                   </button>
