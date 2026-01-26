@@ -3,6 +3,7 @@ import ReviewsSection from "@/components/ReviewsSection"
 import RoomTypesSection from "@/components/RoomTypesSection"
 import ContactAgent from "@/components/ContactAgent"
 import ShareSection from "@/components/ShareSection"
+import ListingQuickActions from "@/components/ListingQuickActions"
 import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { notFound } from "next/navigation"
@@ -26,7 +27,6 @@ import {
   Building,
   MessageSquare
 } from "lucide-react"
-import WishlistButton from "@/components/WishlistButton"
 
 async function getListing(id: string, userRole?: string, userId?: string) {
   try {
@@ -363,16 +363,16 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             />
 
             {/* Quick Actions */}
-            {currentUserRole === 'student' && (
             <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-green-500/10 overflow-hidden">
               <h3 className="text-lg sm:text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent break-words">
                 Quick Actions
               </h3>
-              <div className="space-y-3">
-                  <WishlistButton accommodationId={id} />
-                </div>
-              </div>
-                )}
+              <ListingQuickActions
+                accommodationId={id}
+                accommodationName={listing.name}
+                currentUserRole={currentUserRole || undefined}
+              />
+            </div>
           </div>
         </div>
       </div>

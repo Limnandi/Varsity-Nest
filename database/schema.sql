@@ -183,10 +183,20 @@ CREATE TABLE IF NOT EXISTS reports (
     report_type VARCHAR(50) NOT NULL,
     description TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'investigating', 'resolved', 'dismissed')),
+    admin_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
     admin_notes TEXT,
+    reporter_name VARCHAR(120),
+    reporter_email VARCHAR(255),
+    reporter_phone VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Backwards-compatible columns (for existing DBs)
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS admin_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS reporter_name VARCHAR(120);
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS reporter_email VARCHAR(255);
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS reporter_phone VARCHAR(50);
 
 -- Admin settings table
 CREATE TABLE IF NOT EXISTS admin_settings (

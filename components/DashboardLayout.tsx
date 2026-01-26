@@ -52,6 +52,7 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
     { href: "/admin/students", label: "Students", icon: GraduationCap },
     { href: "/admin/domains", label: "Domains", icon: Globe },
     { href: "/admin/reports", label: "Reports", icon: FileText },
+    { href: "/admin/listing-reports", label: "Listing Reports", icon: FileText },
     { href: "/admin/settings", label: "Settings", icon: Settings },
   ]
 
@@ -107,6 +108,12 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
 
   return (
     <div className="flex h-screen bg-gradient-to-b from-[#02042b] to-[#040945] overflow-x-hidden w-full max-w-full">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[60] focus:rounded-lg focus:bg-black/80 focus:px-4 focus:py-2 focus:text-white focus:ring-2 focus:ring-blue-500"
+      >
+        Skip to content
+      </a>
       {/* Sidebar */}
       <aside
         className={cn(
@@ -122,7 +129,12 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
             </div>
             <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Varsity Nest</span>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -145,12 +157,18 @@ export default function DashboardLayout({ userRole, children }: DashboardLayoutP
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden w-full max-w-full">
         <header className="flex items-center justify-between md:justify-end h-16 px-6 bg-black/20 backdrop-blur-xl border-b border-white/10 w-full max-w-full">
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
+          <button
+            type="button"
+            aria-label="Open sidebar"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-4">{/* User profile, notifications etc. can go here */}</div>
         </header>
-        <main className="flex-1 overflow-x-hidden overflow-y-auto w-full max-w-full">
+        <main id="main-content" className="flex-1 overflow-x-hidden overflow-y-auto w-full max-w-full">
           {children}
         </main>
       </div>

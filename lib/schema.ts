@@ -243,7 +243,11 @@ export const reports = pgTable("reports", {
   reportType: varchar("report_type", { length: 50 }).notNull(),
   description: text("description").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending").$type<"pending" | "investigating" | "resolved" | "dismissed">(),
+  adminId: varchar("admin_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
   adminNotes: text("admin_notes"),
+  reporterName: varchar("reporter_name", { length: 120 }),
+  reporterEmail: varchar("reporter_email", { length: 255 }),
+  reporterPhone: varchar("reporter_phone", { length: 50 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })
