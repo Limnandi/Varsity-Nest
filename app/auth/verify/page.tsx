@@ -35,15 +35,15 @@ export default function VerifyPage() {
 
         if (response.ok && data.success) {
           setStatus('success')
-          setMessage('Email verified successfully!')
+          setMessage('Email verified successfully! Redirecting to login...')
           
-          // Redirect to email-verified page after a short delay
+          // Redirect directly to login page after a short delay
           setTimeout(() => {
-            const redirectUrl = redirectTo 
-              ? `/auth/email-verified?redirect_to=${encodeURIComponent(redirectTo)}`
-              : '/auth/email-verified'
-            router.push(redirectUrl)
-          }, 2000)
+            const loginUrl = redirectTo 
+              ? `/auth/login?verified=true&redirect_to=${encodeURIComponent(redirectTo)}`
+              : '/auth/login?verified=true'
+            router.push(loginUrl)
+          }, 1500)
         } else {
           setStatus('error')
           setMessage(data.error || 'Verification failed. Please try again.')
@@ -109,7 +109,7 @@ export default function VerifyPage() {
           {status === 'success' && (
             <div className="flex items-center justify-center space-x-2 text-green-300 text-sm mb-6">
               <CheckCircle className="w-4 h-4" />
-              <span>Redirecting to dashboard...</span>
+              <span>Redirecting to login page...</span>
             </div>
           )}
 

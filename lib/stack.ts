@@ -39,8 +39,8 @@ export function getStackServerApp() {
           signUp: "/auth/register",
           afterSignIn: "/auth/redirect",
           afterSignUp: "/auth/check-email",
-          // After email verification, redirect to dedicated success page
-          emailVerification: "/auth/email-verified",
+          // After email verification, redirect directly to login
+          emailVerification: "/auth/login?verified=true",
         },
       })
     } else {
