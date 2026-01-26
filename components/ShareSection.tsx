@@ -21,7 +21,7 @@ export default function ShareSection({ accommodationId, accommodationName }: Sha
   const handleWhatsAppShare = () => {
     const url = getListingUrl()
     const urlWithParams = `${url}?utm_source=whatsapp&utm_medium=referral&utm_campaign=socialmedia`
-    const message = `Check out this property I found on VarsityNest! ${accommodationName} - ${urlWithParams}`
+    const message = `Check out this accommodation I found on VarsityNest! ${accommodationName} - ${urlWithParams}`
     
     // Use wa.me which automatically detects device and opens appropriate WhatsApp (Web or App)
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`

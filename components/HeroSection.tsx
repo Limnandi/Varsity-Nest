@@ -29,7 +29,7 @@ export default function HeroSection() {
             </Link>
             <Link
               href="/contact"
-              className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-neutral-300 transition-all duration-300 ease-in-out border border-white/20 bg-black/20 backdrop-blur-xl rounded-xl hover:bg-white/5 hover:text-white hover:border-white/30"
+              className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-neutral-300 transition-all duration-300 ease-in-out border border-white/20 bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-xl hover:bg-white/5 hover:text-white hover:border-white/30"
             >
               <span className="relative z-10">Get Help Finding</span>
             </Link>
@@ -38,7 +38,7 @@ export default function HeroSection() {
 
         {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
+          <div className="group relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-8 text-white shadow-lg md:shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 md:hover:scale-[1.02]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-green-500/50 bg-green-500/10 shadow-[0_0_20px_theme(colors.green.500/40%)] mb-6 group-hover:shadow-[0_0_30px_theme(colors.green.500/60%)] transition-all duration-300">
               <Shield className="h-8 w-8 text-green-400" />
             </div>
@@ -46,7 +46,7 @@ export default function HeroSection() {
             <p className="text-neutral-300 leading-relaxed">All accommodations are verified for safety and quality standards</p>
           </div>
           
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
+          <div className="group relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-8 text-white shadow-lg md:shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 md:hover:scale-[1.02]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-blue-500/10 shadow-[0_0_20px_theme(colors.blue.500/40%)] mb-6 group-hover:shadow-[0_0_30px_theme(colors.blue.500/60%)] transition-all duration-300">
               <MapPin className="h-8 w-8 text-blue-400" />
             </div>
@@ -54,7 +54,7 @@ export default function HeroSection() {
             <p className="text-neutral-300 leading-relaxed">Close to UFS and CUT campuses with easy transport access</p>
           </div>
           
-          <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-8 text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
+          <div className="group relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-8 text-white shadow-lg md:shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 md:hover:scale-[1.02]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_theme(colors.purple.500/40%)] mb-6 group-hover:shadow-[0_0_30px_theme(colors.purple.500/60%)] transition-all duration-300">
               <Users className="h-8 w-8 text-purple-400" />
             </div>

@@ -8,6 +8,7 @@ import AuthGuard from "@/components/AuthGuard"
 import { MapPin, Building, DollarSign, Users, Wifi, Shield, Car, Utensils, Bus, ArrowLeft, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { toast } from "sonner"
 
 interface AccommodationData {
   id: string
@@ -178,7 +179,7 @@ export default function EditAccommodation() {
     const newImages = formData.newImages.length
     
     if (remainingImages + newImages < 10) {
-      alert("Accommodations must have exactly 10 property images (excluding the card image).")
+      toast.error("Accommodations must have exactly 10 property images (excluding the card image).")
       return
     }
 
@@ -193,7 +194,7 @@ export default function EditAccommodation() {
     const remainingNew = formData.newImages.length - 1
     
     if (remainingExisting + remainingNew < 10) {
-      alert("Accommodations must have exactly 10 property images (excluding the card image).")
+      toast.error("Accommodations must have exactly 10 property images (excluding the card image).")
       return
     }
 
@@ -205,7 +206,7 @@ export default function EditAccommodation() {
 
   const handleRemoveCardImage = () => {
     if (!formData.newCardImage && formData.removedCardImage) {
-      alert("Accommodations must have a card image. Please upload a new one before removing the existing one.")
+      toast.error("Accommodations must have a card image. Please upload a new one before removing the existing one.")
       return
     }
     
@@ -223,28 +224,28 @@ export default function EditAccommodation() {
     const totalPropertyImages = remainingExisting + newImagesCount
     
     if (totalPropertyImages !== 10) {
-      alert("Accommodations must have exactly 10 property images (excluding the card image).")
+      toast.error("Accommodations must have exactly 10 property images (excluding the card image).")
       return
     }
 
     const hasCardImage = (formData.existingCardImage && !formData.removedCardImage) || formData.newCardImage
     if (!hasCardImage) {
-      alert("Accommodations must have a card image.")
+      toast.error("Accommodations must have a card image.")
       return
     }
 
     if (!formData.hasSingleRooms && !formData.hasSharingRooms) {
-      alert("Please select at least one room type (Single or Sharing)")
+      toast.error("Please select at least one room type (Single or Sharing)")
       return
     }
 
     if (formData.hasSingleRooms && (!formData.singleRoomPrice || Number(formData.singleRoomPrice) <= 0)) {
-      alert("Please enter a valid price for single rooms")
+      toast.error("Please enter a valid price for single rooms")
       return
     }
     
     if (formData.hasSharingRooms && (!formData.sharingRoomPrice || Number(formData.sharingRoomPrice) <= 0)) {
-      alert("Please enter a valid price for sharing rooms")
+      toast.error("Please enter a valid price for sharing rooms")
       return
     }
 
@@ -253,11 +254,11 @@ export default function EditAccommodation() {
       const singleTotal = Number(formData.singleRoomsTotal) || 0
       const singleAvailable = Number(formData.singleRoomsAvailable) || 0
       if (singleTotal <= 0) {
-        alert("Please enter the total number of single rooms")
+        toast.error("Please enter the total number of single rooms")
         return
       }
       if (singleAvailable < 0 || singleAvailable > singleTotal) {
-        alert("Available single rooms must be between 0 and the total number of single rooms")
+        toast.error("Available single rooms must be between 0 and the total number of single rooms")
         return
       }
     }
@@ -267,11 +268,11 @@ export default function EditAccommodation() {
       const sharingTotal = Number(formData.sharingRoomsTotal) || 0
       const sharingAvailable = Number(formData.sharingRoomsAvailable) || 0
       if (sharingTotal <= 0) {
-        alert("Please enter the total number of sharing rooms")
+        toast.error("Please enter the total number of sharing rooms")
         return
       }
       if (sharingAvailable < 0 || sharingAvailable > sharingTotal) {
-        alert("Available sharing rooms must be between 0 and the total number of sharing rooms")
+        toast.error("Available sharing rooms must be between 0 and the total number of sharing rooms")
         return
       }
     }
@@ -282,7 +283,7 @@ export default function EditAccommodation() {
     const overallTotal = Number(formData.totalRooms) || 0
     
     if (singleTotal + sharingTotal !== overallTotal) {
-      alert(`The sum of single rooms (${singleTotal}) and sharing rooms (${sharingTotal}) must equal the total rooms (${overallTotal})`)
+      toast.error(`The sum of single rooms (${singleTotal}) and sharing rooms (${sharingTotal}) must equal the total rooms (${overallTotal})`)
       return
     }
 
@@ -291,7 +292,7 @@ export default function EditAccommodation() {
     const overallAvailable = singleAvailable + sharingAvailable
     
     if (overallAvailable > overallTotal) {
-      alert("The sum of available rooms cannot exceed the total number of rooms")
+      toast.error("The sum of available rooms cannot exceed the total number of rooms")
       return
     }
     
@@ -988,11 +989,11 @@ export default function EditAccommodation() {
                         const ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
                         if (file) {
                           if (!ALLOWED.includes(file.type)) {
-                            alert('Only JPEG, PNG, WEBP allowed')
+                            toast.error('Only JPEG, PNG, WEBP allowed')
                             return
                           }
                           if (file.size > MAX_SIZE) {
-                            alert('Image must be <= 10MB')
+                            toast.error('Image must be <= 10MB')
                             return
                           }
                         }
@@ -1102,17 +1103,17 @@ export default function EditAccommodation() {
                         const totalAfter = remainingExisting + currentNew + files.length
                         
                         if (totalAfter > 10) {
-                          alert(`You can only add ${10 - (remainingExisting + currentNew)} more images to reach exactly 10 property images.`)
+                          toast.error(`You can only add ${10 - (remainingExisting + currentNew)} more images to reach exactly 10 property images.`)
                           return
                         }
                         
                         for (const file of files) {
                           if (!ALLOWED.includes(file.type)) {
-                            alert('Only JPEG, PNG, WEBP images allowed')
+                            toast.error('Only JPEG, PNG, WEBP images allowed')
                             return
                           }
                           if (file.size > MAX_SIZE) {
-                            alert('Each image must be <= 10MB')
+                            toast.error('Each image must be <= 10MB')
                             return
                           }
                         }

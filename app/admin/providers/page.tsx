@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { DocumentViewer } from "@/components/DocumentViewer"
 import { Building, Eye, Check, X, Trash2, Users, Clock } from "lucide-react"
+import { toast } from "sonner"
 
 interface Provider {
   id: string
@@ -76,10 +77,10 @@ export default function ProvidersPage() {
 
       setPendingProviders((prev) => prev.filter((p) => p.id !== providerId))
       await fetchData() // Refresh current providers
-      alert("Provider approved successfully!")
+      toast.success("Provider approved successfully!")
     } catch (error) {
       console.error("Error approving provider:", error)
-      alert("Failed to approve provider")
+      toast.error("Failed to approve provider")
     }
   }
 
@@ -101,10 +102,10 @@ export default function ProvidersPage() {
       if (!response.ok) throw new Error('Failed to reject provider')
 
       setPendingProviders((prev) => prev.map((p) => (p.id === providerId ? { ...p, status: "rejected" } : p)))
-      alert("Provider rejected successfully!")
+      toast.success("Provider rejected successfully!")
     } catch (error) {
       console.error("Error rejecting provider:", error)
-      alert("Failed to reject provider")
+      toast.error("Failed to reject provider")
     }
   }
 
@@ -126,10 +127,10 @@ export default function ProvidersPage() {
       if (!response.ok) throw new Error('Failed to delete provider')
 
       setCurrentProviders((prev) => prev.filter((p) => p.id !== providerId))
-      alert("Provider deleted successfully!")
+      toast.success("Provider deleted successfully!")
     } catch (error) {
       console.error("Error deleting provider:", error)
-      alert("Failed to delete provider")
+      toast.error("Failed to delete provider")
     }
   }
 

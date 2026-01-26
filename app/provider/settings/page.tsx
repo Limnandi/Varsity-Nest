@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import PlanSelectionModal from "@/components/PlanSelectionModal"
+import { toast } from "sonner"
 
 interface ProviderSettings {
   // Accommodation settings
@@ -212,7 +213,7 @@ export default function ProviderSettings() {
       ))
     } catch (err) {
       console.error('Accommodation status update error:', err)
-      alert(err instanceof Error ? err.message : 'Failed to update accommodation status')
+      toast.error(err instanceof Error ? err.message : 'Failed to update accommodation status')
     }
   }
 
@@ -235,7 +236,7 @@ export default function ProviderSettings() {
       setAccommodations(prev => prev.filter(acc => acc.id !== id))
     } catch (err) {
       console.error('Accommodation deletion error:', err)
-      alert(err instanceof Error ? err.message : 'Failed to delete accommodation')
+      toast.error(err instanceof Error ? err.message : 'Failed to delete accommodation')
     }
   }
 
@@ -268,7 +269,7 @@ export default function ProviderSettings() {
 
     } catch (error) {
       console.error('Account deletion error:', error)
-      alert(error instanceof Error ? error.message : "Failed to delete account. Please try again.")
+      toast.error(error instanceof Error ? error.message : "Failed to delete account. Please try again.")
       setIsDeleting(false)
       setDeletionComplete(false)
     }

@@ -49,7 +49,7 @@ export default function StudentProfileDropdown({ onClose, isMobileMenu = false }
 
   // Update dropdown position when opened - optimized with requestAnimationFrame
   useEffect(() => {
-    if (isOpen && buttonRef.current) {
+    if (isOpen && buttonRef.current && !isMobileMenu) {
       let rafId: number | null = null
       let ticking = false
       
@@ -73,18 +73,24 @@ export default function StudentProfileDropdown({ onClose, isMobileMenu = false }
       
       updatePosition()
       window.addEventListener('resize', throttledUpdate, { passive: true })
-      window.addEventListener('scroll', throttledUpdate, { passive: true, capture: true })
+
+      // Close dropdown on scroll instead of continuously re-measuring; avoids scroll jank on mobile
+      const closeOnScroll = () => {
+        setIsOpen(false)
+        onClose?.()
+      }
+      window.addEventListener('scroll', closeOnScroll, { passive: true })
       
       return () => {
         if (rafId !== null) {
           cancelAnimationFrame(rafId)
         }
         window.removeEventListener('resize', throttledUpdate)
-        window.removeEventListener('scroll', throttledUpdate, { capture: true })
+        window.removeEventListener('scroll', closeOnScroll)
       }
     }
     return undefined
-  }, [isOpen])
+  }, [isOpen, isMobileMenu, onClose])
 
   // Close dropdown when clicking outside
   useEffect(() => {

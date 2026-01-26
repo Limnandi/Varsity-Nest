@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
@@ -13,72 +12,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname()
-
-  // Disable right-click and common developer shortcuts globally
-  useEffect(() => {
-    // Prevent right-click context menu
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault()
-      return false
-    }
-
-    // Prevent common developer shortcuts
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      // Disable F12 (Developer Tools)
-      if (e.key === "F12") {
-        e.preventDefault()
-        return
-      }
-
-      // Disable Ctrl+Shift+I (Developer Tools)
-      if (e.ctrlKey && e.shiftKey && e.key === "I") {
-        e.preventDefault()
-        return
-      }
-
-      // Disable Ctrl+Shift+J (Console)
-      if (e.ctrlKey && e.shiftKey && e.key === "J") {
-        e.preventDefault()
-        return
-      }
-
-      // Disable Ctrl+U (View Source)
-      if (e.ctrlKey && e.key === "u") {
-        e.preventDefault()
-        return
-      }
-
-      // Disable Ctrl+S (Save Page)
-      if (e.ctrlKey && e.key === "s") {
-        e.preventDefault()
-        return
-      }
-    }
-
-    // Prevent text selection on common select-all shortcuts
-    const handleSelectStart = (e: Event) => {
-      const target = e.target as HTMLElement
-      // Allow selection in input fields and textareas
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
-        return true
-      }
-      // Prevent selection on other elements
-      e.preventDefault()
-      return false
-    }
-
-    // Add event listeners
-    document.addEventListener("contextmenu", handleContextMenu)
-    document.addEventListener("keydown", handleKeyDown)
-    document.addEventListener("selectstart", handleSelectStart)
-
-    // Cleanup
-    return () => {
-      document.removeEventListener("contextmenu", handleContextMenu)
-      document.removeEventListener("keydown", handleKeyDown)
-      document.removeEventListener("selectstart", handleSelectStart)
-    }
-  }, [])
 
   // Define public pages that should show navbar and footer
   const publicPages = [
@@ -130,9 +63,9 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           
           {/* Accent gradients for depth */}
-          <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-600/10 to-transparent rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-purple-600/10 to-transparent rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-full blur-2xl" />
+          <div className="hidden sm:block absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-600/10 to-transparent rounded-full blur-3xl" />
+          <div className="hidden sm:block absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-purple-600/10 to-transparent rounded-full blur-3xl" />
+          <div className="hidden sm:block absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-full blur-2xl" />
           
           {/* Subtle grid lines */}
           <div className="absolute inset-0 opacity-5">
@@ -142,8 +75,16 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Content */}
         <div className="relative z-10 flex flex-col min-h-screen overflow-x-hidden w-full max-w-full">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[60] focus:rounded-lg focus:bg-black/80 focus:px-4 focus:py-2 focus:text-white focus:ring-2 focus:ring-blue-500"
+          >
+            Skip to content
+          </a>
           <Navbar />
-          <main className="flex-1 overflow-x-hidden w-full max-w-full">{children}</main>
+          <main id="main-content" className="flex-1 overflow-x-hidden w-full max-w-full">
+            {children}
+          </main>
           <Footer />
         </div>
 

@@ -30,6 +30,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://varsitynest.space'),
   // Title: Focused on South African terms. (Target: 50-60 chars)
   title: 'Varsity Nest | Find & List Student Housing & Accommodation', 
   
@@ -44,13 +45,18 @@ export const metadata: Metadata = {
     canonical: 'https://varsitynest.space/', 
   },
 
+  manifest: '/site.webmanifest',
+
   // --- EXISTING/WORKING FAVICON CONFIG (Kept for continuity) ---
   icons: {
     icon: [
       { url: "/favicon.ico", rel: "icon", type: "image/x-icon" },
+      // PNG fallback (some crawlers/browsers prefer PNG over ICO)
+      { url: "/images/varsity-nest-logo.png", type: "image/png", sizes: "any" },
     ],
     apple: [
-      { url: "/favicon.ico" },
+      // iOS and some crawlers look for an apple touch icon specifically
+      { url: "/images/varsity-nest-logo.png", type: "image/png", sizes: "any" },
     ],
     shortcut: [
       { url: "/favicon.ico" },

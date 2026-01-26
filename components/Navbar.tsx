@@ -14,9 +14,9 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="relative z-40 bg-gradient-to-r from-[#02042b] to-[#040945] backdrop-blur-xl border-b border-white/10 shadow-2xl w-full max-w-full">
+      <nav className="relative z-40 bg-gradient-to-r from-[#02042b] to-[#040945] backdrop-blur-none md:backdrop-blur-xl border-b border-white/10 shadow-2xl w-full max-w-full">
         {/* Animated background gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 animate-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 md:animate-pulse motion-reduce:animate-none"></div>
         
         {/* Subtle animated border */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>

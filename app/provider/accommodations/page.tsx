@@ -9,6 +9,7 @@ import Image from "next/image"
 import { Building } from "lucide-react"
 import { formatZar } from "@/lib/utils"
 import PlanSelectionModal from "@/components/PlanSelectionModal"
+import { toast } from "sonner"
 
 interface ProviderAccommodation {
   id: string
@@ -120,7 +121,7 @@ export default function ProviderAccommodations() {
       }
       setUserAccommodations((prev) => prev.filter((acc) => acc.id !== id))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to delete accommodation')
+      toast.error(e instanceof Error ? e.message : 'Failed to delete accommodation')
     }
   }
 
@@ -139,7 +140,7 @@ export default function ProviderAccommodations() {
       const updated = await res.json()
       setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { ...a, featured: updated.featured !== undefined ? updated.featured : next } : a)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to update featured flag')
+      toast.error(e instanceof Error ? e.message : 'Failed to update featured flag')
     }
   }
 
@@ -158,7 +159,7 @@ export default function ProviderAccommodations() {
       const updated = await res.json()
       setUserAccommodations((prev) => prev.map((a) => (a.id === id ? { ...a, available_rooms: updated.available_rooms !== undefined ? updated.available_rooms : available, total_rooms: updated.total_rooms !== undefined ? updated.total_rooms : total } : a)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to update rooms')
+      toast.error(e instanceof Error ? e.message : 'Failed to update rooms')
     }
   }
 
@@ -195,7 +196,7 @@ export default function ProviderAccommodations() {
           unpublished_at: updated.unpublished_at
         } : a)))
       } catch (e) {
-        alert(e instanceof Error ? e.message : 'Failed to update publication status')
+        toast.error(e instanceof Error ? e.message : 'Failed to update publication status')
       } finally {
         setPublishingId(null)
       }
@@ -241,7 +242,7 @@ export default function ProviderAccommodations() {
         unpublished_at: updated.unpublished_at
       } : a)))
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to update publication status')
+      toast.error(e instanceof Error ? e.message : 'Failed to update publication status')
     } finally {
       // Clear loading state
       setPublishingId(null)

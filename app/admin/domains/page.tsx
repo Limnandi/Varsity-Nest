@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/DashboardLayout"
 import AuthGuard from "@/components/AuthGuard"
 import { Plus, Edit, Trash2, Globe, Shield, CheckCircle, XCircle } from "lucide-react"
+import { toast } from "sonner"
 
 interface WhitelistedDomain {
   id: string
@@ -59,7 +60,7 @@ export default function AdminDomains() {
       setNewDomain({ domain: "", university: "" })
       setShowAddForm(false)
     } catch (error) {
-      alert("Failed to add domain")
+      toast.error("Failed to add domain")
     }
   }
 
@@ -92,7 +93,7 @@ export default function AdminDomains() {
       setEditingDomain(null)
       setNewDomain({ domain: "", university: "" })
     } catch (error) {
-      alert("Failed to update domain")
+      toast.error("Failed to update domain")
     }
   }
 
@@ -107,7 +108,7 @@ export default function AdminDomains() {
 
         loadDomains()
       } catch (error) {
-        alert("Failed to delete domain")
+        toast.error("Failed to delete domain")
       }
     }
   }
@@ -128,7 +129,7 @@ export default function AdminDomains() {
 
       loadDomains()
     } catch (error) {
-      alert("Failed to update domain status")
+      toast.error("Failed to update domain status")
     }
   }
 
