@@ -115,24 +115,45 @@ export default function Accommodations() {
     }
   }, [])
 
-  // Listen for review deletion events to trigger immediate refresh
+  // Listen for review change events to trigger immediate refresh
   useEffect(() => {
     const handleReviewChange = (event: Event) => {
       const customEvent = event as CustomEvent
       const accommodationId = customEvent.detail?.accommodationId
+      const optimisticRating = customEvent.detail?.rating
+      const optimisticReviewCount = customEvent.detail?.review_count
       
-      // Trigger immediate ratings refresh when reviews are added/deleted
-      // Don't clear cache here - just refresh ratings
-      if (allAccs.length > 0) {
-        const ids = allAccs.map(acc => acc.id).filter(Boolean)
-        if (ids.length > 0) {
-          // If specific accommodation ID provided, prioritize it
-          if (accommodationId && ids.includes(accommodationId)) {
-            fetchRatings([accommodationId])
-          }
-          // Always refresh all to be safe
-          fetchRatings(ids)
+      // Trigger immediate ratings refresh only for the affected listing.
+      // Refreshing *all* listings on every review change is expensive and causes scroll jank.
+      if (accommodationId) {
+        // Apply optimistic update immediately (if provided) for instant UI feedback
+        if (typeof optimisticRating === "number" || typeof optimisticReviewCount === "number") {
+          setAllAccs((prev) =>
+            prev.map((acc) =>
+              acc.id === accommodationId
+                ? {
+                    ...acc,
+                    rating: typeof optimisticRating === "number" ? optimisticRating : acc.rating,
+                    review_count:
+                      typeof optimisticReviewCount === "number" ? optimisticReviewCount : acc.review_count,
+                  }
+                : acc,
+            ),
+          )
+          setFilteredAccommodations((prev) =>
+            prev.map((acc) =>
+              acc.id === accommodationId
+                ? {
+                    ...acc,
+                    rating: typeof optimisticRating === "number" ? optimisticRating : acc.rating,
+                    review_count:
+                      typeof optimisticReviewCount === "number" ? optimisticReviewCount : acc.review_count,
+                  }
+                : acc,
+            ),
+          )
         }
+        fetchRatings([accommodationId])
       }
     }
 
@@ -231,11 +252,11 @@ export default function Accommodations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
 
-  // Poll ratings every 15 seconds for real-time updates (more frequent for better UX)
+  // Poll ratings periodically (keep light to avoid scroll jank)
   useEffect(() => {
     if (allAccs.length === 0) return
 
-    const POLL_INTERVAL = 15 * 1000 // 15 seconds
+    const POLL_INTERVAL = 60 * 1000 // 60 seconds
 
     const pollRatings = () => {
       const ids = allAccs.map(acc => acc.id).filter(Boolean)
@@ -247,12 +268,30 @@ export default function Accommodations() {
     }
 
     // Start polling after a short delay to let initial load complete
-    const initialTimeout = setTimeout(pollRatings, 2000)
-    const interval = setInterval(pollRatings, POLL_INTERVAL)
+    const initialTimeout = setTimeout(pollRatings, 3000)
+    let interval: ReturnType<typeof setInterval> | undefined
+    const start = () => {
+      if (!interval) interval = setInterval(pollRatings, POLL_INTERVAL)
+    }
+    const stop = () => {
+      if (interval) {
+        clearInterval(interval)
+        interval = undefined
+      }
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") start()
+      else stop()
+    }
+
+    document.addEventListener("visibilitychange", onVisibility)
+    start()
 
     return () => {
       clearTimeout(initialTimeout)
-      clearInterval(interval)
+      stop()
+      document.removeEventListener("visibilitychange", onVisibility)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allAccs.length]) // Only depend on length, not the array itself

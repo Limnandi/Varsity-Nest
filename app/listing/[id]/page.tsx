@@ -152,7 +152,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] pt-20 pb-20 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
         {/* Header Section */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 mb-8 text-white shadow-2xl shadow-blue-500/20 overflow-hidden">
+        <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 mb-8 text-white shadow-lg md:shadow-2xl shadow-blue-500/20 overflow-hidden">
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
@@ -195,7 +195,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             
             {/* Price Card */}
             <div className="lg:w-80 w-full">
-              <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-2xl shadow-green-500/20 overflow-hidden">
+              <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 text-white shadow-lg md:shadow-2xl shadow-green-500/20 overflow-hidden">
                 <div className="text-center mb-6">
                   <div className="flex items-center justify-center mb-2">
                     <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-400 mr-2 flex-shrink-0" />
@@ -207,7 +207,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                 <div className="space-y-4">
                   <a
                     href={`mailto:${listing.provider_email}?subject=Inquiry about ${encodeURIComponent(listing.name)}`}
-                    className="group relative w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-semibold text-base sm:text-lg hover:from-green-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center break-words"
+                    className="group relative w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-semibold text-base sm:text-lg hover:from-green-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 md:hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center break-words"
                   >
                     <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
                     <span className="break-words">Contact Provider</span>
@@ -215,7 +215,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                   
                   <a
                     href={`tel:${listing.provider_phone || ''}`}
-                    className="group relative w-full border border-white/20 bg-black/20 backdrop-blur-xl text-white py-3 px-4 sm:px-6 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center break-words"
+                    className="group relative w-full border border-white/20 bg-black/20 backdrop-blur-none md:backdrop-blur-xl text-white py-3 px-4 sm:px-6 rounded-xl font-medium hover:bg-white/5 transition-all duration-300 md:hover:scale-[1.02] flex items-center justify-center break-words"
                   >
                     <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="break-words">Call Provider</span>
@@ -233,7 +233,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Image Gallery */}
-        <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-2xl shadow-blue-500/10 overflow-hidden">
+        <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 mb-8 text-white shadow-lg md:shadow-2xl shadow-blue-500/10 overflow-hidden">
           <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent break-words">
             Photo Gallery
           </h2>
@@ -244,7 +244,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                  {/* Main Content */}
                  <div className="lg:col-span-2 space-y-6 lg:space-y-8">
             {/* Amenities Section */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-purple-500/10 overflow-hidden">
+            <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg md:shadow-2xl shadow-purple-500/10 overflow-hidden">
               <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent flex items-center gap-3 break-words">
                 <Home className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400 flex-shrink-0" />
                 <span className="break-words">Amenities & Features</span>
@@ -280,7 +280,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Property Details */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-orange-500/10 overflow-hidden">
+            <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg md:shadow-2xl shadow-orange-500/10 overflow-hidden">
               <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent flex items-center gap-3 break-words">
                 <Building className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 flex-shrink-0" />
                 <span className="break-words">Property Details</span>
@@ -322,12 +322,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Room Types Section */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-6 lg:p-8 text-white shadow-2xl shadow-green-500/10 w-full max-w-full overflow-hidden">
+            <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-6 lg:p-8 text-white shadow-lg md:shadow-2xl shadow-green-500/10 w-full max-w-full overflow-hidden">
               <RoomTypesSection accommodationId={id} />
             </div>
 
             {/* Reviews Section */}
-            <div className="relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-2xl shadow-purple-500/10 overflow-hidden">
+            <div className="relative border border-white/10 bg-black/25 md:bg-black/20 backdrop-blur-none md:backdrop-blur-xl rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg md:shadow-2xl shadow-purple-500/10 overflow-hidden">
               <h2 className="text-xl sm:text-2xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent flex items-center gap-3 break-words">
                 <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400 flex-shrink-0" />
                 <span className="break-words">Reviews & Ratings</span>

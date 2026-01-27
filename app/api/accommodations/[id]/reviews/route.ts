@@ -4,7 +4,9 @@ import { query } from "@/lib/database"
 import { redis } from "@/lib/redis"
 import { CacheManager } from "@/lib/cache"
 
-export const revalidate = 120
+// Reviews include user-related fields (e.g., email) and must stay fresh after writes.
+// Avoid CDN/public caching to prevent stale UI and leaking personalized data.
+export const dynamic = "force-dynamic"
 
 export async function GET(
   request: NextRequest,
@@ -83,9 +85,9 @@ export async function GET(
         hasMore,
       }
     })
-    response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=60')
-    response.headers.set('CDN-Cache-Control', 'public, s-maxage=120')
-    response.headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=120, stale-while-revalidate=60')
+    response.headers.set('Cache-Control', 'no-store')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
 
     return response
 
