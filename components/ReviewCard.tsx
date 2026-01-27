@@ -40,6 +40,7 @@ interface ReviewCardProps {
   review: Review
   onVote?: (reviewId: string, isHelpful: boolean) => void
   onReply?: (reviewId: string, comment: string) => Promise<void>
+  onLoadReplies?: (reviewId: string) => Promise<void>
   onReplyVote?: (replyId: string, isHelpful: boolean) => void
   onReport?: (reviewId: string, reviewAuthor: string) => void
   onReplyReport?: (replyId: string, replyAuthor: string) => void
@@ -56,6 +57,7 @@ function ReviewCard({
   review, 
   onVote, 
   onReply, 
+  onLoadReplies,
   onReplyVote, 
   onReport, 
   onReplyReport, 
@@ -77,6 +79,7 @@ function ReviewCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showStudentDetails, setShowStudentDetails] = useState(false)
   const [showReplies, setShowReplies] = useState(false)
+  const [isLoadingReplies, setIsLoadingReplies] = useState(false)
   const [localVotes, setLocalVotes] = useState({
     helpful: review.helpful_votes || 0,
     notHelpful: (review.total_votes || 0) - (review.helpful_votes || 0), // Calculate initially from total
@@ -373,15 +376,30 @@ function ReviewCard({
                 Reply
               </button>
             )}
-            {replies.length > 0 && (
+            {(replies.length > 0 || onLoadReplies) && (
               <button
                 type="button"
-                onClick={() => setShowReplies(!showReplies)}
+                onClick={async () => {
+                  const next = !showReplies
+                  setShowReplies(next)
+                  if (next && replies.length === 0 && onLoadReplies) {
+                    setIsLoadingReplies(true)
+                    try {
+                      await onLoadReplies(review.id)
+                    } finally {
+                      setIsLoadingReplies(false)
+                    }
+                  }
+                }}
                 className="text-sm text-neutral-400 hover:text-white transition-colors underline underline-offset-4"
                 aria-expanded={showReplies}
                 aria-controls={`replies-${review.id}`}
               >
-                {showReplies ? 'Hide replies' : `View replies (${replies.length})`}
+                {showReplies
+                  ? "Hide replies"
+                  : replies.length > 0
+                    ? `View replies (${replies.length})`
+                    : "View replies"}
               </button>
             )}
           </div>
@@ -425,17 +443,27 @@ function ReviewCard({
         )}
 
         {/* Replies */}
-        {replies.length > 0 && showReplies && (
+        {showReplies && (
           <div id={`replies-${review.id}`} className="space-y-3">
-            {replies.map((reply) => (
-              <ReplyCard
-                key={reply.id}
-                reply={reply}
-                onVote={onReplyVote}
-                onReport={handleReplyReport}
-                userVote={userReplyVotes[reply.id]}
-              />
-            ))}
+            {isLoadingReplies ? (
+              <div className="p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl text-sm text-neutral-300">
+                Loading replies...
+              </div>
+            ) : replies.length > 0 ? (
+              replies.map((reply) => (
+                <ReplyCard
+                  key={reply.id}
+                  reply={reply}
+                  onVote={onReplyVote}
+                  onReport={handleReplyReport}
+                  userVote={userReplyVotes[reply.id]}
+                />
+              ))
+            ) : (
+              <div className="p-3 border border-white/10 bg-black/20 backdrop-blur-xl rounded-xl text-sm text-neutral-400">
+                No replies yet.
+              </div>
+            )}
           </div>
         )}
       </div>

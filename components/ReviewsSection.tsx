@@ -61,45 +61,19 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
   const [reportingItem, setReportingItem] = useState<{id: string, author: string, type: 'review' | 'reply'} | null>(null)
   const [showReviewsModal, setShowReviewsModal] = useState(false)
 
-  const loadReviews = useCallback(async () => {
+  const loadReviews = useCallback(async (opts?: { limit?: number; page?: number }) => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/accommodations/${accommodationId}/reviews`)
+      const limit = opts?.limit ?? 10
+      const page = opts?.page ?? 1
+      const response = await fetch(
+        `/api/accommodations/${accommodationId}/reviews?limit=${limit}&page=${page}`,
+        { cache: "no-store" },
+      )
       
       if (response.ok) {
         const data = await response.json()
         setReviewsData(data)
-        
-        // Load user votes for each review
-        const votes: Record<string, boolean | null> = {}
-        for (const review of data.reviews) {
-          try {
-            const voteResponse = await fetch(`/api/reviews/${review.id}/helpful`)
-            if (voteResponse.ok) {
-              const voteData = await voteResponse.json()
-              votes[review.id] = voteData.userVote
-            }
-          } catch (error) {
-            console.error('Failed to load vote for review:', review.id, error)
-          }
-        }
-        setUserVotes(votes)
-
-        // Load replies for each review
-        const repliesData: Record<string, Reply[]> = {}
-        for (const review of data.reviews) {
-          try {
-            const repliesResponse = await fetch(`/api/reviews/${review.id}/replies`)
-            if (repliesResponse.ok) {
-              const repliesData_result = await repliesResponse.json()
-              repliesData[review.id] = repliesData_result.replies || []
-            }
-          } catch (error) {
-            console.error('Failed to load replies for review:', review.id, error)
-            repliesData[review.id] = []
-          }
-        }
-        setReplies(repliesData)
       }
     } catch (error) {
       console.error('Failed to load reviews:', error)
@@ -111,6 +85,19 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
   useEffect(() => {
     loadReviews()
   }, [loadReviews])
+
+  // Lazy-load replies when a user expands a review
+  const loadRepliesForReview = useCallback(async (reviewId: string) => {
+    try {
+      const resp = await fetch(`/api/reviews/${reviewId}/replies`, { cache: "no-store" })
+      if (!resp.ok) return
+      const data = await resp.json()
+      const list = Array.isArray(data?.replies) ? (data.replies as Reply[]) : []
+      setReplies((prev) => ({ ...prev, [reviewId]: list }))
+    } catch (err) {
+      console.error("Failed to load replies for review:", reviewId, err)
+    }
+  }, [])
 
   const handleReviewSubmit = async (rating: number, comment: string) => {
     try {
@@ -129,13 +116,21 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
           description: "Your review has been added and is now visible.",
         })
         
-        // Reload reviews to get the updated list with the new review
+        // Reload reviews to get the updated list with the new review (no-store, should be immediate)
         await loadReviews()
         
         // Dispatch event to trigger ratings refresh on accommodations page
-        window.dispatchEvent(new CustomEvent('reviewAdded', { 
-          detail: { accommodationId } 
-        }))
+        try {
+          const prevCount = reviewsData?.totalReviews ?? 0
+          const prevAvg = reviewsData?.averageRating ?? 0
+          const nextCount = prevCount + 1
+          const nextAvg = nextCount > 0 ? (prevAvg * prevCount + rating) / nextCount : rating
+          window.dispatchEvent(new CustomEvent('reviewAdded', { 
+            detail: { accommodationId, review_count: nextCount, rating: Math.round(nextAvg) } 
+          }))
+        } catch {
+          window.dispatchEvent(new CustomEvent('reviewAdded', { detail: { accommodationId } }))
+        }
         
         // Scroll to reviews section after a brief delay to ensure DOM is updated
         setTimeout(() => {
@@ -496,6 +491,7 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
                   review={review}
                   onVote={handleVote}
                   onReply={handleReply}
+                  onLoadReplies={loadRepliesForReview}
                   onReplyVote={handleReplyVote}
                   onReport={(reviewId, reviewAuthor) => handleReport(reviewId, reviewAuthor, 'review')}
                   onReplyReport={(replyId, replyAuthor) => handleReport(replyId, replyAuthor, 'reply')}
@@ -515,7 +511,13 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
           {reviewsData.reviews.length > 2 && (
             <div className="border-t border-white/10 p-3 bg-black/10">
               <button
-                onClick={() => setShowReviewsModal(true)}
+                onClick={async () => {
+                  setShowReviewsModal(true)
+                  // Load a larger page for the modal in the background (without blocking UI)
+                  if ((reviewsData?.reviews?.length || 0) < (reviewsData?.totalReviews || 0)) {
+                    loadReviews({ limit: 50, page: 1 }).catch(() => {})
+                  }
+                }}
                 className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
               >
                 <span>View More Reviews</span>
@@ -569,6 +571,7 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
           userVotes={userVotes}
           replies={replies}
           userReplyVotes={userReplyVotes}
+          onLoadReplies={loadRepliesForReview}
         />
       )}
     </div>

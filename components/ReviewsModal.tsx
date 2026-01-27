@@ -40,6 +40,7 @@ interface ReviewsModalProps {
   onReport?: (reviewId: string, reviewAuthor: string) => void
   onReplyReport?: (replyId: string, replyAuthor: string) => void
   onDelete?: (reviewId: string) => Promise<void>
+  onLoadReplies?: (reviewId: string) => Promise<void>
   userVotes?: Record<string, boolean | null>
   replies?: Record<string, any[]>
   userReplyVotes?: Record<string, boolean | null>
@@ -63,6 +64,7 @@ export default function ReviewsModal({
   onReport,
   onReplyReport,
   onDelete,
+  onLoadReplies,
   userVotes = {},
   replies = {},
   userReplyVotes = {}
@@ -234,6 +236,7 @@ export default function ReviewsModal({
                       review={review}
                       onVote={onVote}
                       onReply={onReply}
+                      onLoadReplies={onLoadReplies}
                       onReplyVote={onReplyVote}
                       onReport={onReport}
                       onReplyReport={onReplyReport}
