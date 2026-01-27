@@ -121,9 +121,9 @@ export default function ReviewsModal({
     return filtered
   }, [reviews, orderFilter, starFilter, isOpen])
 
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose })
+
+  if (!isOpen) return null
 
   return (
     <>

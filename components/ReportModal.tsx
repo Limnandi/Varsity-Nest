@@ -56,8 +56,6 @@ export default function ReportModal({
     onClose()
   }
 
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose: handleClose })
 
   useEffect(() => {
@@ -74,6 +72,8 @@ export default function ReportModal({
       document.body.style.overflow = prev || "unset"
     }
   }, [isOpen])
+
+  if (!isOpen) return null
 
   const content = (
     <div

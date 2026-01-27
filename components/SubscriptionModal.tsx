@@ -65,8 +65,6 @@ export default function SubscriptionModal({
   const effectivePlanLimit = planLimit ?? selectedPlan.maxProperties
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose })
 
   const handlePaymentSuccess = () => {
@@ -78,6 +76,8 @@ export default function SubscriptionModal({
   const handlePaymentError = (error: string) => {
     console.error("Payment error:", error)
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">

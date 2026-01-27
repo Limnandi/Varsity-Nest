@@ -28,9 +28,9 @@ export default function ConfirmDialog({
   variant = 'danger'
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose })
+
+  if (!isOpen) return null
 
   const variantStyles = {
     danger: {

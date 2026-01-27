@@ -45,8 +45,6 @@ export default function PlanSelectionModal({
   const router = useRouter()
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose })
 
   const hasActiveSubscription = subscriptionSummary?.isInTrial || false
@@ -59,6 +57,8 @@ export default function PlanSelectionModal({
     router.push(paymentPath)
     onClose()
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">

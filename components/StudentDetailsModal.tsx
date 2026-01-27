@@ -35,8 +35,6 @@ export default function StudentDetailsModal({
     return () => setMounted(false)
   }, [])
 
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose })
   useModalA11y({
     isOpen: showImageViewer,
@@ -62,6 +60,8 @@ export default function StudentDetailsModal({
       day: 'numeric' 
     })
   }
+
+  if (!isOpen) return null
 
   return (
     <>

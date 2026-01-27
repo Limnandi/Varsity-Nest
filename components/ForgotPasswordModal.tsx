@@ -70,9 +70,9 @@ export default function ForgotPasswordModal({
     onClose()
   }
 
-  if (!isOpen) return null
-
   useModalA11y({ isOpen, containerRef: dialogRef, onClose: handleClose })
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
