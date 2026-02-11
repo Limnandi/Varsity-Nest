@@ -7,7 +7,7 @@
   "theme_color": "#040945",
   "icons": [
     {
-      "src": "/images/varsity-nest-logo.png",
+      "src": "/images/logo.png",
       "sizes": "any",
       "type": "image/png"
     }
