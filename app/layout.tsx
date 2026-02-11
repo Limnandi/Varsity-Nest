@@ -52,11 +52,11 @@ export const metadata: Metadata = {
     icon: [
       { url: "/favicon.ico", rel: "icon", type: "image/x-icon" },
       // PNG fallback (some crawlers/browsers prefer PNG over ICO)
-      { url: "/images/varsity-nest-logo.png", type: "image/png", sizes: "any" },
+      { url: "/images/logo.png", type: "image/png", sizes: "any" },
     ],
     apple: [
       // iOS and some crawlers look for an apple touch icon specifically
-      { url: "/images/varsity-nest-logo.png", type: "image/png", sizes: "any" },
+      { url: "/images/logo.png", type: "image/png", sizes: "any" },
     ],
     shortcut: [
       { url: "/favicon.ico" },
