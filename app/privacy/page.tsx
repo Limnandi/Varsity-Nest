@@ -10,11 +10,13 @@ export const metadata: Metadata = {
     url: 'https://varsitynest.space/privacy',
     siteName: 'Varsity Nest',
     type: 'website',
+    images: ['/images/logo.png'],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Privacy Policy | Varsity Nest',
     description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
+    images: ['/images/logo.png'],
   },
 }
 

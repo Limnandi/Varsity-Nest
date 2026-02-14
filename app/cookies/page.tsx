@@ -10,11 +10,13 @@ export const metadata: Metadata = {
     url: 'https://varsitynest.space/cookies',
     siteName: 'Varsity Nest',
     type: 'website',
+    images: ['/images/logo.png'],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Cookies Policy | Varsity Nest',
     description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
+    images: ['/images/logo.png'],
   },
 }
 

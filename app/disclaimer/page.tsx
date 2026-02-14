@@ -10,11 +10,13 @@ export const metadata: Metadata = {
     url: 'https://varsitynest.space/disclaimer',
     siteName: 'Varsity Nest',
     type: 'website',
+    images: ['/images/logo.png'],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Disclaimer | Varsity Nest',
     description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
+    images: ['/images/logo.png'],
   },
 }
 

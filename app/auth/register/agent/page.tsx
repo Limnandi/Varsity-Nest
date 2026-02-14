@@ -11,11 +11,13 @@ export const metadata: Metadata = {
     url: "https://varsitynest.space/auth/register/agent",
     siteName: "Varsity Nest",
     type: "website",
+    images: ["/images/logo.png"],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Agent Sign Up | List Student Properties",
     description: "Register as an agent on Varsity Nest to list, manage, and connect students with your available rental properties. Start growing your portfolio today.",
+    images: ["/images/logo.png"],
   },
 };
 

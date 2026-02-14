@@ -11,11 +11,13 @@ export const metadata: Metadata = {
     url: "https://varsitynest.space/auth/register/student",
     siteName: "Varsity Nest",
     type: "website",
+    images: ["/images/logo.png"],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Student Sign Up",
     description: "Join Varsity Nest to find your ideal student accommodation. Sign up as a student today.",
+    images: ["/images/logo.png"],
   },
 };
 
