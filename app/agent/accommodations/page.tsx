@@ -364,7 +364,7 @@ export default function AgentAccommodations() {
                 }`}>
                   <div className="relative h-36">
                     <Image 
-                      src={(accommodation.images && accommodation.images[0]) || "/placeholder.jpg"} 
+                      src={(accommodation.images && accommodation.images[0]) || "/placeholder.svg"} 
                       alt="Property" 
                       fill
                       className="object-cover" 

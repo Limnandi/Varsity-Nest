@@ -554,7 +554,7 @@ export default function ReviewsSection({ accommodationId, accommodationName, acc
           isOpen={showReviewsModal}
           onClose={() => setShowReviewsModal(false)}
           accommodationName={accommodationName || "Accommodation"}
-          accommodationImage={accommodationImage || "/placeholder.jpg"}
+          accommodationImage={accommodationImage || "/placeholder.svg"}
           reviews={reviewsData.reviews}
           averageRating={reviewsData.averageRating}
           totalReviews={reviewsData.totalReviews}

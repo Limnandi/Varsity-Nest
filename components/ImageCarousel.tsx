@@ -14,7 +14,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
   const [mounted, setMounted] = useState(false)
   const galleryDialogRef = useRef<HTMLDivElement>(null)
   const totalSlides = Math.max(images.length, 1)
-  const displayImages = images.length > 0 ? images : ["/placeholder.jpg"]
+  const displayImages = images.length > 0 ? images : ["/placeholder.svg"]
 
   useEffect(() => {
     setMounted(true)
@@ -108,7 +108,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
           {displayImages.map((image, index) => (
             <div key={index} className="w-full h-full flex-shrink-0 relative">
               <Image 
-                src={image || "/placeholder.jpg"} 
+                src={image || "/placeholder.svg"} 
                 alt={`Listing image ${index + 1}`} 
                 fill 
                 className="object-cover group-hover:scale-105 transition-transform duration-300" 
@@ -206,7 +206,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
                   className="relative aspect-square rounded-lg overflow-hidden border-2 border-white/10 bg-black/20 cursor-pointer group hover:border-blue-500/50 transition-all hover:scale-105"
                 >
                   <Image
-                    src={image || "/placeholder.jpg"}
+                    src={image || "/placeholder.svg"}
                     alt={`Gallery image ${index + 1}`}
                     fill
                     className="object-cover group-hover:scale-110 transition-transform duration-300"
@@ -254,7 +254,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
           >
             <div className="relative w-full h-full">
               <Image
-                src={displayImages[selectedImageIndex] || "/placeholder.jpg"}
+                src={displayImages[selectedImageIndex] || "/placeholder.svg"}
                 alt={`Listing image ${selectedImageIndex + 1}`}
                 fill
                 className="object-contain"
@@ -312,7 +312,7 @@ export default function ImageCarousel({ images = [] as string[] }) {
                   }`}
                 >
                   <Image
-                    src={image || "/placeholder.jpg"}
+                    src={image || "/placeholder.svg"}
                     alt={`Thumbnail ${index + 1}`}
                     fill
                     className="object-cover"

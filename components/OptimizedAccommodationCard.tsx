@@ -135,7 +135,7 @@ const OptimizedAccommodationCard = memo(function AccommodationCard({
     <div className="group relative border border-white/10 bg-black/20 backdrop-blur-xl rounded-2xl overflow-hidden text-white shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02]">
       <div className="relative h-48 overflow-hidden">
         <Image
-          src={image || "/placeholder.jpg"}
+          src={image || "/placeholder.svg"}
           alt={title}
           fill
           fetchPriority="auto"

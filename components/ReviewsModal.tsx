@@ -159,7 +159,7 @@ export default function ReviewsModal({
                 {/* Property Image */}
                 <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 border-white/20">
                   <Image
-                    src={accommodationImage || "/placeholder.jpg"}
+                    src={accommodationImage || "/placeholder.svg"}
                     alt={accommodationName}
                     fill
                     className="object-cover"

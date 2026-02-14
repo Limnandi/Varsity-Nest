@@ -129,7 +129,7 @@ function AccommodationCard({
     <div className="group relative border border-white/10 bg-black/40 md:bg-black/30 backdrop-blur-none md:backdrop-blur-2xl rounded-2xl overflow-hidden text-white shadow-lg md:shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/30 transition-all duration-500 md:hover:scale-[1.02] hover:border-blue-500/30 w-full">
         <div className="relative h-48 sm:h-56 overflow-hidden">
           <Image
-            src={image || "/placeholder.jpg"}
+            src={image || "/placeholder.svg"}
             alt={title}
             fill
             priority={priority}

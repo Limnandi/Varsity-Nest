@@ -62,7 +62,7 @@ export default function StudentWishlistPage() {
             price: parseFloat(item.accommodation.price),
             image: Array.isArray(item.accommodation.images) && item.accommodation.images.length > 0 
               ? item.accommodation.images[0] 
-              : "/placeholder.jpg",
+              : "/placeholder.svg",
             rating: item.accommodation.rating || 0,
             reviewCount: item.accommodation.reviewCount || 0,
             accreditationStatus: item.accommodation.accreditationStatus,
