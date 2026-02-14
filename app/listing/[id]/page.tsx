@@ -56,7 +56,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     
     // Get the first image or use a default placeholder
     const images = Array.isArray(listing.images) ? listing.images : []
-    let imageUrl = images.length > 0 && images[0] ? String(images[0]) : `${baseUrl}/placeholder.jpg`
+    // Use a reliable default preview image when a listing has no uploaded images.
+    // (SVGs are not consistently supported by social preview crawlers.)
+    let imageUrl =
+      images.length > 0 && images[0]
+        ? String(images[0])
+        : `${baseUrl}/images/logo.png`
     
     // Ensure image URL is absolute (Cloudinary URLs are already absolute, but handle relative URLs too)
     if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
@@ -336,7 +341,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               <ReviewsSection 
                 accommodationId={id} 
                 accommodationName={listing.name}
-                accommodationImage={(listing.images && listing.images[0]) || "/placeholder.jpg"}
+                accommodationImage={(listing.images && listing.images[0]) || "/placeholder.svg"}
                 currentUserEmail={currentUserEmail}
                 currentUserRole={currentUserRole}
                 isAuthenticated={isAuthenticated}
