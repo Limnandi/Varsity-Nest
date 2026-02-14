@@ -47,20 +47,33 @@ export const metadata: Metadata = {
 
   manifest: '/site.webmanifest',
 
-  // --- EXISTING/WORKING FAVICON CONFIG (Kept for continuity) ---
+  openGraph: {
+    title: 'Varsity Nest | Find & List Student Housing & Accommodation',
+    description:
+      'Varsity Nest simplifies off-campus living, connecting students with trusted agents and providers to find the best university and college accommodations.',
+    url: 'https://varsitynest.space/',
+    siteName: 'Varsity Nest',
+    locale: 'en_ZA',
+    type: 'website',
+    images: ['/images/logo.png'],
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Varsity Nest | Find & List Student Housing & Accommodation',
+    description:
+      'Varsity Nest simplifies off-campus living, connecting students with trusted agents and providers to find the best university and college accommodations.',
+    images: ['/images/logo.png'],
+  },
+
   icons: {
     icon: [
-      { url: "/favicon.ico", rel: "icon", type: "image/x-icon" },
-      // PNG fallback (some crawlers/browsers prefer PNG over ICO)
-      { url: "/images/logo.png", type: "image/png", sizes: "any" },
+      { url: "/icon", type: "image/png", sizes: "512x512" },
     ],
     apple: [
-      // iOS and some crawlers look for an apple touch icon specifically
-      { url: "/images/logo.png", type: "image/png", sizes: "any" },
+      { url: "/apple-icon", type: "image/png", sizes: "180x180" },
     ],
-    shortcut: [
-      { url: "/favicon.ico" },
-    ],
+    shortcut: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
   },
 }
 
