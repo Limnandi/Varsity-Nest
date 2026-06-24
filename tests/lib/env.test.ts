@@ -12,6 +12,7 @@ describe('env module', () => {
     process.env.PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'test'
     process.env.PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || 'test'
     process.env.RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || 'test'
+    process.env.CONTACT_RECIPIENT_EMAIL = process.env.CONTACT_RECIPIENT_EMAIL || 'support@varsitynest.space'
     process.env.UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || 'https://www.varsitynest.space'
     process.env.UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || 'test'
 
@@ -21,6 +22,7 @@ describe('env module', () => {
     expect(env.DATABASE_URL).toBeDefined()
     expect(env.REDIS_URL).toBeDefined()
     expect(env.REDIS_TOKEN).toBeDefined()
+    expect(env.CONTACT_RECIPIENT_EMAIL).toBeDefined()
   })
 })
 

@@ -29,6 +29,7 @@ const baseSchema = z.object({
 
   // Email
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
+  CONTACT_RECIPIENT_EMAIL: z.string().email("CONTACT_RECIPIENT_EMAIL must be a valid email").optional(),
 
   // Security / Auth
   NEXTAUTH_SECRET: z.string().optional(),
@@ -106,6 +107,7 @@ export const env = {
 
   // Email
   RESEND_API_KEY: envRaw.RESEND_API_KEY,
+  CONTACT_RECIPIENT_EMAIL: envRaw.CONTACT_RECIPIENT_EMAIL ?? "support@varsitynest.space",
 
   // Auth
   NEXTAUTH_SECRET: envRaw.NEXTAUTH_SECRET,
