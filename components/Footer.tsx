@@ -36,7 +36,7 @@ export default function Footer() {
             <p className="text-sm sm:text-base text-neutral-400">
               Powered by{" "}
               <a 
-                href="https://massiveoperations.site/" 
+                href="https://massiveoperations.co.za/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="text-blue-400 hover:text-blue-300 transition-colors font-medium"
@@ -223,7 +223,7 @@ export default function Footer() {
             <p className="text-xs sm:text-sm text-neutral-400 text-center md:text-right">
               © 2025{" "}
               <a 
-                href="https://massiveoperations.site/" 
+                href="https://massiveoperations.co.za/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="text-blue-400 hover:text-blue-300 transition-colors font-medium"

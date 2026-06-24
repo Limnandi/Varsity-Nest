@@ -1,62 +1,41 @@
-"use client"
-
 import Image from "next/image"
 import Link from "next/link"
-import dynamic from "next/dynamic"
 import { MapPin, Shield, Star } from "lucide-react"
-import { memo, useState } from "react"
 import { formatZar } from "@/lib/utils"
 
-const AccommodationCardWishlist = dynamic(() => import("./AccommodationCardWishlist"), {
-  ssr: false,
-})
-
-interface AccommodationCardProps {
+export interface AccommodationCardShellProps {
   id: string | number
   title: string
   address: string
   rating: number
   reviewCount: number
   price: number
-  priceRange?: { min: number; max: number }
-  roomTypes?: Array<{
-    type: "single" | "sharing"
-    price: number
-    availableCount: number
-  }>
   isOpen: boolean
   image: string
-  amenities: string[]
-  distance: string
   verified: boolean
   featured: boolean
   availableRooms: number
   totalRooms: number
   priority?: boolean
+  imageQuality?: number
 }
 
-function AccommodationCard({
+export default function AccommodationCardShell({
   id,
   title,
   address,
   rating,
   reviewCount,
   price,
-  priceRange,
-  roomTypes,
   isOpen,
   image,
-  amenities: _amenities,
-  distance: _distance,
   verified,
   featured,
   availableRooms,
   totalRooms,
   priority = false,
-}: AccommodationCardProps) {
-  const [imageLoaded, setImageLoaded] = useState(false)
-  const imageQuality = priority ? 75 : 60
-
+  imageQuality = priority ? 75 : 60,
+}: AccommodationCardShellProps) {
   return (
     <div className="group relative border border-white/10 bg-black/40 md:bg-black/30 backdrop-blur-none md:backdrop-blur-2xl rounded-2xl overflow-hidden text-white shadow-lg md:shadow-2xl shadow-blue-500/10 hover:shadow-blue-500/30 transition-all duration-500 md:hover:scale-[1.02] hover:border-blue-500/30 w-full">
       <div className="relative h-48 sm:h-56 overflow-hidden">
@@ -68,16 +47,9 @@ function AccommodationCard({
           fetchPriority={priority ? "high" : "auto"}
           quality={imageQuality}
           loading={priority ? "eager" : "lazy"}
-          className={`object-cover transition-all duration-700 group-hover:scale-110 ${
-            imageLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          onLoad={() => setImageLoaded(true)}
+          className="object-cover transition-all duration-700 group-hover:scale-110"
           sizes="(max-width: 640px) 430px, (max-width: 1024px) 50vw, 380px"
         />
-        {!imageLoaded && (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-800/80 via-gray-700/60 to-gray-800/80 animate-pulse" />
-        )}
-
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
 
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
@@ -96,8 +68,6 @@ function AccommodationCard({
             {isOpen ? "Available" : "Full"}
           </span>
         </div>
-
-        <AccommodationCardWishlist id={id} />
 
         {isOpen && (
           <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-white/30">
@@ -141,27 +111,10 @@ function AccommodationCard({
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
-            {priceRange ? (
-              <div>
-                <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent">
-                  {formatZar(priceRange.min)}
-                  {priceRange.min !== priceRange.max && (
-                    <span className="text-base sm:text-lg text-neutral-400">
-                      {" "}
-                      - {formatZar(priceRange.max)}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-neutral-400">per month</div>
-              </div>
-            ) : (
-              <div>
-                <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent">
-                  {formatZar(price)}
-                </span>
-                <span className="text-neutral-400 text-xs sm:text-sm">/month</span>
-              </div>
-            )}
+            <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent">
+              {formatZar(price)}
+            </span>
+            <span className="text-neutral-400 text-xs sm:text-sm">/month</span>
           </div>
           <Link
             href={`/listing/${id}`}
@@ -170,25 +123,7 @@ function AccommodationCard({
             View Details
           </Link>
         </div>
-
-        {roomTypes && roomTypes.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-white/10">
-            <div className="text-xs text-neutral-400 mb-3 font-medium">Room types available:</div>
-            <div className="flex flex-wrap gap-2">
-              {roomTypes.slice(0, 3).map((roomType, index) => (
-                <span
-                  key={index}
-                  className="px-2 sm:px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded-full border border-indigo-500/40"
-                >
-                  {roomType.type} - {formatZar(roomType.price)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
 }
-
-export default memo(AccommodationCard)

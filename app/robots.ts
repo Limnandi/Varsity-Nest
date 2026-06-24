@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { SITE_URL } from "@/lib/site-metadata"
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -6,9 +7,18 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
+        disallow: [
+          "/admin/",
+          "/agent/",
+          "/provider/",
+          "/student/",
+          "/api/",
+          "/auth/",
+          "/handler/",
+        ],
       },
     ],
-    sitemap: "https://varsitynest.space/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }
 

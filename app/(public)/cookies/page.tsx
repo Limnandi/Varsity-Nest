@@ -1,24 +1,10 @@
-import { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/site-metadata'
 
-export const metadata: Metadata = {
-  title: 'Cookies Policy | Varsity Nest',
+export const metadata = createPageMetadata({
+  title: 'Cookies Policy',
   description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
-  alternates: { canonical: 'https://varsitynest.space/cookies' },
-  openGraph: {
-    title: 'Cookies Policy | Varsity Nest',
-    description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
-    url: 'https://varsitynest.space/cookies',
-    siteName: 'Varsity Nest',
-    type: 'website',
-    images: ['/images/logo.png'],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Cookies Policy | Varsity Nest',
-    description: 'Cookies Policy for Varsity Nest - How we use cookies and tracking technologies',
-    images: ['/images/logo.png'],
-  },
-}
+  pathname: '/cookies',
+})
 
 // Cookies Policy page explaining cookie usage and tracking technologies
 export default function CookiesPage() {

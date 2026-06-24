@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const recipientEmail = "limnandikent@gmail.com"
+    const recipientEmail = env.CONTACT_RECIPIENT_EMAIL
 
     // Use Stack Auth's sendEmail method with custom HTML
     // Since sendEmail requires userIds, we need to find or create the recipient user

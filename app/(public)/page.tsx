@@ -1,4 +1,4 @@
-import AccommodationCard from "@/components/AccommodationCard"
+import AccommodationCardShell from "@/components/AccommodationCardShell"
 import HeroSection from "@/components/HeroSection"
 import { fetchFeaturedAccommodationsCached } from "@/lib/repos/accommodations"
 import Link from "next/link"
@@ -24,7 +24,7 @@ export default async function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             {featuredAccommodations.map((acc, index) => (
-              <AccommodationCard
+              <AccommodationCardShell
                 key={acc.id}
                 id={acc.id}
                 title={acc.name}
@@ -34,13 +34,12 @@ export default async function Home() {
                 price={Number(acc.price) || 0}
                 isOpen={acc.is_open ?? true}
                 image={(acc.images && acc.images[0]) || "/placeholder.svg"}
-                amenities={acc.amenities || []}
-                distance={acc.distance || ""}
                 verified={acc.is_verified ?? false}
                 featured={acc.featured ?? false}
                 availableRooms={acc.available_rooms ?? 0}
                 totalRooms={acc.total_rooms ?? 0}
-                priority={index < 6}
+                priority={index < 2}
+                imageQuality={index < 2 ? 75 : 60}
               />
             ))}
           </div>

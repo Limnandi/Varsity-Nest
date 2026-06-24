@@ -4,11 +4,19 @@ import RoomTypesSection from "@/components/RoomTypesSection"
 import ContactAgent from "@/components/ContactAgent"
 import ShareSection from "@/components/ShareSection"
 import ListingQuickActions from "@/components/ListingQuickActions"
+import JsonLd from "@/components/json-ld"
 import { fetchAccommodationByIdWithProvider } from "@/lib/repos/accommodations"
 import { getCurrentUserFromStackAuth } from "@/lib/auth-server"
 import { notFound } from "next/navigation"
 import { Metadata } from "next"
-import { env } from "@/lib/env"
+import {
+  absoluteUrl,
+  buildAccommodationListingJsonLd,
+  buildBreadcrumbJsonLd,
+  buildOpenGraphImage,
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+} from "@/lib/site-metadata"
 import { 
   MapPin, 
   Bath, 
@@ -51,22 +59,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       }
     }
 
-    const baseUrl = env.APP_URL || 'https://varsitynest.space'
-    const listingUrl = `${baseUrl}/listing/${id}`
+    const listingUrl = absoluteUrl(`/listing/${id}`)
     
     // Get the first image or use a default placeholder
     const images = Array.isArray(listing.images) ? listing.images : []
-    // Use a reliable default preview image when a listing has no uploaded images.
-    // (SVGs are not consistently supported by social preview crawlers.)
-    let imageUrl =
-      images.length > 0 && images[0]
-        ? String(images[0])
-        : `${baseUrl}/images/logo.png`
-    
-    // Ensure image URL is absolute (Cloudinary URLs are already absolute, but handle relative URLs too)
-    if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-      imageUrl = imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`
-    }
 
     // Create a clean description (truncate if too long)
     const listingName = String(listing.name || 'Property')
@@ -78,32 +74,29 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       ? listingDescription.substring(0, 200).replace(/\n/g, ' ').trim() + (listingDescription.length > 200 ? '...' : '')
       : `Check out ${listingName} - ${listingAddress}. R${listingPrice} per month.`
 
-    const title = `${listingName} | Varsity Nest`
+    const title = `${listingName} | ${SITE_NAME}`
+    const ogImage =
+      images.length > 0 && images[0]
+        ? buildOpenGraphImage(String(images[0]), { alt: listingName })
+        : buildOpenGraphImage(DEFAULT_OG_IMAGE, { alt: listingName })
 
     return {
-      title,
+      title: listingName,
       description,
       openGraph: {
         title,
         description,
         url: listingUrl,
-        siteName: "Varsity Nest",
-        images: [
-          {
-            url: imageUrl,
-            width: 1200,
-            height: 630,
-            alt: listingName,
-          },
-        ],
-        locale: "en_US",
+        siteName: SITE_NAME,
+        images: [ogImage],
+        locale: "en_ZA",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: [imageUrl],
+        images: [ogImage.url],
       },
       alternates: {
         canonical: listingUrl,
@@ -153,7 +146,26 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  const listingStructuredData = [
+    buildAccommodationListingJsonLd({
+      id: listing.id,
+      name: listing.name,
+      description: listing.description,
+      address: listing.address,
+      price: listing.price,
+      images: listing.images,
+      providerName: listing.provider_name ?? listing.providerName,
+    }),
+    buildBreadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Accommodations", path: "/accommodations" },
+      { name: listing.name, path: `/listing/${id}` },
+    ]),
+  ]
+
   return (
+    <>
+      <JsonLd data={listingStructuredData} />
     <div className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] pt-20 pb-20 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
         {/* Header Section */}
@@ -382,5 +394,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
     </div>
+    </>
   )
 }

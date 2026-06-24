@@ -38,11 +38,41 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       }
     ],
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [430, 640, 768, 1024, 1280],
+    minimumCacheTTL: 31536000,
     unoptimized: false,
   },
  
   async headers() {
     return [
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/favicon.ico',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
 
       {
         source: '/.well-known/microsoft-identity-association',

@@ -1,25 +1,13 @@
 import ProviderRegistrationClient from "./ProviderRegistrationClient";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = {
-  title: "Provider Sign Up | Property Management",
-  description: "Are you a housing provider or landlord? Sign up to list your accommodations directly and reach thousands of students seeking housing on Varsity Nest.",
-  alternates: { canonical: "https://varsitynest.space/auth/register/provider" },
-  openGraph: {
-    title: "Provider Sign Up | Property Management",
-    description: "Are you a housing provider or landlord? Sign up to list your accommodations directly and reach thousands of students seeking housing on Varsity Nest.",
-    url: "https://varsitynest.space/auth/register/provider",
-    siteName: "Varsity Nest",
-    type: "website",
-    images: ["/images/logo.png"],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Provider Sign Up | Property Management",
-    description: "Are you a housing provider or landlord? Sign up to list your accommodations directly and reach thousands of students seeking housing on Varsity Nest.",
-    images: ["/images/logo.png"],
-  },
-};
+export const metadata = createPageMetadata({
+  title: "Provider Sign Up",
+  description:
+    "Are you a housing provider or landlord? Sign up to list your accommodations directly and reach thousands of students seeking housing on Varsity Nest.",
+  pathname: "/auth/register/provider",
+  noIndex: true,
+});
 
 export default function Page() {
   return <ProviderRegistrationClient />;

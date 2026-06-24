@@ -1,24 +1,10 @@
-import { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/site-metadata'
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy | Varsity Nest',
+export const metadata = createPageMetadata({
+  title: 'Privacy Policy',
   description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
-  alternates: { canonical: 'https://varsitynest.space/privacy' },
-  openGraph: {
-    title: 'Privacy Policy | Varsity Nest',
-    description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
-    url: 'https://varsitynest.space/privacy',
-    siteName: 'Varsity Nest',
-    type: 'website',
-    images: ['/images/logo.png'],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Privacy Policy | Varsity Nest',
-    description: 'Privacy Policy for Varsity Nest - How we collect, use, and protect your personal information',
-    images: ['/images/logo.png'],
-  },
-}
+  pathname: '/privacy',
+})
 
 // Privacy Policy page with comprehensive data protection terms and GDPR compliance
 export default function PrivacyPage() {

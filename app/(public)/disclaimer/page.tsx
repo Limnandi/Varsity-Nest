@@ -1,24 +1,10 @@
-import { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/site-metadata'
 
-export const metadata: Metadata = {
-  title: 'Disclaimer | Varsity Nest',
+export const metadata = createPageMetadata({
+  title: 'Disclaimer',
   description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
-  alternates: { canonical: 'https://varsitynest.space/disclaimer' },
-  openGraph: {
-    title: 'Disclaimer | Varsity Nest',
-    description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
-    url: 'https://varsitynest.space/disclaimer',
-    siteName: 'Varsity Nest',
-    type: 'website',
-    images: ['/images/logo.png'],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Disclaimer | Varsity Nest',
-    description: 'Disclaimer for Varsity Nest - Important information about the platform and accommodation listings',
-    images: ['/images/logo.png'],
-  },
-}
+  pathname: '/disclaimer',
+})
 
 // Disclaimer page with comprehensive legal protections
 export default function DisclaimerPage() {

@@ -1,24 +1,10 @@
-import { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/site-metadata'
 
-export const metadata: Metadata = {
-  title: 'Terms of Service | Varsity Nest',
+export const metadata = createPageMetadata({
+  title: 'Terms of Service',
   description: 'Terms of Service for Varsity Nest - Accommodation listing platform',
-  alternates: { canonical: 'https://varsitynest.space/terms' },
-  openGraph: {
-    title: 'Terms of Service | Varsity Nest',
-    description: 'Terms of Service for Varsity Nest - Accommodation listing platform',
-    url: 'https://varsitynest.space/terms',
-    siteName: 'Varsity Nest',
-    type: 'website',
-    images: ['/images/logo.png'],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Terms of Service | Varsity Nest',
-    description: 'Terms of Service for Varsity Nest - Accommodation listing platform',
-    images: ['/images/logo.png'],
-  },
-}
+  pathname: '/terms',
+})
 
 // Terms of Service page.
 export default function TermsPage() {
