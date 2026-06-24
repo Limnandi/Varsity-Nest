@@ -1,16 +1,24 @@
 {
   "name": "Varsity Nest",
   "short_name": "Varsity Nest",
+  "description": "Find and list student housing and accommodation in South Africa.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#02042b",
   "theme_color": "#040945",
   "icons": [
     {
-      "src": "/icon",
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
-
