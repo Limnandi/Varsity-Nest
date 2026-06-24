@@ -8,7 +8,7 @@ export default function HeroSection() {
         {/* Main Hero Content */}
         <div className="mb-16">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 drop-shadow-2xl tracking-tight">
-            Off-Campus Living
+            <span className="block">Off-Campus Living</span>
             <span className="block bg-gradient-to-r from-blue-400 via-purple-500 to-blue-600 bg-clip-text text-transparent mt-2">
               Made Simple
             </span>

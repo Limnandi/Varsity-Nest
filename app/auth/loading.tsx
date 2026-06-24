@@ -1,6 +1,6 @@
 import LoadingSpinner from "@/components/LoadingSpinner"
 
-export default function Loading() {
+export default function AuthLoading() {
   return (
     <div
       className="min-h-screen bg-gradient-to-b from-[#02042b] to-[#040945] flex items-center justify-center"

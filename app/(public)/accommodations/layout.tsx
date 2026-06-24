@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { createPageMetadata } from "@/lib/site-metadata"
+import PublicQueryBoundary from "@/components/PublicQueryBoundary"
 
 export const metadata: Metadata = createPageMetadata({
   title: "Browse Student Accommodations",
@@ -13,5 +14,5 @@ export default function AccommodationsLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return <PublicQueryBoundary>{children}</PublicQueryBoundary>
 }
