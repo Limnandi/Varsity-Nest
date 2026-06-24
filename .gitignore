@@ -41,3 +41,7 @@ playwright-report/
 # logs
 /logs/
 *.log
+
+# local audits and reports (not for version control)
+download.pdf
+lighthouse-local.json

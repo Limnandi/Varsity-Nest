@@ -17,7 +17,8 @@ Varsity Nest is a production-ready Next.js 16 platform for student accommodation
 9. [Database Schema](#database-schema)
 10. [Code Style & Conventions](#code-style--conventions)
 11. [Deployment](#deployment)
-12. [Troubleshooting](#troubleshooting)
+12. [SEO & Discoverability](#seo--discoverability)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -426,13 +427,18 @@ PAYSTACK_PUBLIC_KEY=pk_live_yyy
 #### Email (Resend)
 ```env
 RESEND_API_KEY=re_xxx
+CONTACT_RECIPIENT_EMAIL=support@varsitynest.space
 ```
+
+Contact form submissions are delivered to `CONTACT_RECIPIENT_EMAIL` (defaults to `support@varsitynest.space` if unset). **Never hardcode personal emails in source code.**
 
 #### Security
 ```env
 RECAPTCHA_SECRET_KEY=xxx
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=yyy
 SENTRY_DSN=https://xxx@yyy.ingest.sentry.io/123456
+GOOGLE_SITE_VERIFICATION=optional_google_search_console_token
+BING_SITE_VERIFICATION=optional_bing_webmaster_token
 ```
 
 #### Application
@@ -1335,6 +1341,41 @@ pnpm e2e
 # Verify environment variables
 cat .env.local | grep "^[A-Z_]" | wc -l
 ```
+
+### Public repository notes
+
+This project is intended to be shared publicly (e.g. portfolio / bursary review). Before pushing:
+
+- Copy `.env.example` → `.env.local` locally; **never commit `.env.local`**
+- Set `CONTACT_RECIPIENT_EMAIL` to a team inbox, not a personal Gmail
+- Do not commit audit files such as `download.pdf` (already in `.gitignore`)
+- Enable GitHub **Secret scanning** and **Push protection** after making the repo public
+
+---
+
+## SEO & Discoverability
+
+Varsity Nest implements SEO using the **Next.js Metadata API**, centralized helpers in `lib/site-metadata.ts`, JSON-LD structured data, and crawler files (`robots.ts`, `sitemap.ts`).
+
+**Highlights:**
+
+- Global metadata, Open Graph, Twitter Cards, and favicons in `app/layout.tsx`
+- Per-page metadata via `createPageMetadata()` for static routes
+- Dynamic `generateMetadata()` for listing pages with property-specific titles and images
+- JSON-LD: `Organization`, `WebSite`, `Apartment`, `BreadcrumbList`
+- Public routes optimized for Core Web Vitals (server-rendered hero, lightweight public shell)
+
+**Full implementation guide:** see **[SEO_GUIDE.md](./SEO_GUIDE.md)** — step-by-step documentation on how to add metadata to new pages, validate with Google/Bing tools, and avoid common mistakes (dynamic OG routes, relative URLs, indexing auth pages).
+
+**Required env for SEO:**
+
+```env
+NEXT_PUBLIC_APP_URL=https://varsitynest.space
+GOOGLE_SITE_VERIFICATION=optional
+BING_SITE_VERIFICATION=optional
+```
+
+After deploy, submit `https://your-domain/sitemap.xml` in Google Search Console and Bing Webmaster Tools.
 
 ---
 
