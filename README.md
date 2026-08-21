@@ -1,4 +1,4 @@
-# Varsity Nest — Comprehensive Developer Guide
+# Varsity Nest: Comprehensive Developer Guide
 
 Varsity Nest is a production-ready Next.js 16 platform for student accommodation discovery and management. Designed for universities in South Africa (UFS and CUT), it enables students to find verified accommodations, make bookings, leave reviews, and manage wishlists. Providers can list properties with advanced analytics, and admins have comprehensive dashboards for platform oversight.
 
@@ -25,119 +25,119 @@ Varsity Nest is a production-ready Next.js 16 platform for student accommodation
 ## Tech Stack
 
 ### Core Framework
-- **Next.js 16** — React framework with App Router and Server Components
-- **TypeScript** — Strict typing for type safety
-- **React 19** — Latest UI library
+- **Next.js 16:** React framework with App Router and Server Components
+- **TypeScript:** Strict typing for type safety
+- **React 19:** Latest UI library
 
 ### Database & ORM
-- **PostgreSQL** via Neon — Serverless database
-- **Drizzle ORM** — Type-safe query builder
-- **Database-secure layer** — Parameterized queries and validation
+- **PostgreSQL** via Neon: Serverless database
+- **Drizzle ORM:** Type-safe query builder
+- **Database-secure layer:** Parameterized queries and validation
 
 ### Authentication
-- **StackFrame Stack** — Authentication and user management
-- **Session management** — Server-side session resolution
-- **Role-based access control** — Student, Provider, Admin
+- **StackFrame Stack:** Authentication and user management
+- **Session management:** Server-side session resolution
+- **Role-based access control:** Student, Provider, Admin
 
 ### UI & Styling
-- **Tailwind CSS** — Utility-first CSS framework
-- **shadcn/ui** — Accessible React components
-- **Lucide React** — SVG icon library
-- **Embla Carousel** — Image carousel library
+- **Tailwind CSS:** Utility-first CSS framework
+- **shadcn/ui:** Accessible React components
+- **Lucide React:** SVG icon library
+- **Embla Carousel:** Image carousel library
 
 ### Data Management & Caching
-- **Upstash Redis** — Serverless Redis (OTP, caching, rate limiting)
-- **TanStack Query** — Client-side data fetching and caching
+- **Upstash Redis:** Serverless Redis (OTP, caching, rate limiting)
+- **TanStack Query:** Client-side data fetching and caching
 
 ### File & Media Management
-- **Cloudinary** — Image uploads, transformations, and optimization
-- **next-cloudinary** — Cloudinary integration for Next.js
+- **Cloudinary:** Image uploads, transformations, and optimization
+- **next-cloudinary:** Cloudinary integration for Next.js
 
 ### Payment Processing
-- **Paystack** — Payment gateway with recurring charges support
-- **Card tokenization** — For recurring payments
+- **Paystack:** Payment gateway with recurring charges support
+- **Card tokenization:** For recurring payments
 
 ### Email & Communication
-- **Resend** — Email sending service
-- **React Email** — Email templates
+- **Resend:** Email sending service
+- **React Email:** Email templates
 
 ### Observability & Monitoring
-- **Sentry** — Error tracking and monitoring
-- **Vercel Analytics** — Performance metrics
-- **Vercel Speed Insights** — Core Web Vitals monitoring
-- **Winston** — Logging library
+- **Sentry:** Error tracking and monitoring
+- **Vercel Analytics:** Performance metrics
+- **Vercel Speed Insights:** Core Web Vitals monitoring
+- **Winston:** Logging library
 
 ### Development Tools
-- **pnpm** — Fast package manager
-- **ESLint** — Code linting
-- **TypeScript** — Static type checking
-- **Playwright** — E2E testing
-- **Vitest** — Unit testing
-- **Zod** — Schema validation
+- **pnpm:** Fast package manager
+- **ESLint:** Code linting
+- **TypeScript:** Static type checking
+- **Playwright:** E2E testing
+- **Vitest:** Unit testing
+- **Zod:** Schema validation
 
 ---
 
 ## Key Features
 
 ### Student System
-- **Authentication** — Stack-based login with email verification
-- **Profile Management** — Academic info, emergency contacts, preferences
-- **Profile Image Upload** — Cloudinary integration with cropping
-- **Wishlist** — Save/unsave accommodations with persistent storage
-- **Review System** — Rate accommodations (1-5 stars), leave comments
-- **Settings** — Notification preferences, privacy controls, visibility settings
-- **Booking History** — Track reservations and payment status
-- **Dashboard** — Personalized student dashboard with stats
+- **Authentication:** Stack-based login with email verification
+- **Profile Management:** Academic info, emergency contacts, preferences
+- **Profile Image Upload:** Cloudinary integration with cropping
+- **Wishlist:** Save/unsave accommodations with persistent storage
+- **Review System:** Rate accommodations (1-5 stars), leave comments
+- **Settings:** Notification preferences, privacy controls, visibility settings
+- **Booking History:** Track reservations and payment status
+- **Dashboard:** Personalized student dashboard with stats
 
 ### Provider System
-- **Accommodation Management** — Create, edit, delete listings
-- **Advanced Analytics** — Revenue tracking, booking metrics, review stats
-- **Booking Management** — View and manage student reservations
-- **Review Insights** — Respond to student reviews
-- **Featured Listings** — Promote accommodations
-- **Revenue Reports** — Monthly and annual revenue tracking
-- **Dashboard** — Provider-specific metrics and analytics
+- **Accommodation Management:** Create, edit, delete listings
+- **Advanced Analytics:** Revenue tracking, booking metrics, review stats
+- **Booking Management:** View and manage student reservations
+- **Review Insights:** Respond to student reviews
+- **Featured Listings:** Promote accommodations
+- **Revenue Reports:** Monthly and annual revenue tracking
+- **Dashboard:** Provider-specific metrics and analytics
 
 ### Admin Dashboard
-- **Platform Analytics** — Revenue, accommodations, providers, students
-- **User Management** — Browse and manage all users
-- **Provider Verification** — Approve/reject provider registrations
-- **Report Moderation** — Handle user reports on listings
-- **Accommodation Reports** — View and investigate problematic listings
-- **Domain Management** — Configure domains and subdomains
-- **System Settings** — Global platform configuration
-- **Rating Sync** — Manual accommodation rating synchronization
+- **Platform Analytics:** Revenue, accommodations, providers, students
+- **User Management:** Browse and manage all users
+- **Provider Verification:** Approve/reject provider registrations
+- **Report Moderation:** Handle user reports on listings
+- **Accommodation Reports:** View and investigate problematic listings
+- **Domain Management:** Configure domains and subdomains
+- **System Settings:** Global platform configuration
+- **Rating Sync:** Manual accommodation rating synchronization
 
 ### Accommodation Discovery
-- **Advanced Search** — Search by name, location, price range
-- **Filtering** — By university, accreditation status, amenities, price
-- **Sorting** — By rating, reviews, distance, price
-- **Detailed Listings** — Images, amenities, room types, availability
-- **Ratings & Reviews** — Community-driven ratings display
-- **Map Integration** — Geolocation-based discovery (latitude/longitude)
-- **Wishlist Integration** — One-click save functionality
-- **Share Functionality** — Social sharing of listings
+- **Advanced Search:** Search by name, location, price range
+- **Filtering:** By university, accreditation status, amenities, price
+- **Sorting:** By rating, reviews, distance, price
+- **Detailed Listings:** Images, amenities, room types, availability
+- **Ratings & Reviews:** Community-driven ratings display
+- **Map Integration:** Geolocation-based discovery (latitude/longitude)
+- **Wishlist Integration:** One-click save functionality
+- **Share Functionality:** Social sharing of listings
 
 ### Booking System
-- **Calendar-based Booking** — Select check-in and check-out dates
-- **Real-time Availability** — Show available room types
-- **Payment Integration** — Paystack payment processing
-- **Booking Status** — pending, confirmed, cancelled, completed states
-- **Payment Tracking** — Separate payment status per booking
+- **Calendar-based Booking:** Select check-in and check-out dates
+- **Real-time Availability:** Show available room types
+- **Payment Integration:** Paystack payment processing
+- **Booking Status:** pending, confirmed, cancelled, completed states
+- **Payment Tracking:** Separate payment status per booking
 
 ### Review & Rating System
-- **User Reviews** — Students rate accommodations (1-5 stars)
-- **Rich Comments** — Text feedback on accommodation experience
-- **Anonymous Option** — Optional anonymous reviews
-- **Automatic Aggregation** — Rating and review count calculation
-- **Moderation** — Admin controls for inappropriate reviews
-- **Helpful Voting** — Mark reviews as helpful (future)
+- **User Reviews:** Students rate accommodations (1-5 stars)
+- **Rich Comments:** Text feedback on accommodation experience
+- **Anonymous Option:** Optional anonymous reviews
+- **Automatic Aggregation:** Rating and review count calculation
+- **Moderation:** Admin controls for inappropriate reviews
+- **Helpful Voting:** Mark reviews as helpful (future)
 
 ### Reporting System
-- **Listing Reports** — Users can report inappropriate accommodations
-- **Report Categories** — Fraud, spam, inappropriate content, other
-- **Admin Workflow** — pending → investigating → resolved/dismissed
-- **Rate Limiting** — Prevent spam report submissions
+- **Listing Reports:** Users can report inappropriate accommodations
+- **Report Categories:** Fraud, spam, inappropriate content, other
+- **Admin Workflow:** pending → investigating → resolved/dismissed
+- **Rate Limiting:** Prevent spam report submissions
 
 ---
 
@@ -352,18 +352,18 @@ database/
 ```
 
 **Key Tables:**
-- `users` — User accounts (email, role, verification status)
-- `students` — Student profiles (student number, university, emergency contacts)
-- `providers` — Provider information (business details, verification)
-- `accommodations` — Accommodation listings (details, pricing, images, amenities)
-- `bookings` — Reservations (dates, payment status)
-- `reviews` — Ratings and reviews
-- `student_wishlist` — Saved accommodations
-- `student_preferences` — Notification and privacy settings
-- `listing_reports` — Reports on inappropriate listings
-- `payments` — Payment records
-- `reports` — General user reports
-- `webhook_events` — Webhook idempotency tracking
+- `users`: User accounts (email, role, verification status)
+- `students`: Student profiles (student number, university, emergency contacts)
+- `providers`: Provider information (business details, verification)
+- `accommodations`: Accommodation listings (details, pricing, images, amenities)
+- `bookings`: Reservations (dates, payment status)
+- `reviews`: Ratings and reviews
+- `student_wishlist`: Saved accommodations
+- `student_preferences`: Notification and privacy settings
+- `listing_reports`: Reports on inappropriate listings
+- `payments`: Payment records
+- `reports`: General user reports
+- `webhook_events`: Webhook idempotency tracking
 
 ---
 
@@ -373,15 +373,15 @@ database/
 
 Before starting, you need accounts and credentials from:
 
-1. **Neon** — Database hosting
-2. **Upstash** — Redis for caching
-3. **Cloudinary** — Image management
-4. **Paystack** — Payment processing
-5. **StackFrame Stack** — Authentication
-6. **Resend** — Email sending
-7. **Google reCAPTCHA** — Spam protection
-8. **Sentry** — Error tracking
-9. **Vercel** — Deployment (optional but recommended)
+1. **Neon:** Database hosting
+2. **Upstash:** Redis for caching
+3. **Cloudinary:** Image management
+4. **Paystack:** Payment processing
+5. **StackFrame Stack:** Authentication
+6. **Resend:** Email sending
+7. **Google reCAPTCHA:** Spam protection
+8. **Sentry:** Error tracking
+9. **Vercel:** Deployment (optional but recommended)
 
 ### Create `.env.local` File
 
@@ -415,6 +415,7 @@ CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=123456789
 CLOUDINARY_API_SECRET=abcdef...
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+NEXT_PUBLIC_CLOUDINARY_API_KEY=123456789
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=student_profile_unsigned
 ```
 
@@ -455,7 +456,7 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/varsity-nest.git
+git clone https://github.com/Limnandi/Varsity-Nest.git
 cd varsity-nest
 ```
 
@@ -475,8 +476,6 @@ cp .env.example .env.local
 # Create tables and indexes
 pnpm db:migrate
 
-# (Optional) Seed with test data
-pnpm db:seed
 ```
 
 ### 5. Start Development Server
@@ -635,11 +634,11 @@ Upload profile image to Cloudinary.
 Get student's wishlist with filters.
 
 **Query Parameters:**
-- `search` — Search by accommodation name or address
-- `status` — Filter by accreditation (accredited, provisionally_accredited, non_accredited)
-- `accommodationId` — Get specific accommodation from wishlist
-- `page` — Pagination (default: 1)
-- `limit` — Results per page (default: 20)
+- `search`: Search by accommodation name or address
+- `status`: Filter by accreditation (accredited, provisionally_accredited, non_accredited)
+- `accommodationId`: Get specific accommodation from wishlist
+- `page`: Pagination (default: 1)
+- `limit`: Results per page (default: 20)
 
 **Response:**
 ```json
@@ -1052,13 +1051,13 @@ The student profile system integrates image management with Cloudinary:
 5. Profile image displayed with fallback to initials
 
 **Database Fields:**
-- `profile_image_url` — Cloudinary CDN URL
-- `profile_image_cloudinary_id` — Public ID for updates/deletion
+- `profile_image_url`: Cloudinary CDN URL
+- `profile_image_cloudinary_id`: Public ID for updates/deletion
 
 **Key Files:**
-- `components/ProfileImageUpload.tsx` — Upload UI
-- `app/api/student/profile-image` — Upload handler
-- `lib/cloudinary.ts` — Cloudinary utilities
+- `components/ProfileImageUpload.tsx`: Upload UI
+- `app/api/student/profile-image`: Upload handler
+- `lib/cloudinary.ts`: Cloudinary utilities
 
 ### Wishlist System
 
@@ -1072,10 +1071,10 @@ Students can save and manage favorite accommodations:
 - Optional filtering by accreditation status
 
 **Key Files:**
-- `components/WishlistButton.tsx` — Heart button component
-- `app/student/wishlist/` — Wishlist page
-- `app/api/student/wishlist/` — Wishlist API
-- `lib/wishlist-status-batcher.ts` — Batch status checking
+- `components/WishlistButton.tsx`: Heart button component
+- `app/student/wishlist/`: Wishlist page
+- `app/api/student/wishlist/`: Wishlist API
+- `lib/wishlist-status-batcher.ts`: Batch status checking
 
 ### Review & Rating System
 
@@ -1093,9 +1092,9 @@ Students can review and rate accommodations:
 - Accommodation `rating` and `review_count` auto-updated
 
 **Key Files:**
-- `components/ReviewForm.tsx` — Review submission
-- `components/ReviewCard.tsx` — Review display
-- `app/api/accommodations/[id]/reviews/` — Review endpoints
+- `components/ReviewForm.tsx`: Review submission
+- `components/ReviewCard.tsx`: Review display
+- `app/api/accommodations/[id]/reviews/`: Review endpoints
 
 ### Cloudinary Integration
 
@@ -1114,9 +1113,9 @@ Comprehensive image management:
 - Security tags and access control
 
 **Key Files:**
-- `lib/cloudinary.ts` — Cloudinary facade
-- `components/OptimizedImage.tsx` — Image display
-- `components/ProfileImageUpload.tsx` — Image upload
+- `lib/cloudinary.ts`: Cloudinary facade
+- `components/OptimizedImage.tsx`: Image display
+- `components/ProfileImageUpload.tsx`: Image upload
 
 ### Paystack Payment Integration
 
@@ -1130,9 +1129,9 @@ Production payment processing:
 5. Booking status updated based on payment status
 
 **Key Files:**
-- `lib/paystack.ts` — Paystack helpers
-- `lib/paystack-api-client.ts` — API wrapper
-- `app/api/paystack/webhook/` — Webhook handler
+- `lib/paystack.ts`: Paystack helpers
+- `lib/paystack-api-client.ts`: API wrapper
+- `app/api/paystack/webhook/`: Webhook handler
 
 ### Admin Dashboard
 
@@ -1146,9 +1145,9 @@ Platform management interface:
 - Rating synchronization
 
 **Key Files:**
-- `app/admin/analytics/` — Analytics pages
-- `app/api/admin/` — Admin endpoints
-- `lib/admin.ts` — Admin operations
+- `app/admin/analytics/`: Analytics pages
+- `app/api/admin/`: Admin endpoints
+- `lib/admin.ts`: Admin operations
 
 ---
 
@@ -1365,8 +1364,6 @@ Varsity Nest implements SEO using the **Next.js Metadata API**, centralized help
 - JSON-LD: `Organization`, `WebSite`, `Apartment`, `BreadcrumbList`
 - Public routes optimized for Core Web Vitals (server-rendered hero, lightweight public shell)
 
-**Full implementation guide:** see **[SEO_GUIDE.md](./SEO_GUIDE.md)** — step-by-step documentation on how to add metadata to new pages, validate with Google/Bing tools, and avoid common mistakes (dynamic OG routes, relative URLs, indexing auth pages).
-
 **Required env for SEO:**
 
 ```env
@@ -1448,7 +1445,7 @@ After deploy, submit `https://your-domain/sitemap.xml` in Google Search Console 
 
 ## License
 
-Proprietary — All rights reserved 2024
+This project is licensed under the PolyForm Noncommercial License 1.0.0. See [LICENSE.md](./LICENSE.md) for the full terms.
 
 ## Support
 
